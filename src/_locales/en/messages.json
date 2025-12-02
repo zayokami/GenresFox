@@ -1,0 +1,38 @@
+{
+    "searchPlaceholder": {
+        "message": "Search..."
+    },
+    "appTitle": {
+        "message": "GenresFox-NEWTAB"
+    },
+    "settingsTitle": {
+        "message": "Settings"
+    },
+    "tabWallpaper": {
+        "message": "Wallpaper"
+    },
+    "tabSearch": {
+        "message": "Search & Shortcuts"
+    },
+    "tabAbout": {
+        "message": "About"
+    },
+    "uploadWallpaper": {
+        "message": "Upload Wallpaper"
+    },
+    "resetWallpaper": {
+        "message": "Reset to Default"
+    },
+    "customEngines": {
+        "message": "Custom Search Engines"
+    },
+    "shortcuts": {
+        "message": "Shortcuts"
+    },
+    "add": {
+        "message": "Add"
+    },
+    "dragDropText": {
+        "message": "Drag & Drop image here or click to upload"
+    }
+}
