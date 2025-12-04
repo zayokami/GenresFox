@@ -179,12 +179,33 @@ function renderShortcutsGrid() {
         const a = document.createElement("a");
         a.href = shortcut.url;
         a.className = "shortcut-item";
-        a.innerHTML = `
-            <div class="shortcut-icon">
-                <img src="${shortcut.icon}" alt="${shortcut.name}">
-            </div>
-            <div class="shortcut-name">${shortcut.name}</div>
-        `;
+
+        const iconDiv = document.createElement("div");
+        iconDiv.className = "shortcut-icon loading"; // Add loading class for skeleton
+
+        const img = document.createElement("img");
+        img.alt = shortcut.name;
+        img.src = shortcut.icon;
+
+        // Remove loading class when image loads or fails
+        img.onload = () => iconDiv.classList.remove("loading");
+        img.onerror = () => {
+            iconDiv.classList.remove("loading");
+            // Use a fallback icon (first letter of name)
+            img.style.display = 'none';
+            iconDiv.textContent = shortcut.name.charAt(0).toUpperCase();
+            iconDiv.style.fontSize = '18px';
+            iconDiv.style.fontWeight = '600';
+        };
+
+        iconDiv.appendChild(img);
+
+        const nameDiv = document.createElement("div");
+        nameDiv.className = "shortcut-name";
+        nameDiv.textContent = shortcut.name;
+
+        a.appendChild(iconDiv);
+        a.appendChild(nameDiv);
         shortcutsGrid.appendChild(a);
     });
 }
@@ -258,15 +279,27 @@ async function saveWallpaperToDB(file) {
     });
 }
 
-async function getWallpaperFromDB() {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([storeName], "readonly");
-        const store = transaction.objectStore(storeName);
-        const request = store.get("currentWallpaper");
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
+async function getWallpaperFromDB(retries = 3) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], "readonly");
+                const store = transaction.objectStore(storeName);
+                const request = store.get("currentWallpaper");
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        } catch (e) {
+            console.warn(`Wallpaper load attempt ${i + 1} failed:`, e);
+            if (i < retries - 1) {
+                // Wait before retrying (100ms, 200ms, 400ms)
+                await new Promise(r => setTimeout(r, 100 * Math.pow(2, i)));
+            } else {
+                throw e;
+            }
+        }
+    }
 }
 
 async function deleteWallpaperFromDB() {
@@ -401,6 +434,11 @@ blurSlider.addEventListener("input", (e) => {
     blurValue.textContent = value;
     localStorage.setItem("wallpaperSettings", JSON.stringify(wallpaperSettings));
     applyWallpaperEffects();
+    // Live preview effect
+    const previewImg = document.getElementById("previewImg");
+    if (previewImg) {
+        previewImg.style.filter = `blur(${value / 10}px)`;
+    }
 });
 
 // Vignette slider
@@ -410,6 +448,13 @@ vignetteSlider.addEventListener("input", (e) => {
     vignetteValue.textContent = value;
     localStorage.setItem("wallpaperSettings", JSON.stringify(wallpaperSettings));
     applyWallpaperEffects();
+    // Live preview effect
+    const previewContainer = document.getElementById("wallpaperPreview");
+    if (previewContainer) {
+        const vignetteIntensity = value / 100;
+        previewContainer.style.setProperty('--preview-vignette',
+            `radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,${vignetteIntensity}) 100%)`);
+    }
 });
 
 // Search box width slider
@@ -546,7 +591,8 @@ const fallbackMessages = {
         "resetShortcuts": "重置快捷方式",
         "searchBoxSettings": "搜索框设置",
         "searchBoxWidth": "宽度",
-        "searchBoxPosition": "垂直位置"
+        "searchBoxPosition": "垂直位置",
+        "livePreview": "实时预览"
     },
     "en": {
         "appTitle": "GenresFox-NEWTAB",
@@ -567,26 +613,36 @@ const fallbackMessages = {
         "resetShortcuts": "Reset Shortcuts",
         "searchBoxSettings": "Search Box Settings",
         "searchBoxWidth": "Width",
-        "searchBoxPosition": "Vertical Position"
+        "searchBoxPosition": "Vertical Position",
+        "livePreview": "Live Preview"
     }
 };
 
 function localize() {
+    const lang = navigator.language.startsWith("zh") ? "zh" : "en";
+    const fallback = fallbackMessages[lang];
+
     if (typeof chrome !== 'undefined' && chrome.i18n) {
         document.querySelectorAll('[data-i18n]').forEach(elem => {
-            const msg = chrome.i18n.getMessage(elem.dataset.i18n);
+            let msg = chrome.i18n.getMessage(elem.dataset.i18n);
+            // Fallback if chrome.i18n misses the key (e.g. extension not reloaded)
+            if (!msg && fallback && fallback[elem.dataset.i18n]) {
+                msg = fallback[elem.dataset.i18n];
+            }
             if (msg) elem.textContent = msg;
         });
         document.querySelectorAll('[data-i18n-placeholder]').forEach(elem => {
-            const msg = chrome.i18n.getMessage(elem.dataset.i18nPlaceholder);
+            let msg = chrome.i18n.getMessage(elem.dataset.i18nPlaceholder);
+            if (!msg && fallback && fallback[elem.dataset.i18nPlaceholder]) {
+                msg = fallback[elem.dataset.i18nPlaceholder];
+            }
             if (msg) elem.placeholder = msg;
         });
         return;
     }
 
-    const lang = navigator.language.startsWith("zh") ? "zh" : "en";
+    // Pure fallback mode (no chrome.i18n)
     const messages = fallbackMessages[lang];
-
     document.querySelectorAll('[data-i18n]').forEach(elem => {
         const key = elem.dataset.i18n;
         if (messages[key]) elem.textContent = messages[key];
@@ -599,7 +655,9 @@ function localize() {
 
 // Init
 async function init() {
-    // Try to load from IndexedDB first
+    // Try to load wallpaper from IndexedDB first
+    let wallpaperLoaded = false;
+
     try {
         const dbData = await getWallpaperFromDB();
         if (dbData) {
@@ -613,18 +671,19 @@ async function init() {
             }
             setWallpaper(objectUrl);
             updatePreview(objectUrl);
-        } else {
-            // Fallback to localStorage (legacy support)
-            const savedWallpaper = localStorage.getItem("wallpaper");
-            if (savedWallpaper) {
-                setWallpaper(savedWallpaper);
-                updatePreview(savedWallpaper);
-                // We don't migrate automatically here to avoid blocking, 
-                // user will migrate when they upload a new one.
-            }
+            wallpaperLoaded = true;
         }
     } catch (e) {
-        console.error("Error initializing wallpaper:", e);
+        console.error("Error loading wallpaper from IndexedDB:", e);
+    }
+
+    // Fallback to localStorage if IndexedDB failed or returned null
+    if (!wallpaperLoaded) {
+        const savedWallpaper = localStorage.getItem("wallpaper");
+        if (savedWallpaper) {
+            setWallpaper(savedWallpaper);
+            updatePreview(savedWallpaper);
+        }
     }
 
     // Load saved wallpaper settings
@@ -655,7 +714,13 @@ async function init() {
     renderShortcutsList();
     renderShortcutsGrid();
     searchInput.addEventListener("keydown", handleSearch);
+
+    // Ensure focus (autofocus attribute handles initial, this is backup)
     searchInput.focus();
 }
 
+// Focus immediately before any async operations
+searchInput.focus();
+
+// Then run full init
 init();

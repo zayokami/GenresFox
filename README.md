@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Chrome](https://img.shields.io/badge/chrome-manifest%20v3-orange.svg)
 
@@ -164,7 +164,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 4. 点击"加载已解压的扩展程序"，选择 `src` 文件夹
 
-5. 享受您的新标签页！
+5. 开始使用吧！
 
 #### 从 Chrome 网上应用店安装
 
@@ -215,14 +215,14 @@ GenresFox-NEWTAB/
 └── README.md
 ```
 
-#### 使用的技术
+#### 技术栈
 - **Manifest V3**: 最新的 Chrome 扩展标准
 - **原生 JavaScript**: 无框架依赖，纯粹的性能
 - **CSS3**: 现代样式与玻璃态效果
 - **LocalStorage**: 用于持久化设置和缓存
 - **Chrome 扩展 API**: 用于国际化和浏览器集成
 
-#### 添加新语言
+#### 多语言支持
 1. 在 `src/_locales/` 中创建新文件夹，使用语言代码命名（如 `fr` 表示法语）
 2. 从 `en` 文件夹复制 `messages.json`
 3. 翻译所有消息值
@@ -259,6 +259,7 @@ GenresFox-NEWTAB/
 <div align="center">
 
 **如果这个项目对您有帮助，请给它一个 ⭐️！**
+**If this project has been helpful to you, please give it a ⭐️!**
 
 Made with ❤️ by zayoka
 
