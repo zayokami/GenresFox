@@ -289,7 +289,7 @@ body::after {
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: visible; /* allow floating popovers (custom selects, tooltips) */
     transform: scale(0.95);
     transition: transform 0.3s var(--transition-curve);
     max-height: 80vh;
@@ -328,6 +328,7 @@ body::after {
 .modal-body {
     padding: 20px;
     overflow-y: auto;
+    max-height: calc(80vh - 80px); /* account for header */
 }
 
 .tabs {
@@ -407,45 +408,69 @@ input[type="text"]:focus {
 
 .btn-primary,
 .btn-secondary {
-    padding: 8px 16px;
-    border-radius: 6px;
+    padding: 10px 18px;
+    border-radius: 8px;
     border: none;
     cursor: pointer;
     font-weight: 500;
-    transition: opacity 0.2s;
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
 }
 
 .btn-primary {
     background: var(--accent-color);
     color: #fff;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .btn-secondary {
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.btn-primary:hover,
+.btn-primary:hover {
+    background: #4a90f7;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
 .btn-secondary:hover {
-    opacity: 0.9;
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.btn-primary:active,
+.btn-secondary:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .btn-danger {
-    padding: 6px 12px;
-    border-radius: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
     border: 1px solid rgba(255, 77, 77, 0.2);
     cursor: pointer;
     font-weight: 500;
-    transition: all 0.2s;
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     background: rgba(255, 77, 77, 0.1);
     color: #ff4d4d;
     font-size: 0.85rem;
+    position: relative;
+    overflow: hidden;
 }
 
 .btn-danger:hover {
     background: rgba(255, 77, 77, 0.2);
     border-color: rgba(255, 77, 77, 0.4);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(255, 77, 77, 0.2);
+}
+
+.btn-danger:active {
+    transform: translateY(0) scale(0.98);
 }
 
 .upload-zone {
@@ -532,6 +557,48 @@ input[type="text"]:focus {
     pointer-events: none;
     backdrop-filter: blur(4px);
     z-index: 5;
+}
+
+/* Search Box Preview in Wallpaper Settings */
+.preview-search-box {
+    position: absolute;
+    left: 50%;
+    top: var(--preview-search-top, 40%);
+    transform: translate(-50%, -50%);
+    width: var(--preview-search-width, 60%);
+    max-width: 90%;
+    pointer-events: none;
+    z-index: 3;
+    transition: all 0.2s ease;
+}
+
+.preview-search-inner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.preview-search-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.5);
+    flex-shrink: 0;
+}
+
+.preview-search-text {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .control-item {
@@ -653,12 +720,17 @@ input[type="text"]:focus {
     align-items: center;
     text-decoration: none;
     color: rgba(255, 255, 255, 0.8);
-    transition: transform 0.2s;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                color 0.2s ease;
 }
 
 .shortcut-item:hover {
-    transform: translateY(-5px);
+    transform: translateY(-8px);
     color: #fff;
+}
+
+.shortcut-item:active {
+    transform: translateY(-2px) scale(0.95);
 }
 
 .shortcut-icon {
@@ -671,7 +743,17 @@ input[type="text"]:focus {
     align-items: center;
     margin-bottom: 8px;
     backdrop-filter: blur(5px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.shortcut-item:hover .shortcut-icon {
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
+    transform: scale(1.05);
 }
 
 .shortcut-icon img {
@@ -730,4 +812,368 @@ input[type="text"]:focus {
 
 .github-btn svg {
     flex-shrink: 0;
+}
+
+/* ==================== Ripple Effect ==================== */
+
+.ripple-container {
+    position: relative;
+    overflow: hidden;
+}
+
+.ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(0);
+    animation: ripple-animation 0.6s ease-out;
+    pointer-events: none;
+}
+
+@keyframes ripple-animation {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* Apply ripple to interactive elements */
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.tab-btn,
+.shortcut-icon,
+.selected-engine,
+.engine-option,
+.github-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Settings button needs overflow:hidden but keep position:fixed */
+.settings-btn {
+    overflow: hidden;
+}
+
+/* ==================== Enhanced Hover Effects ==================== */
+
+/* Tab buttons enhanced */
+.tab-btn {
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.tab-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+.tab-btn:active {
+    transform: scale(0.98);
+}
+
+.tab-btn.active {
+    box-shadow: 0 2px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Settings button enhanced */
+.settings-btn {
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.settings-btn:hover {
+    transform: rotate(90deg) scale(1.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.settings-btn:active {
+    transform: rotate(90deg) scale(0.95);
+}
+
+/* Close button enhanced */
+.close-btn {
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border-radius: 8px;
+    padding: 4px 8px;
+}
+
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+}
+
+.close-btn:active {
+    transform: scale(0.95);
+}
+
+/* Engine option enhanced */
+.engine-option {
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.engine-option:hover {
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateX(4px);
+}
+
+.engine-option:active {
+    transform: translateX(2px) scale(0.98);
+}
+
+/* Selected engine enhanced */
+.selected-engine {
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.selected-engine:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.selected-engine:active {
+    transform: scale(0.95);
+}
+
+/* GitHub button enhanced */
+.github-btn {
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.github-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.github-btn:active {
+    transform: translateY(-1px) scale(0.98);
+}
+
+/* List item delete button */
+.delete-btn {
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
+.delete-btn:hover {
+    background: rgba(255, 77, 77, 0.2);
+    transform: scale(1.2);
+}
+
+.delete-btn:active {
+    transform: scale(0.9);
+}
+
+/* Upload zone enhanced */
+.upload-zone {
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.upload-zone:hover {
+    transform: scale(1.01);
+    border-color: var(--accent-color);
+}
+
+.upload-zone:active {
+    transform: scale(0.99);
+}
+
+/* Slider thumb enhanced */
+.slider::-webkit-slider-thumb {
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.2);
+}
+
+.slider::-webkit-slider-thumb:active {
+    transform: scale(1.1);
+}
+
+/* ==================== Custom Select Dropdown Component ==================== */
+
+/* Custom select wrapper */
+.custom-select {
+    position: relative;
+    width: 100%;
+}
+
+/* The visible select trigger button */
+.custom-select-trigger {
+    position: relative;
+    width: 100%;
+    padding: 12px 40px 12px 16px;
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 400;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    display: block;
+    text-align: left;
+    user-select: none;
+}
+
+.custom-select-trigger::after {
+    content: '';
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.5)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 16px;
+    pointer-events: none;
+}
+
+.custom-select.open .custom-select-trigger::after {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+.custom-select-trigger:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.custom-select-trigger:hover::after {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.8)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+.custom-select.open .custom-select-trigger,
+.custom-select-trigger:focus {
+    border-color: rgba(99, 179, 237, 0.6);
+    box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.15),
+                0 4px 12px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* The dropdown options container */
+.custom-select-options {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: rgba(28, 28, 34, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    z-index: 10000;
+    max-height: 240px;
+    overflow-y: auto;
+    pointer-events: none;
+}
+
+.custom-select.open .custom-select-options {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* Custom scrollbar for options */
+.custom-select-options::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-select-options::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-select-options::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+.custom-select-options::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Individual option item */
+.custom-select-option {
+    padding: 12px 16px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+}
+
+.custom-select-option:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+.custom-select-option.selected {
+    background: linear-gradient(90deg, rgba(99, 179, 237, 0.2), rgba(99, 179, 237, 0.05));
+    color: #fff;
+}
+
+.custom-select-option.selected::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #63b3ed;
+    border-radius: 0 2px 2px 0;
+}
+
+/* Checkmark icon for selected option */
+.custom-select-option.selected::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2363b3ed' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 14px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* Focus state for keyboard navigation */
+.custom-select-option:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.custom-select-option:focus-visible {
+    outline: 2px solid rgba(99, 179, 237, 0.5);
+    outline-offset: -2px;
+}
+
+/* Hide the native select when using custom */
+.custom-select select {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }

@@ -11,7 +11,8 @@
     "host_permissions": [
         "https://www.google.com/*",
         "https://www.bing.com/*",
-        "https://duckduckgo.com/*"
+        "https://duckduckgo.com/*",
+        "https://bing.biturl.top/*"
     ],
     "icons": {
         "128": "icon.png"

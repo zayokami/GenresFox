@@ -14,6 +14,9 @@
     "tabSearch": {
         "message": "搜索与快捷方式"
     },
+    "tabAccessibility": {
+        "message": "无障碍"
+    },
     "tabAbout": {
         "message": "关于"
     },
@@ -58,5 +61,86 @@
     },
     "livePreview": {
         "message": "实时预览"
+    },
+    "a11yDisplay": {
+        "message": "显示"
+    },
+    "a11yTheme": {
+        "message": "主题"
+    },
+    "a11yThemeStandard": {
+        "message": "标准"
+    },
+    "a11yThemeHCDark": {
+        "message": "高对比度 (深色)"
+    },
+    "a11yThemeHCLight": {
+        "message": "高对比度 (浅色)"
+    },
+    "a11yThemeYellowBlack": {
+        "message": "黄底黑字"
+    },
+    "a11yFontSize": {
+        "message": "字体大小"
+    },
+    "a11yFontFamily": {
+        "message": "字体"
+    },
+    "a11yFontDefault": {
+        "message": "默认"
+    },
+    "a11yFontSans": {
+        "message": "无衬线"
+    },
+    "a11yFontSerif": {
+        "message": "衬线"
+    },
+    "a11yFontDyslexic": {
+        "message": "阅读障碍友好"
+    },
+    "a11yLineSpacing": {
+        "message": "行间距"
+    },
+    "a11ySpacingNormal": {
+        "message": "正常"
+    },
+    "a11ySpacingRelaxed": {
+        "message": "宽松"
+    },
+    "a11ySpacingVeryRelaxed": {
+        "message": "很宽松"
+    },
+    "a11yMotion": {
+        "message": "动画"
+    },
+    "a11yAnimations": {
+        "message": "动画效果"
+    },
+    "a11yMotionFull": {
+        "message": "完整"
+    },
+    "a11yMotionReduced": {
+        "message": "减少"
+    },
+    "a11yMotionNone": {
+        "message": "无"
+    },
+    "a11yFocus": {
+        "message": "焦点"
+    },
+    "a11yFocusIndicator": {
+        "message": "焦点指示器"
+    },
+    "a11yFocusStandard": {
+        "message": "标准"
+    },
+    "a11yFocusEnhanced": {
+        "message": "增强"
+    },
+    "a11yFocusLarge": {
+        "message": "大型"
+    },
+    "a11yReset": {
+        "message": "恢复默认设置"
     }
 }

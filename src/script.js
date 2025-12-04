@@ -1,3 +1,304 @@
+// script.js
+
+// ==================== Custom Select Module ====================
+const CustomSelect = (function() {
+    'use strict';
+
+    let _initialized = false;
+
+    /**
+     * Initialize custom select dropdowns
+     * @param {string} selector - CSS selector for selects to convert
+     */
+    function init(selector = '.modal select') {
+        const selects = document.querySelectorAll(selector);
+        selects.forEach(select => {
+            // For language selector, set the correct initial value before converting
+            if (select.id === 'languageSelect') {
+                const savedLang = localStorage.getItem('preferredLanguage') || 
+                                  (navigator.language.startsWith("zh") ? "zh" : "en");
+                select.value = savedLang;
+            }
+            _createCustomSelect(select);
+        });
+
+        // Only add global listeners once
+        if (!_initialized) {
+            document.addEventListener('click', _handleOutsideClick);
+            document.addEventListener('keydown', _handleKeyboardNav);
+            _initialized = true;
+        }
+    }
+
+    /**
+     * Create a custom select component from a native select
+     * @param {HTMLSelectElement} nativeSelect
+     */
+    function _createCustomSelect(nativeSelect) {
+        // Skip if already converted
+        if (nativeSelect.parentElement.classList.contains('custom-select')) {
+            return;
+        }
+
+        // Create wrapper
+        const wrapper = document.createElement('div');
+        wrapper.className = 'custom-select';
+        wrapper.setAttribute('data-select-id', nativeSelect.id);
+
+        // Create trigger button
+        const trigger = document.createElement('button');
+        trigger.type = 'button';
+        trigger.className = 'custom-select-trigger';
+        trigger.setAttribute('aria-haspopup', 'listbox');
+        trigger.setAttribute('aria-expanded', 'false');
+
+        // Create options container
+        const optionsContainer = document.createElement('div');
+        optionsContainer.className = 'custom-select-options';
+        optionsContainer.setAttribute('role', 'listbox');
+        optionsContainer.setAttribute('data-for', nativeSelect.id);
+
+        // Build options from native select
+        Array.from(nativeSelect.options).forEach((option) => {
+            const customOption = document.createElement('div');
+            customOption.className = 'custom-select-option';
+            customOption.setAttribute('role', 'option');
+            customOption.setAttribute('data-value', option.value);
+            customOption.setAttribute('tabindex', '-1');
+            
+            // Copy i18n attribute if exists
+            const i18nKey = option.getAttribute('data-i18n');
+            if (i18nKey) {
+                customOption.setAttribute('data-i18n', i18nKey);
+            }
+            
+            customOption.textContent = option.textContent;
+
+            if (option.selected) {
+                customOption.classList.add('selected');
+                customOption.setAttribute('aria-selected', 'true');
+                trigger.textContent = option.textContent;
+            }
+
+            customOption.addEventListener('click', (e) => {
+                e.stopPropagation();
+                _selectOption(wrapper, customOption);
+            });
+
+            optionsContainer.appendChild(customOption);
+        });
+
+        // Insert wrapper and move native select inside
+        nativeSelect.parentNode.insertBefore(wrapper, nativeSelect);
+        wrapper.appendChild(trigger);
+        wrapper.appendChild(optionsContainer);
+        wrapper.appendChild(nativeSelect);
+
+        // Bind trigger click
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            _toggleDropdown(wrapper);
+        });
+
+        // Store reference for syncing
+        wrapper._nativeSelect = nativeSelect;
+    }
+
+    /**
+     * Toggle dropdown open/close
+     */
+    function _toggleDropdown(wrapper) {
+        const isOpen = wrapper.classList.contains('open');
+        
+        // Close all other dropdowns first
+        document.querySelectorAll('.custom-select.open').forEach(el => {
+            if (el !== wrapper) {
+                _closeDropdown(el);
+            }
+        });
+
+        if (!isOpen) {
+            _openDropdown(wrapper);
+        } else {
+            _closeDropdown(wrapper);
+        }
+    }
+
+    /**
+     * Open a dropdown
+     */
+    function _openDropdown(wrapper) {
+        const trigger = wrapper.querySelector('.custom-select-trigger');
+        const options = wrapper.querySelector('.custom-select-options');
+        
+        if (!trigger || !options) return;
+        
+        wrapper.classList.add('open');
+        trigger.setAttribute('aria-expanded', 'true');
+
+        // Move options to body and position with fixed
+        document.body.appendChild(options);
+        const rect = trigger.getBoundingClientRect();
+        options.style.position = 'fixed';
+        options.style.top = `${rect.bottom + 4}px`;
+        options.style.left = `${rect.left}px`;
+        options.style.width = `${rect.width}px`;
+
+        // Focus selected option
+        const selectedOption = options.querySelector('.custom-select-option.selected') ||
+                               options.querySelector('.custom-select-option');
+        if (selectedOption) {
+            setTimeout(() => selectedOption.focus(), 50);
+        }
+    }
+
+    /**
+     * Close a dropdown
+     */
+    function _closeDropdown(wrapper) {
+        const trigger = wrapper.querySelector('.custom-select-trigger');
+        const options = document.querySelector(`.custom-select-options[data-for="${wrapper.getAttribute('data-select-id')}"]`) ||
+                        wrapper.querySelector('.custom-select-options');
+        
+        wrapper.classList.remove('open');
+        if (trigger) {
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+        
+        // Move options back to wrapper
+        if (options && options.parentNode === document.body) {
+            wrapper.appendChild(options);
+            options.style.position = '';
+            options.style.top = '';
+            options.style.left = '';
+            options.style.width = '';
+        }
+    }
+
+    /**
+     * Select an option
+     */
+    function _selectOption(wrapper, option) {
+        const value = option.getAttribute('data-value');
+        const text = option.textContent;
+        const nativeSelect = wrapper._nativeSelect;
+
+        nativeSelect.value = value;
+
+        // Trigger change event
+        const event = new Event('change', { bubbles: true });
+        nativeSelect.dispatchEvent(event);
+
+        // Call inline onchange if exists
+        if (nativeSelect.onchange) {
+            nativeSelect.onchange(event);
+        }
+
+        // Update UI
+        const trigger = wrapper.querySelector('.custom-select-trigger');
+        trigger.textContent = text;
+
+        // Find options container (might be in body or wrapper)
+        const selectId = wrapper.getAttribute('data-select-id');
+        const optionsContainer = document.querySelector(`.custom-select-options[data-for="${selectId}"]`);
+        if (optionsContainer) {
+            optionsContainer.querySelectorAll('.custom-select-option').forEach(opt => {
+                opt.classList.remove('selected');
+                opt.setAttribute('aria-selected', 'false');
+            });
+        }
+        option.classList.add('selected');
+        option.setAttribute('aria-selected', 'true');
+
+        // Close dropdown
+        _closeDropdown(wrapper);
+        trigger.focus();
+    }
+
+    /**
+     * Handle clicks outside dropdowns
+     */
+    function _handleOutsideClick(e) {
+        if (!e.target.closest('.custom-select') && !e.target.closest('.custom-select-options')) {
+            document.querySelectorAll('.custom-select.open').forEach(el => {
+                _closeDropdown(el);
+            });
+        }
+    }
+
+    /**
+     * Handle keyboard navigation
+     */
+    function _handleKeyboardNav(e) {
+        const openDropdown = document.querySelector('.custom-select.open');
+        if (!openDropdown) return;
+
+        // Find options container (might be in body)
+        const selectId = openDropdown.getAttribute('data-select-id');
+        const optionsContainer = document.querySelector(`.custom-select-options[data-for="${selectId}"]`);
+        if (!optionsContainer) return;
+
+        const options = Array.from(optionsContainer.querySelectorAll('.custom-select-option'));
+        const currentIndex = options.findIndex(opt => opt === document.activeElement);
+
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                options[(currentIndex + 1) % options.length].focus();
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                options[currentIndex > 0 ? currentIndex - 1 : options.length - 1].focus();
+                break;
+            case 'Enter':
+            case ' ':
+                e.preventDefault();
+                if (document.activeElement.classList.contains('custom-select-option')) {
+                    _selectOption(openDropdown, document.activeElement);
+                }
+                break;
+            case 'Escape':
+                e.preventDefault();
+                _closeDropdown(openDropdown);
+                openDropdown.querySelector('.custom-select-trigger').focus();
+                break;
+            case 'Tab':
+                _closeDropdown(openDropdown);
+                break;
+        }
+    }
+
+    /**
+     * Sync custom select with native select value
+     * @param {HTMLSelectElement} nativeSelect
+     */
+    function sync(nativeSelect) {
+        const wrapper = nativeSelect.closest('.custom-select');
+        if (!wrapper) return;
+
+        const value = nativeSelect.value;
+        const trigger = wrapper.querySelector('.custom-select-trigger');
+        const options = wrapper.querySelectorAll('.custom-select-option');
+
+        options.forEach(opt => {
+            const isSelected = opt.getAttribute('data-value') === value;
+            opt.classList.toggle('selected', isSelected);
+            opt.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+            if (isSelected) {
+                trigger.textContent = opt.textContent;
+            }
+        });
+    }
+
+    return {
+        init,
+        sync
+    };
+})();
+
+// Expose globally
+window.CustomSelect = CustomSelect;
+
 // Elements
 const searchInput = document.getElementById("search");
 const enginesList = document.getElementById("enginesList");
@@ -8,19 +309,11 @@ const settingsModal = document.getElementById("settingsModal");
 const closeSettings = document.querySelector(".close-btn");
 const tabBtns = document.querySelectorAll(".tab-btn");
 const tabContents = document.querySelectorAll(".tab-content");
-const wallpaperUpload = document.getElementById("wallpaperUpload");
-const resetWallpaper = document.getElementById("resetWallpaper");
 const addEngineBtn = document.getElementById("addEngineBtn");
 const addShortcutBtn = document.getElementById("addShortcutBtn");
 const engineSelector = document.querySelector(".engine-selector");
 const selectedEngineIcon = document.querySelector(".selected-engine");
 const engineDropdown = document.querySelector(".engine-dropdown");
-
-// Search box customization elements
-const searchWidthSlider = document.getElementById("searchWidthSlider");
-const searchPositionSlider = document.getElementById("searchPositionSlider");
-const searchWidthValue = document.getElementById("searchWidthValue");
-const searchPositionValue = document.getElementById("searchPositionValue");
 
 // Default Data
 const defaultEngines = {
@@ -219,6 +512,10 @@ function setEngine(key) {
     engineSelector.classList.remove("active");
 }
 
+// Expose setEngine and engines globally for keyboard shortcuts
+window.setEngine = setEngine;
+window.engines = engines;
+
 window.deleteEngine = (key) => {
     if (defaultEngines[key]) return;
     delete engines[key];
@@ -248,250 +545,6 @@ tabBtns.forEach(btn => {
         btn.classList.add("active");
         document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
     });
-});
-
-// --- IndexedDB Helper ---
-const dbName = "GenresFoxDB";
-const storeName = "wallpapers";
-
-function openDB() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(dbName, 1);
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains(storeName)) {
-                db.createObjectStore(storeName);
-            }
-        };
-    });
-}
-
-async function saveWallpaperToDB(file) {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([storeName], "readwrite");
-        const store = transaction.objectStore(storeName);
-        const request = store.put(file, "currentWallpaper");
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
-    });
-}
-
-async function getWallpaperFromDB(retries = 3) {
-    for (let i = 0; i < retries; i++) {
-        try {
-            const db = await openDB();
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction([storeName], "readonly");
-                const store = transaction.objectStore(storeName);
-                const request = store.get("currentWallpaper");
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
-            });
-        } catch (e) {
-            console.warn(`Wallpaper load attempt ${i + 1} failed:`, e);
-            if (i < retries - 1) {
-                // Wait before retrying (100ms, 200ms, 400ms)
-                await new Promise(r => setTimeout(r, 100 * Math.pow(2, i)));
-            } else {
-                throw e;
-            }
-        }
-    }
-}
-
-async function deleteWallpaperFromDB() {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([storeName], "readwrite");
-        const store = transaction.objectStore(storeName);
-        const request = store.delete("currentWallpaper");
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
-    });
-}
-
-// --- Wallpaper Logic ---
-const dropZone = document.getElementById("dropZone");
-const uploadContent = document.getElementById("uploadContent");
-const wallpaperPreview = document.getElementById("wallpaperPreview");
-const previewImg = document.getElementById("previewImg");
-const wallpaperControls = document.getElementById("wallpaperControls");
-const blurSlider = document.getElementById("blurSlider");
-const vignetteSlider = document.getElementById("vignetteSlider");
-const blurValue = document.getElementById("blurValue");
-const vignetteValue = document.getElementById("vignetteValue");
-
-// Load saved settings
-let wallpaperSettings = JSON.parse(localStorage.getItem("wallpaperSettings")) || {
-    blur: 0,
-    vignette: 0
-};
-
-let searchBoxSettings = JSON.parse(localStorage.getItem("searchBoxSettings")) || {
-    width: 600,
-    position: 40
-};
-
-let currentWallpaperUrl = null;
-
-function setWallpaper(url) {
-    // Revoke old URL to prevent memory leaks if it's a blob URL
-    if (currentWallpaperUrl && currentWallpaperUrl.startsWith('blob:') && currentWallpaperUrl !== url) {
-        URL.revokeObjectURL(currentWallpaperUrl);
-    }
-    currentWallpaperUrl = url;
-    document.documentElement.style.setProperty('--wallpaper-image', `url(${url})`);
-}
-
-function applyWallpaperEffects() {
-    const blur = wallpaperSettings.blur;
-    const vignette = wallpaperSettings.vignette;
-
-    // Set blur using CSS variable
-    document.documentElement.style.setProperty('--wallpaper-blur', `${blur / 10}px`);
-
-    // Set vignette using CSS variable
-    if (vignette > 0) {
-        const vignetteStrength = vignette / 100;
-        const vignetteGradient = `radial-gradient(circle, transparent 0%, rgba(0,0,0,${vignetteStrength * 0.7}) 100%)`;
-        document.documentElement.style.setProperty('--wallpaper-vignette', vignetteGradient);
-    } else {
-        document.documentElement.style.setProperty('--wallpaper-vignette', 'transparent');
-    }
-}
-
-function applySearchBoxSettings() {
-    const width = searchBoxSettings.width;
-    const position = searchBoxSettings.position;
-
-    document.documentElement.style.setProperty('--search-width', `${width}px`);
-    document.documentElement.style.setProperty('--search-position', `${position}vh`);
-}
-
-function updatePreview(url) {
-    if (!url) return;
-    previewImg.src = url;
-    uploadContent.style.display = 'none';
-    wallpaperPreview.style.display = 'block';
-    wallpaperControls.style.display = 'block';
-}
-
-async function handleFile(file) {
-    if (file) {
-        // Limit to 20MB
-        if (file.size > 20 * 1024 * 1024) {
-            alert("Image too large (max 20MB)");
-            return;
-        }
-
-        try {
-            await saveWallpaperToDB(file);
-            // Clear legacy localStorage wallpaper if exists
-            localStorage.removeItem("wallpaper");
-
-            const objectUrl = URL.createObjectURL(file);
-            setWallpaper(objectUrl);
-            updatePreview(objectUrl);
-            applyWallpaperEffects();
-        } catch (err) {
-            console.error("Failed to save wallpaper:", err);
-            alert("Failed to save wallpaper.");
-        }
-    }
-}
-
-// Click to upload
-dropZone.addEventListener("click", () => wallpaperUpload.click());
-
-// File input change
-wallpaperUpload.addEventListener("change", (e) => {
-    handleFile(e.target.files[0]);
-});
-
-// Drag & Drop
-dropZone.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    dropZone.classList.add("dragover");
-});
-
-dropZone.addEventListener("dragleave", () => {
-    dropZone.classList.remove("dragover");
-});
-
-dropZone.addEventListener("drop", (e) => {
-    e.preventDefault();
-    dropZone.classList.remove("dragover");
-    handleFile(e.dataTransfer.files[0]);
-});
-
-// Blur slider
-blurSlider.addEventListener("input", (e) => {
-    const value = parseInt(e.target.value);
-    wallpaperSettings.blur = value;
-    blurValue.textContent = value;
-    localStorage.setItem("wallpaperSettings", JSON.stringify(wallpaperSettings));
-    applyWallpaperEffects();
-    // Live preview effect
-    const previewImg = document.getElementById("previewImg");
-    if (previewImg) {
-        previewImg.style.filter = `blur(${value / 10}px)`;
-    }
-});
-
-// Vignette slider
-vignetteSlider.addEventListener("input", (e) => {
-    const value = parseInt(e.target.value);
-    wallpaperSettings.vignette = value;
-    vignetteValue.textContent = value;
-    localStorage.setItem("wallpaperSettings", JSON.stringify(wallpaperSettings));
-    applyWallpaperEffects();
-    // Live preview effect
-    const previewContainer = document.getElementById("wallpaperPreview");
-    if (previewContainer) {
-        const vignetteIntensity = value / 100;
-        previewContainer.style.setProperty('--preview-vignette',
-            `radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,${vignetteIntensity}) 100%)`);
-    }
-});
-
-// Search box width slider
-searchWidthSlider.addEventListener("input", (e) => {
-    const value = parseInt(e.target.value);
-    searchBoxSettings.width = value;
-    searchWidthValue.textContent = `${value}px`;
-    localStorage.setItem("searchBoxSettings", JSON.stringify(searchBoxSettings));
-    applySearchBoxSettings();
-});
-
-// Search box position slider
-searchPositionSlider.addEventListener("input", (e) => {
-    const value = parseInt(e.target.value);
-    searchBoxSettings.position = value;
-    searchPositionValue.textContent = `${value}%`;
-    localStorage.setItem("searchBoxSettings", JSON.stringify(searchBoxSettings));
-    applySearchBoxSettings();
-});
-
-resetWallpaper.addEventListener("click", async () => {
-    await deleteWallpaperFromDB();
-    localStorage.removeItem("wallpaper"); // Clear legacy
-    localStorage.removeItem("wallpaperSettings");
-
-    wallpaperSettings = { blur: 0, vignette: 0 };
-    setWallpaper('none');
-    document.documentElement.style.setProperty('--wallpaper-blur', '0px');
-    document.documentElement.style.setProperty('--wallpaper-vignette', 'transparent');
-
-    uploadContent.style.display = 'flex';
-    wallpaperPreview.style.display = 'none';
-    wallpaperControls.style.display = 'none';
-    blurSlider.value = 0;
-    vignetteSlider.value = 0;
-    blurValue.textContent = 0;
-    vignetteValue.textContent = 0;
 });
 
 // Reset Shortcuts
@@ -578,6 +631,7 @@ const fallbackMessages = {
         "settingsTitle": "设置",
         "tabWallpaper": "壁纸",
         "tabSearch": "搜索与快捷方式",
+        "tabAccessibility": "无障碍",
         "tabAbout": "关于",
         "uploadWallpaper": "上传壁纸",
         "resetWallpaper": "恢复默认",
@@ -592,7 +646,39 @@ const fallbackMessages = {
         "searchBoxSettings": "搜索框设置",
         "searchBoxWidth": "宽度",
         "searchBoxPosition": "垂直位置",
-        "livePreview": "实时预览"
+        "livePreview": "实时预览",
+        // Accessibility
+        "a11yDisplay": "显示",
+        "a11yTheme": "主题",
+        "a11yThemeStandard": "标准",
+        "a11yThemeHCDark": "高对比度 (深色)",
+        "a11yThemeHCLight": "高对比度 (浅色)",
+        "a11yThemeYellowBlack": "黄底黑字",
+        "a11yFontSize": "字体大小",
+        "a11yFontFamily": "字体",
+        "a11yFontDefault": "默认",
+        "a11yFontSans": "无衬线",
+        "a11yFontSerif": "衬线",
+        "a11yFontDyslexic": "阅读障碍友好",
+        "a11yLineSpacing": "行间距",
+        "a11ySpacingNormal": "正常",
+        "a11ySpacingRelaxed": "宽松",
+        "a11ySpacingVeryRelaxed": "很宽松",
+        "a11yMotion": "动画",
+        "a11yAnimations": "动画效果",
+        "a11yMotionFull": "完整",
+        "a11yMotionReduced": "减少",
+        "a11yMotionNone": "无",
+        "a11yFocus": "焦点",
+        "a11yFocusIndicator": "焦点指示器",
+        "a11yFocusStandard": "标准",
+        "a11yFocusEnhanced": "增强",
+        "a11yFocusLarge": "大型",
+        "a11yReset": "恢复默认设置",
+        "aboutDescription": "一个完全开源、极简、高度可定制的新标签页扩展。",
+        "aboutOpenSource": "GenresFox-NEWTAB 是一个开源项目，你可以在 GitHub 上找到源代码！",
+        "viewOnGitHub": "在 GitHub 上查看",
+        "languageLabel": "语言"
     },
     "en": {
         "appTitle": "GenresFox-NEWTAB",
@@ -600,6 +686,7 @@ const fallbackMessages = {
         "settingsTitle": "Settings",
         "tabWallpaper": "Wallpaper",
         "tabSearch": "Search & Shortcuts",
+        "tabAccessibility": "Accessibility",
         "tabAbout": "About",
         "uploadWallpaper": "Upload Wallpaper",
         "resetWallpaper": "Reset to Default",
@@ -614,18 +701,58 @@ const fallbackMessages = {
         "searchBoxSettings": "Search Box Settings",
         "searchBoxWidth": "Width",
         "searchBoxPosition": "Vertical Position",
-        "livePreview": "Live Preview"
+        "livePreview": "Live Preview",
+        // Accessibility
+        "a11yDisplay": "Display",
+        "a11yTheme": "Theme",
+        "a11yThemeStandard": "Standard",
+        "a11yThemeHCDark": "High Contrast (Dark)",
+        "a11yThemeHCLight": "High Contrast (Light)",
+        "a11yThemeYellowBlack": "Yellow on Black",
+        "a11yFontSize": "Font Size",
+        "a11yFontFamily": "Font Family",
+        "a11yFontDefault": "Default",
+        "a11yFontSans": "Sans-serif",
+        "a11yFontSerif": "Serif",
+        "a11yFontDyslexic": "OpenDyslexic",
+        "a11yLineSpacing": "Line Spacing",
+        "a11ySpacingNormal": "Normal",
+        "a11ySpacingRelaxed": "Relaxed",
+        "a11ySpacingVeryRelaxed": "Very Relaxed",
+        "a11yMotion": "Motion",
+        "a11yAnimations": "Animations",
+        "a11yMotionFull": "Full",
+        "a11yMotionReduced": "Reduced",
+        "a11yMotionNone": "None",
+        "a11yFocus": "Focus",
+        "a11yFocusIndicator": "Focus Indicator",
+        "a11yFocusStandard": "Standard",
+        "a11yFocusEnhanced": "Enhanced",
+        "a11yFocusLarge": "Large",
+        "a11yReset": "Reset to Defaults",
+        "aboutDescription": "A fully open-source, extremely clean, and highly customizable new tab page extension.",
+        "aboutOpenSource": "GenresFox-NEWTAB is an open-source project. You can find the source code on GitHub!",
+        "viewOnGitHub": "View on GitHub",
+        "languageLabel": "Language"
     }
 };
 
-function localize() {
-    const lang = navigator.language.startsWith("zh") ? "zh" : "en";
-    const fallback = fallbackMessages[lang];
+// Language management
+let currentLanguage = localStorage.getItem('preferredLanguage') || 
+                      (navigator.language.startsWith("zh") ? "zh" : "en");
 
-    if (typeof chrome !== 'undefined' && chrome.i18n) {
+function localize(lang = null) {
+    if (lang) {
+        currentLanguage = lang;
+        localStorage.setItem('preferredLanguage', lang);
+    }
+    
+    const fallback = fallbackMessages[currentLanguage] || fallbackMessages['en'];
+
+    if (typeof chrome !== 'undefined' && chrome.i18n && !localStorage.getItem('preferredLanguage')) {
+        // Use Chrome's i18n only if user hasn't manually set a language
         document.querySelectorAll('[data-i18n]').forEach(elem => {
             let msg = chrome.i18n.getMessage(elem.dataset.i18n);
-            // Fallback if chrome.i18n misses the key (e.g. extension not reloaded)
             if (!msg && fallback && fallback[elem.dataset.i18n]) {
                 msg = fallback[elem.dataset.i18n];
             }
@@ -641,8 +768,8 @@ function localize() {
         return;
     }
 
-    // Pure fallback mode (no chrome.i18n)
-    const messages = fallbackMessages[lang];
+    // Use fallback messages with selected language
+    const messages = fallbackMessages[currentLanguage] || fallbackMessages['en'];
     document.querySelectorAll('[data-i18n]').forEach(elem => {
         const key = elem.dataset.i18n;
         if (messages[key]) elem.textContent = messages[key];
@@ -651,56 +778,59 @@ function localize() {
         const key = elem.dataset.i18nPlaceholder;
         if (messages[key]) elem.placeholder = messages[key];
     });
+
+    // Update HTML lang attribute
+    document.documentElement.lang = currentLanguage === 'zh' ? 'zh-CN' : 'en';
+    
+    // Update language selector if exists
+    const langSelect = document.getElementById('languageSelect');
+    if (langSelect) {
+        langSelect.value = currentLanguage;
+        // Sync custom select if it exists
+        if (typeof CustomSelect !== 'undefined') {
+            CustomSelect.sync(langSelect);
+        }
+    }
 }
+
+function setLanguage(lang) {
+    localize(lang);
+    
+    // Re-initialize custom selects to update their text
+    if (typeof CustomSelect !== 'undefined') {
+        // Need to rebuild custom selects with new language
+        document.querySelectorAll('.custom-select').forEach(el => {
+            const nativeSelect = el.querySelector('select');
+            if (nativeSelect) {
+                const wrapper = nativeSelect.closest('.custom-select');
+                if (wrapper) {
+                    // Remove custom select wrapper, keep native select
+                    const parent = wrapper.parentNode;
+                    parent.insertBefore(nativeSelect, wrapper);
+                    wrapper.remove();
+                }
+            }
+        });
+        // Re-init custom selects
+        CustomSelect.init('#tab-accessibility select, #tab-about select');
+    }
+}
+
+// Expose for global use
+window.setLanguage = setLanguage;
+window.currentLanguage = currentLanguage;
 
 // Init
 async function init() {
-    // Try to load wallpaper from IndexedDB first
-    let wallpaperLoaded = false;
-
-    try {
-        const dbData = await getWallpaperFromDB();
-        if (dbData) {
-            // Check if it's a Blob (new format) or Base64 string (old format)
-            let objectUrl;
-            if (dbData instanceof Blob) {
-                objectUrl = URL.createObjectURL(dbData);
-            } else {
-                // It's a base64 string from previous migration, use it directly
-                objectUrl = dbData;
-            }
-            setWallpaper(objectUrl);
-            updatePreview(objectUrl);
-            wallpaperLoaded = true;
-        }
-    } catch (e) {
-        console.error("Error loading wallpaper from IndexedDB:", e);
+    // Initialize Accessibility Manager first (applies theme/font settings early)
+    if (typeof AccessibilityManager !== 'undefined') {
+        AccessibilityManager.init();
     }
 
-    // Fallback to localStorage if IndexedDB failed or returned null
-    if (!wallpaperLoaded) {
-        const savedWallpaper = localStorage.getItem("wallpaper");
-        if (savedWallpaper) {
-            setWallpaper(savedWallpaper);
-            updatePreview(savedWallpaper);
-        }
+    // Initialize Wallpaper Manager
+    if (typeof WallpaperManager !== 'undefined') {
+        await WallpaperManager.init();
     }
-
-    // Load saved wallpaper settings
-    if (wallpaperSettings.blur > 0 || wallpaperSettings.vignette > 0) {
-        blurSlider.value = wallpaperSettings.blur;
-        vignetteSlider.value = wallpaperSettings.vignette;
-        blurValue.textContent = wallpaperSettings.blur;
-        vignetteValue.textContent = wallpaperSettings.vignette;
-        applyWallpaperEffects();
-    }
-
-    // Load saved search box settings
-    searchWidthSlider.value = searchBoxSettings.width;
-    searchPositionSlider.value = searchBoxSettings.position;
-    searchWidthValue.textContent = `${searchBoxSettings.width}px`;
-    searchPositionValue.textContent = `${searchBoxSettings.position}%`;
-    applySearchBoxSettings();
 
     // Ensure shortcuts exist (Double check)
     if (!shortcuts || shortcuts.length === 0) {
@@ -709,6 +839,12 @@ async function init() {
     }
 
     localize();
+    
+    // Initialize custom selects after i18n is applied
+    if (typeof CustomSelect !== 'undefined') {
+        CustomSelect.init('#tab-accessibility select, #tab-about select');
+    }
+    
     updateUI();
     renderEnginesList();
     renderShortcutsList();
@@ -721,6 +857,84 @@ async function init() {
 
 // Focus immediately before any async operations
 searchInput.focus();
+
+// ==================== Ripple Effect ====================
+
+/**
+ * Create ripple effect on click
+ * @param {MouseEvent} e - Click event
+ */
+function createRipple(e) {
+    const element = e.currentTarget;
+    
+    // Remove any existing ripples
+    const existingRipple = element.querySelector('.ripple');
+    if (existingRipple) {
+        existingRipple.remove();
+    }
+
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    
+    const rect = element.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    
+    ripple.style.width = ripple.style.height = `${size}px`;
+    ripple.style.left = `${e.clientX - rect.left - size / 2}px`;
+    ripple.style.top = `${e.clientY - rect.top - size / 2}px`;
+    
+    element.appendChild(ripple);
+    
+    // Remove ripple after animation
+    ripple.addEventListener('animationend', () => {
+        ripple.remove();
+    });
+}
+
+/**
+ * Initialize ripple effects on interactive elements
+ */
+function initRippleEffects() {
+    const rippleSelectors = [
+        '.btn-primary',
+        '.btn-secondary',
+        '.btn-danger',
+        '.tab-btn',
+        '.settings-btn',
+        '.selected-engine',
+        '.engine-option',
+        '.github-btn',
+        '.shortcut-icon'
+    ];
+
+    rippleSelectors.forEach(selector => {
+        document.querySelectorAll(selector).forEach(element => {
+            // Avoid adding multiple listeners
+            if (!element.dataset.rippleInit) {
+                element.addEventListener('click', createRipple);
+                element.dataset.rippleInit = 'true';
+            }
+        });
+    });
+}
+
+// Initialize ripple effects after DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    initRippleEffects();
+    
+    // Re-init ripples when dynamic content is added
+    const observer = new MutationObserver(() => {
+        initRippleEffects();
+    });
+    
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+});
+
+// Expose for global use
+window.initRippleEffects = initRippleEffects;
 
 // Then run full init
 init();

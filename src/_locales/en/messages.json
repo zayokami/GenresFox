@@ -14,6 +14,9 @@
     "tabSearch": {
         "message": "Search & Shortcuts"
     },
+    "tabAccessibility": {
+        "message": "Accessibility"
+    },
     "tabAbout": {
         "message": "About"
     },
@@ -58,5 +61,86 @@
     },
     "livePreview": {
         "message": "Live Preview"
+    },
+    "a11yDisplay": {
+        "message": "Display"
+    },
+    "a11yTheme": {
+        "message": "Theme"
+    },
+    "a11yThemeStandard": {
+        "message": "Standard"
+    },
+    "a11yThemeHCDark": {
+        "message": "High Contrast (Dark)"
+    },
+    "a11yThemeHCLight": {
+        "message": "High Contrast (Light)"
+    },
+    "a11yThemeYellowBlack": {
+        "message": "Yellow on Black"
+    },
+    "a11yFontSize": {
+        "message": "Font Size"
+    },
+    "a11yFontFamily": {
+        "message": "Font Family"
+    },
+    "a11yFontDefault": {
+        "message": "Default"
+    },
+    "a11yFontSans": {
+        "message": "Sans-serif"
+    },
+    "a11yFontSerif": {
+        "message": "Serif"
+    },
+    "a11yFontDyslexic": {
+        "message": "OpenDyslexic"
+    },
+    "a11yLineSpacing": {
+        "message": "Line Spacing"
+    },
+    "a11ySpacingNormal": {
+        "message": "Normal"
+    },
+    "a11ySpacingRelaxed": {
+        "message": "Relaxed"
+    },
+    "a11ySpacingVeryRelaxed": {
+        "message": "Very Relaxed"
+    },
+    "a11yMotion": {
+        "message": "Motion"
+    },
+    "a11yAnimations": {
+        "message": "Animations"
+    },
+    "a11yMotionFull": {
+        "message": "Full"
+    },
+    "a11yMotionReduced": {
+        "message": "Reduced"
+    },
+    "a11yMotionNone": {
+        "message": "None"
+    },
+    "a11yFocus": {
+        "message": "Focus"
+    },
+    "a11yFocusIndicator": {
+        "message": "Focus Indicator"
+    },
+    "a11yFocusStandard": {
+        "message": "Standard"
+    },
+    "a11yFocusEnhanced": {
+        "message": "Enhanced"
+    },
+    "a11yFocusLarge": {
+        "message": "Large"
+    },
+    "a11yReset": {
+        "message": "Reset to Defaults"
     }
 }

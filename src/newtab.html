@@ -1,3 +1,5 @@
+<!-- newtab.html -->
+<!-- Technology that benefits everyone is truly powerful technology. -->
 <!DOCTYPE html>
 <html lang="en-US">
 
@@ -6,6 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="appTitle">GenresFox-NEWTAB</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="accessibility.css">
 </head>
 
 <body>
@@ -49,6 +52,7 @@
                 <div class="tabs">
                     <button class="tab-btn active" data-tab="wallpaper" data-i18n="tabWallpaper">Wallpaper</button>
                     <button class="tab-btn" data-tab="search" data-i18n="tabSearch">Search & Shortcuts</button>
+                    <button class="tab-btn" data-tab="accessibility" data-i18n="tabAccessibility">Accessibility</button>
                     <button class="tab-btn" data-tab="about" data-i18n="tabAbout">About</button>
                 </div>
 
@@ -65,6 +69,17 @@
                             </div>
                             <div class="wallpaper-preview" id="wallpaperPreview" style="display: none;">
                                 <img id="previewImg" src="" alt="Wallpaper Preview">
+                                <!-- Search box preview overlay -->
+                                <div class="preview-search-box" id="previewSearchBox">
+                                    <div class="preview-search-inner">
+                                        <span class="preview-search-icon">
+                                            <svg viewBox="0 0 24 24" width="14" height="14">
+                                                <path fill="currentColor" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                                            </svg>
+                                        </span>
+                                        <span class="preview-search-text" data-i18n="searchPlaceholder">Search...</span>
+                                    </div>
+                                </div>
                                 <span class="preview-hint" data-i18n="livePreview">Live Preview</span>
                             </div>
                             <input type="file" id="wallpaperUpload" accept="image/*" hidden>
@@ -139,26 +154,127 @@
                     </div>
                 </div>
 
+                <div class="tab-content" id="tab-accessibility">
+                    <!-- Display Section -->
+                    <div class="a11y-section">
+                        <h4 data-i18n="a11yDisplay">Display</h4>
+                        
+                        <div class="a11y-control">
+                            <label>
+                                <span data-i18n="a11yTheme">Theme</span>
+                            </label>
+                            <select id="a11yTheme">
+                                <option value="standard" data-i18n="a11yThemeStandard">Standard</option>
+                                <option value="high-contrast-dark" data-i18n="a11yThemeHCDark">High Contrast (Dark)</option>
+                                <option value="high-contrast-light" data-i18n="a11yThemeHCLight">High Contrast (Light)</option>
+                                <option value="yellow-black" data-i18n="a11yThemeYellowBlack">Yellow on Black</option>
+                            </select>
+                        </div>
+
+                        <div class="a11y-control">
+                            <label>
+                                <span data-i18n="a11yFontSize">Font Size</span>
+                                <span class="control-value" id="a11yFontSizeValue">100%</span>
+                            </label>
+                            <input type="range" id="a11yFontSize" min="80" max="200" value="100" step="10" class="slider">
+                        </div>
+
+                        <div class="a11y-control">
+                            <label>
+                                <span data-i18n="a11yFontFamily">Font Family</span>
+                            </label>
+                            <select id="a11yFontFamily">
+                                <option value="default" data-i18n="a11yFontDefault">Default</option>
+                                <option value="sans" data-i18n="a11yFontSans">Sans-serif</option>
+                                <option value="serif" data-i18n="a11yFontSerif">Serif</option>
+                                <option value="dyslexic" data-i18n="a11yFontDyslexic">OpenDyslexic</option>
+                            </select>
+                        </div>
+
+                        <div class="a11y-control">
+                            <label>
+                                <span data-i18n="a11yLineSpacing">Line Spacing</span>
+                            </label>
+                            <select id="a11yLineSpacing">
+                                <option value="normal" data-i18n="a11ySpacingNormal">Normal</option>
+                                <option value="relaxed" data-i18n="a11ySpacingRelaxed">Relaxed</option>
+                                <option value="very-relaxed" data-i18n="a11ySpacingVeryRelaxed">Very Relaxed</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Motion Section -->
+                    <div class="a11y-section">
+                        <h4 data-i18n="a11yMotion">Motion</h4>
+                        
+                        <div class="a11y-control">
+                            <label>
+                                <span data-i18n="a11yAnimations">Animations</span>
+                            </label>
+                            <select id="a11yMotion">
+                                <option value="full" data-i18n="a11yMotionFull">Full</option>
+                                <option value="reduced" data-i18n="a11yMotionReduced">Reduced</option>
+                                <option value="none" data-i18n="a11yMotionNone">None</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Focus Section -->
+                    <div class="a11y-section">
+                        <h4 data-i18n="a11yFocus">Focus</h4>
+                        
+                        <div class="a11y-control">
+                            <label>
+                                <span data-i18n="a11yFocusIndicator">Focus Indicator</span>
+                            </label>
+                            <select id="a11yFocusStyle">
+                                <option value="standard" data-i18n="a11yFocusStandard">Standard</option>
+                                <option value="enhanced" data-i18n="a11yFocusEnhanced">Enhanced</option>
+                                <option value="large" data-i18n="a11yFocusLarge">Large</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Reset Section -->
+                    <div class="a11y-section">
+                        <button id="a11yReset" class="btn-secondary" data-i18n="a11yReset">Reset to Defaults</button>
+                    </div>
+                </div>
+
                 <div class="tab-content" id="tab-about">
                     <div class="about-info">
                         <h3>GenresFox-NEWTAB</h3>
                         <p>Version 0.3.0</p>
-                        <p>A fully open-source, extremely clean, and highly customizable new tab page extension.</p>
+                        <p data-i18n="aboutDescription">A fully open-source, extremely clean, and highly customizable new tab page extension.</p>
                         <p>&copy; 2025 zayoka. All rights reserved.</p>
                         <br>
-                        <p>GenresFox-NEWTAB is an open-source project. You can find the source code on GitHub!</p>
+                        <p data-i18n="aboutOpenSource">GenresFox-NEWTAB is an open-source project. You can find the source code on GitHub!</p>
                         <a href="https://github.com/zayokami/GenresFox-NEWTAB" target="_blank" class="github-btn">
                             <svg viewBox="0 0 24 24" width="16" height="16">
                                 <path fill="currentColor"
                                     d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
                             </svg>
-                            View on GitHub
+                            <span data-i18n="viewOnGitHub">View on GitHub</span>
                         </a>
+                    </div>
+
+                    <!-- Language Settings -->
+                    <div class="setting-group language-setting">
+                        <h3 data-i18n="languageLabel">Language</h3>
+                        <div class="a11y-control">
+                            <select id="languageSelect" onchange="setLanguage(this.value)">
+                                <option value="en">English</option>
+                                <option value="zh">简体中文</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    <!-- Modules (must load before script.js) -->
+    <script src="wallpaper.js"></script>
+    <script src="accessibility.js"></script>
     <script src="script.js"></script>
 </body>
 
