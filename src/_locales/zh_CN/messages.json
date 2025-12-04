@@ -55,5 +55,8 @@
     },
     "searchBoxPosition": {
         "message": "垂直位置"
+    },
+    "livePreview": {
+        "message": "实时预览"
     }
 }

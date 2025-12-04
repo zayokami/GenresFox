@@ -55,5 +55,8 @@
     },
     "searchBoxPosition": {
         "message": "Vertical Position"
+    },
+    "livePreview": {
+        "message": "Live Preview"
     }
 }

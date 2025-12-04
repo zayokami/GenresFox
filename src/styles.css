@@ -6,13 +6,9 @@
     --glass-border: rgba(255, 255, 255, 0.1);
     --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
     --transition-curve: cubic-bezier(0.2, 0.8, 0.2, 1);
-
-    /* Wallpaper variables */
     --wallpaper-image: none;
     --wallpaper-blur: 0px;
     --wallpaper-vignette: transparent;
-
-    /* Search box variables */
     --search-width: 600px;
     --search-position: 40vh;
 }
@@ -21,13 +17,15 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
 body {
     background: #0f0f11;
     color: var(--text-color);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: flex-start;
@@ -35,7 +33,6 @@ body {
     position: relative;
 }
 
-/* Wallpaper Background Layer */
 body::before {
     content: '';
     position: fixed;
@@ -52,7 +49,6 @@ body::before {
     z-index: -2;
 }
 
-/* Wallpaper Vignette Overlay */
 body::after {
     content: '';
     position: fixed;
@@ -65,7 +61,6 @@ body::after {
     pointer-events: none;
 }
 
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -78,17 +73,10 @@ body::after {
 ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 10px;
-    transition: background 0.2s;
 }
 
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.2);
-}
-
-/* Firefox Scrollbar */
-* {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
 .container {
@@ -103,7 +91,6 @@ body::after {
     transform: translateX(-50%);
 }
 
-/* Search Container */
 .search-container {
     width: 100%;
     max-width: var(--search-width);
@@ -121,10 +108,7 @@ body::after {
     border-radius: 9999px;
     padding: 8px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    transition: transform 0.4s var(--transition-curve),
-        box-shadow 0.4s var(--transition-curve),
-        border-color 0.4s var(--transition-curve),
-        background 0.4s ease;
+    transition: transform 0.4s var(--transition-curve), box-shadow 0.4s var(--transition-curve), border-color 0.4s var(--transition-curve), background 0.4s ease;
 }
 
 .search-box:focus-within {
@@ -134,7 +118,6 @@ body::after {
     background: rgba(0, 0, 0, 0.5);
 }
 
-/* Engine Selector */
 .engine-selector {
     position: relative;
     margin-left: 8px;
@@ -148,6 +131,8 @@ body::after {
     justify-content: center;
     width: 36px;
     height: 36px;
+    min-width: 36px;
+    min-height: 36px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.8);
@@ -157,6 +142,12 @@ body::after {
 .selected-engine:hover {
     background: rgba(255, 255, 255, 0.2);
     color: #fff;
+}
+
+.selected-engine img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
 }
 
 .engine-dropdown {
@@ -203,7 +194,6 @@ body::after {
     border-radius: 4px;
 }
 
-/* Input Field */
 #search {
     flex: 1;
     background: transparent;
@@ -222,7 +212,6 @@ body::after {
     text-shadow: none;
 }
 
-/* Animations */
 .fade-in {
     opacity: 0;
     transform: translateY(20px);
@@ -244,7 +233,6 @@ body::after {
     }
 }
 
-/* Settings Button */
 .settings-btn {
     position: fixed;
     bottom: 20px;
@@ -267,11 +255,9 @@ body::after {
 
 .settings-btn:hover {
     background: rgba(0, 0, 0, 0.6);
-    color: #fff;
     transform: rotate(90deg);
 }
 
-/* Modal */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -344,7 +330,6 @@ body::after {
     overflow-y: auto;
 }
 
-/* Tabs */
 .tabs {
     display: flex;
     margin-bottom: 20px;
@@ -388,7 +373,6 @@ body::after {
     }
 }
 
-/* Forms & Inputs */
 .setting-group {
     margin-bottom: 24px;
 }
@@ -449,13 +433,12 @@ input[type="text"]:focus {
 .btn-danger {
     padding: 6px 12px;
     border-radius: 6px;
-    border: none;
+    border: 1px solid rgba(255, 77, 77, 0.2);
     cursor: pointer;
     font-weight: 500;
     transition: all 0.2s;
     background: rgba(255, 77, 77, 0.1);
     color: #ff4d4d;
-    border: 1px solid rgba(255, 77, 77, 0.2);
     font-size: 0.85rem;
 }
 
@@ -465,7 +448,6 @@ input[type="text"]:focus {
     transform: translateY(-1px);
 }
 
-/* Upload Zone */
 .upload-zone {
     border: 2px dashed rgba(255, 255, 255, 0.2);
     border-radius: 12px;
@@ -506,12 +488,13 @@ input[type="text"]:focus {
     margin: 0;
 }
 
-/* Wallpaper Preview */
+/* Wallpaper Preview with live effects */
 .wallpaper-preview {
     width: 100%;
     max-height: 200px;
     overflow: hidden;
     border-radius: 8px;
+    position: relative;
 }
 
 .wallpaper-preview img {
@@ -519,9 +502,38 @@ input[type="text"]:focus {
     height: auto;
     display: block;
     border-radius: 8px;
+    transition: filter 0.2s ease;
 }
 
-/* Control Sliders */
+/* Vignette overlay for preview */
+.wallpaper-preview::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    pointer-events: none;
+    transition: background 0.2s ease;
+    background: var(--preview-vignette, transparent);
+}
+
+/* Preview Hint Text */
+.preview-hint {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    color: rgba(255, 255, 255, 0.8);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    pointer-events: none;
+    backdrop-filter: blur(4px);
+    z-index: 5;
+}
+
 .control-item {
     margin-bottom: 20px;
 }
@@ -580,7 +592,6 @@ input[type="text"]:focus {
     box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.2);
 }
 
-/* Lists */
 .list-group {
     margin-bottom: 10px;
 }
@@ -607,7 +618,6 @@ input[type="text"]:focus {
     padding: 4px;
 }
 
-/* Add Form - Vertical Layout */
 .add-form {
     display: flex;
     flex-direction: column;
@@ -627,18 +637,14 @@ input[type="text"]:focus {
     padding: 8px 24px;
 }
 
-/* Shortcuts Grid - Fixed at bottom */
 .shortcuts-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
     gap: 16px;
     width: 100%;
     max-width: 600px;
-    position: fixed;
-    bottom: 100px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 5;
+    margin-top: 40px;
+    min-height: 80px;
 }
 
 .shortcut-item {
@@ -671,6 +677,7 @@ input[type="text"]:focus {
 .shortcut-icon img {
     width: 24px;
     height: 24px;
+    object-fit: contain;
 }
 
 .shortcut-name {
@@ -682,4 +689,45 @@ input[type="text"]:focus {
     width: 100%;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
     font-weight: 500;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.shortcut-icon.loading {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.05) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+.github-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.github-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+.github-btn svg {
+    flex-shrink: 0;
 }
