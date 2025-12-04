@@ -61,7 +61,15 @@ const I18n = (function () {
             "aboutOpenSource": "GenresFox-NEWTAB 是一个开源项目，你可以在 GitHub 上找到源代码！",
             "viewOnGitHub": "在 GitHub 上查看",
             "creditsTitle": "致谢",
-            "creditsBingWallpaper": "默认壁纸由 Bing 每日壁纸提供。"
+            "creditsBingWallpaper": "默认壁纸由 Bing 每日壁纸提供。",
+            "processingImage": "正在处理图片...",
+            "processingLoading": "加载图片中...",
+            "processingOptimizing": "优化中...",
+            "processingCompressing": "压缩中...",
+            "processingSaving": "保存中...",
+            "processingStarting": "开始处理...",
+            "errorImageTooLarge": "图片文件过大（最大 50MB）",
+            "errorResolutionTooHigh": "图片分辨率过高（最大 5000 万像素）"
         },
         "en": {
             "appTitle": "GenresFox-NEWTAB",
@@ -116,7 +124,15 @@ const I18n = (function () {
             "aboutOpenSource": "GenresFox-NEWTAB is an open-source project. You can find the source code on GitHub!",
             "viewOnGitHub": "View on GitHub",
             "creditsTitle": "Credits",
-            "creditsBingWallpaper": "Default wallpaper powered by Bing Daily Wallpaper."
+            "creditsBingWallpaper": "Default wallpaper powered by Bing Daily Wallpaper.",
+            "processingImage": "Processing image...",
+            "processingLoading": "Loading image...",
+            "processingOptimizing": "Optimizing...",
+            "processingCompressing": "Compressing...",
+            "processingSaving": "Saving...",
+            "processingStarting": "Starting...",
+            "errorImageTooLarge": "Image file too large (max 50MB)",
+            "errorResolutionTooHigh": "Image resolution too high (max 50 megapixels)"
         },
         "zh_TW": {
             "appTitle": "GenresFox-NEWTAB",
@@ -171,7 +187,15 @@ const I18n = (function () {
             "aboutOpenSource": "GenresFox-NEWTAB 是一個開源專案，你可以在 GitHub 上找到原始碼！",
             "viewOnGitHub": "在 GitHub 上查看",
             "creditsTitle": "致謝",
-            "creditsBingWallpaper": "預設桌布由 Bing 每日桌布提供。"
+            "creditsBingWallpaper": "預設桌布由 Bing 每日桌布提供。",
+            "processingImage": "正在處理圖片...",
+            "processingLoading": "載入圖片中...",
+            "processingOptimizing": "優化中...",
+            "processingCompressing": "壓縮中...",
+            "processingSaving": "儲存中...",
+            "processingStarting": "開始處理...",
+            "errorImageTooLarge": "圖片檔案過大（最大 50MB）",
+            "errorResolutionTooHigh": "圖片解析度過高（最大 5000 萬像素）"
         },
         "ja": {
             "appTitle": "GenresFox-NEWTAB",
@@ -226,7 +250,15 @@ const I18n = (function () {
             "aboutOpenSource": "GenresFox-NEWTAB はオープンソースプロジェクトです。GitHub でソースコードを見つけることができます！",
             "viewOnGitHub": "GitHub で見る",
             "creditsTitle": "クレジット",
-            "creditsBingWallpaper": "デフォルト壁紙は Bing 日替わり壁紙を使用しています。"
+            "creditsBingWallpaper": "デフォルト壁紙は Bing 日替わり壁紙を使用しています。",
+            "processingImage": "画像を処理中...",
+            "processingLoading": "画像を読み込み中...",
+            "processingOptimizing": "最適化中...",
+            "processingCompressing": "圧縮中...",
+            "processingSaving": "保存中...",
+            "processingStarting": "処理を開始...",
+            "errorImageTooLarge": "画像ファイルが大きすぎます（最大 50MB）",
+            "errorResolutionTooHigh": "画像の解像度が高すぎます（最大 5000 万ピクセル）"
         }
     };
 

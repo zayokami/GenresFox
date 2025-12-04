@@ -157,6 +157,30 @@
     },
     "creditsBingWallpaper": {
         "message": "デフォルト壁紙は Bing 日替わり壁紙を使用しています。"
+    },
+    "processingImage": {
+        "message": "画像を処理中..."
+    },
+    "processingLoading": {
+        "message": "画像を読み込み中..."
+    },
+    "processingOptimizing": {
+        "message": "最適化中..."
+    },
+    "processingCompressing": {
+        "message": "圧縮中..."
+    },
+    "processingSaving": {
+        "message": "保存中..."
+    },
+    "processingStarting": {
+        "message": "処理を開始..."
+    },
+    "errorImageTooLarge": {
+        "message": "画像ファイルが大きすぎます（最大 50MB）"
+    },
+    "errorResolutionTooHigh": {
+        "message": "画像の解像度が高すぎます（最大 5000 万ピクセル）"
     }
 }
 

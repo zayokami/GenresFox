@@ -157,6 +157,30 @@
     },
     "creditsBingWallpaper": {
         "message": "預設桌布由 Bing 每日桌布提供。"
+    },
+    "processingImage": {
+        "message": "正在處理圖片..."
+    },
+    "processingLoading": {
+        "message": "載入圖片中..."
+    },
+    "processingOptimizing": {
+        "message": "優化中..."
+    },
+    "processingCompressing": {
+        "message": "壓縮中..."
+    },
+    "processingSaving": {
+        "message": "儲存中..."
+    },
+    "processingStarting": {
+        "message": "開始處理..."
+    },
+    "errorImageTooLarge": {
+        "message": "圖片檔案過大（最大 50MB）"
+    },
+    "errorResolutionTooHigh": {
+        "message": "圖片解析度過高（最大 5000 萬像素）"
     }
 }
 

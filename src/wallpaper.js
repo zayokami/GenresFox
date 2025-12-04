@@ -11,7 +11,7 @@ const WallpaperManager = (function () {
         DB_NAME: 'GenresFoxDB',
         STORE_NAME: 'wallpapers',
         WALLPAPER_KEY: 'currentWallpaper',
-        MAX_FILE_SIZE: 20 * 1024 * 1024, // 20MB
+        MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB max
         RETRY_COUNT: 3,
         STORAGE_KEYS: {
             WALLPAPER_SETTINGS: 'wallpaperSettings',
@@ -424,7 +424,127 @@ const WallpaperManager = (function () {
     }
 
     /**
-     * Handle uploaded file
+     * Get localized message with fallback
+     * @param {string} key - Message key
+     * @param {string} fallback - Fallback text
+     * @returns {string}
+     */
+    function _getLocalizedMessage(key, fallback) {
+        if (typeof I18n !== 'undefined' && I18n.getMessage) {
+            return I18n.getMessage(key) || fallback;
+        }
+        return fallback;
+    }
+
+    /**
+     * Show processing progress UI
+     * @param {number} progress - Progress percentage (0-100)
+     * @param {string} status - Status message
+     */
+    function _showProcessingProgress(progress, status = '') {
+        let progressOverlay = document.getElementById('wallpaper-progress-overlay');
+        
+        const processingText = _getLocalizedMessage('processingImage', 'Processing image...');
+        
+        if (!progressOverlay) {
+            progressOverlay = document.createElement('div');
+            progressOverlay.id = 'wallpaper-progress-overlay';
+            progressOverlay.innerHTML = `
+                <div class="progress-content">
+                    <div class="progress-spinner"></div>
+                    <div class="progress-text">${processingText}</div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill"></div>
+                    </div>
+                    <div class="progress-status"></div>
+                </div>
+            `;
+            progressOverlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 100000;
+                backdrop-filter: blur(10px);
+            `;
+            
+            const style = document.createElement('style');
+            style.textContent = `
+                #wallpaper-progress-overlay .progress-content {
+                    text-align: center;
+                    color: white;
+                    padding: 40px;
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 16px;
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                }
+                #wallpaper-progress-overlay .progress-spinner {
+                    width: 48px;
+                    height: 48px;
+                    border: 3px solid rgba(255, 255, 255, 0.3);
+                    border-top-color: #fff;
+                    border-radius: 50%;
+                    margin: 0 auto 20px;
+                    animation: spin 1s linear infinite;
+                }
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
+                }
+                #wallpaper-progress-overlay .progress-text {
+                    font-size: 18px;
+                    font-weight: 500;
+                    margin-bottom: 16px;
+                }
+                #wallpaper-progress-overlay .progress-bar-container {
+                    width: 280px;
+                    height: 6px;
+                    background: rgba(255, 255, 255, 0.2);
+                    border-radius: 3px;
+                    overflow: hidden;
+                    margin: 0 auto 12px;
+                }
+                #wallpaper-progress-overlay .progress-bar-fill {
+                    height: 100%;
+                    background: linear-gradient(90deg, #4facfe, #00f2fe);
+                    border-radius: 3px;
+                    transition: width 0.3s ease;
+                    width: 0%;
+                }
+                #wallpaper-progress-overlay .progress-status {
+                    font-size: 13px;
+                    color: rgba(255, 255, 255, 0.7);
+                }
+            `;
+            document.head.appendChild(style);
+            document.body.appendChild(progressOverlay);
+        }
+        
+        const fill = progressOverlay.querySelector('.progress-bar-fill');
+        const statusEl = progressOverlay.querySelector('.progress-status');
+        
+        if (fill) fill.style.width = `${progress}%`;
+        if (statusEl && status) statusEl.textContent = status;
+        
+        progressOverlay.style.display = 'flex';
+    }
+    
+    /**
+     * Hide processing progress UI
+     */
+    function _hideProcessingProgress() {
+        const overlay = document.getElementById('wallpaper-progress-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+    }
+
+    /**
+     * Handle uploaded file with smart processing for large images
      * @param {File} file - Uploaded file
      * @returns {Promise<boolean>} - Whether successful
      */
@@ -444,15 +564,62 @@ const WallpaperManager = (function () {
         }
 
         try {
-            await _saveWallpaperToDB(file);
-
-            // Clear legacy localStorage wallpaper
-            localStorage.removeItem(CONFIG.STORAGE_KEYS.LEGACY_WALLPAPER);
-
-            const objectUrl = URL.createObjectURL(file);
-            _setWallpaper(objectUrl);
-            _updatePreview(objectUrl);
-            _applyWallpaperEffects();
+            // Check if ImageProcessor is available
+            if (typeof ImageProcessor !== 'undefined') {
+                // Use ImageProcessor for optimized handling
+                const statusLoading = _getLocalizedMessage('processingLoading', 'Loading image...');
+                const statusOptimizing = _getLocalizedMessage('processingOptimizing', 'Optimizing...');
+                const statusCompressing = _getLocalizedMessage('processingCompressing', 'Compressing...');
+                const statusSaving = _getLocalizedMessage('processingSaving', 'Saving...');
+                const statusStarting = _getLocalizedMessage('processingStarting', 'Starting...');
+                
+                _showProcessingProgress(0, statusStarting);
+                
+                const result = await ImageProcessor.processImage(file, {
+                    onProgress: (progress) => {
+                        let status = '';
+                        if (progress < 30) status = statusLoading;
+                        else if (progress < 70) status = statusOptimizing;
+                        else if (progress < 90) status = statusCompressing;
+                        else status = statusSaving;
+                        _showProcessingProgress(progress, status);
+                    },
+                    onPreview: (previewUrl) => {
+                        // Show preview immediately while processing continues
+                        _updatePreview(previewUrl);
+                    }
+                });
+                
+                // Log compression results
+                console.log(`Wallpaper optimized: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(result.processedSize / 1024 / 1024).toFixed(2)}MB (${result.compressionRatio.toFixed(1)}% reduction)`);
+                
+                // Save optimized blob to IndexedDB
+                await _saveWallpaperToDB(result.blob);
+                
+                // Clear legacy localStorage wallpaper
+                localStorage.removeItem(CONFIG.STORAGE_KEYS.LEGACY_WALLPAPER);
+                
+                // Create URL from optimized blob
+                const objectUrl = URL.createObjectURL(result.blob);
+                _setWallpaper(objectUrl);
+                _updatePreview(objectUrl);
+                _applyWallpaperEffects();
+                
+                _hideProcessingProgress();
+                
+            } else {
+                // Fallback: direct save without optimization (original behavior)
+                console.warn('ImageProcessor not available, using direct save');
+                await _saveWallpaperToDB(file);
+                
+                // Clear legacy localStorage wallpaper
+                localStorage.removeItem(CONFIG.STORAGE_KEYS.LEGACY_WALLPAPER);
+                
+                const objectUrl = URL.createObjectURL(file);
+                _setWallpaper(objectUrl);
+                _updatePreview(objectUrl);
+                _applyWallpaperEffects();
+            }
 
             // Mark as custom wallpaper
             _state.wallpaperSource = CONFIG.WALLPAPER_SOURCES.CUSTOM;
@@ -460,8 +627,9 @@ const WallpaperManager = (function () {
 
             return true;
         } catch (err) {
+            _hideProcessingProgress();
             console.error('Failed to save wallpaper:', err);
-            alert('Failed to save wallpaper.');
+            alert('Failed to save wallpaper: ' + (err.message || 'Unknown error'));
             return false;
         }
     }

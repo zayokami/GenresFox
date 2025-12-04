@@ -157,5 +157,29 @@
     },
     "creditsBingWallpaper": {
         "message": "默认壁纸由 Bing 每日壁纸提供。"
+    },
+    "processingImage": {
+        "message": "正在处理图片..."
+    },
+    "processingLoading": {
+        "message": "加载图片中..."
+    },
+    "processingOptimizing": {
+        "message": "优化中..."
+    },
+    "processingCompressing": {
+        "message": "压缩中..."
+    },
+    "processingSaving": {
+        "message": "保存中..."
+    },
+    "processingStarting": {
+        "message": "开始处理..."
+    },
+    "errorImageTooLarge": {
+        "message": "图片文件过大（最大 50MB）"
+    },
+    "errorResolutionTooHigh": {
+        "message": "图片分辨率过高（最大 5000 万像素）"
     }
 }

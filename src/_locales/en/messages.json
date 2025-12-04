@@ -157,5 +157,29 @@
     },
     "creditsBingWallpaper": {
         "message": "Default wallpaper powered by Bing Daily Wallpaper."
+    },
+    "processingImage": {
+        "message": "Processing image..."
+    },
+    "processingLoading": {
+        "message": "Loading image..."
+    },
+    "processingOptimizing": {
+        "message": "Optimizing..."
+    },
+    "processingCompressing": {
+        "message": "Compressing..."
+    },
+    "processingSaving": {
+        "message": "Saving..."
+    },
+    "processingStarting": {
+        "message": "Starting..."
+    },
+    "errorImageTooLarge": {
+        "message": "Image file too large (max 50MB)"
+    },
+    "errorResolutionTooHigh": {
+        "message": "Image resolution too high (max 50 megapixels)"
     }
 }

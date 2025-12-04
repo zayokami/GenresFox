@@ -357,24 +357,56 @@ function getFavicon(url) {
 // --- Icon Caching Logic ---
 async function cacheIcon(key, url) {
     try {
-        const response = await fetch(url);
+        // Try direct fetch first (works for same-origin or CORS-enabled)
+        const response = await fetch(url, { mode: 'cors' });
         if (!response.ok) throw new Error('Network response was not ok');
         const blob = await response.blob();
         const reader = new FileReader();
         reader.onloadend = () => {
             localStorage.setItem(`icon_cache_${key}`, reader.result);
-            updateUI();
+            // Don't call updateUI here to avoid infinite loop, just update the specific image
+            document.querySelectorAll(`img[data-cache-key="${key}"]`).forEach(img => {
+                img.src = reader.result;
+            });
         };
         reader.readAsDataURL(blob);
     } catch (error) {
-        console.warn(`Failed to cache icon for ${key}`, error);
+        // If direct fetch fails, try using an Image element (can load cross-origin images)
+        try {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width || 64;
+                    canvas.height = img.height || 64;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    const dataUrl = canvas.toDataURL('image/png');
+                    localStorage.setItem(`icon_cache_${key}`, dataUrl);
+                    document.querySelectorAll(`img[data-cache-key="${key}"]`).forEach(imgEl => {
+                        imgEl.src = dataUrl;
+                    });
+                } catch (canvasError) {
+                    // Canvas tainted by cross-origin data, can't cache
+                    console.warn(`Cannot cache icon (CORS): ${key}`);
+                }
+            };
+            img.onerror = () => {
+                console.warn(`Failed to load icon for caching: ${key}`);
+            };
+            img.src = url;
+        } catch (imgError) {
+            console.warn(`Failed to cache icon for ${key}`, imgError);
+        }
     }
 }
 
 function getIconSrc(key, url) {
     const cached = localStorage.getItem(`icon_cache_${key}`);
     if (cached) return cached;
-    cacheIcon(key, url);
+    // Schedule caching in background
+    setTimeout(() => cacheIcon(key, url), 100);
     return url;
 }
 
@@ -389,6 +421,7 @@ function updateUI() {
     img.alt = engine.name;
     img.width = 20;
     img.height = 20;
+    img.dataset.cacheKey = currentEngine; // For updating after cache completes
     selectedEngineIcon.appendChild(img);
 
     renderEngineDropdown();
@@ -406,6 +439,7 @@ function renderEngineDropdown() {
         img.src = getIconSrc(key, engine.icon);
         img.width = 20;
         img.height = 20;
+        img.dataset.cacheKey = key; // For updating after cache completes
         
         const span = document.createElement('span');
         span.textContent = engine.name;
@@ -472,7 +506,7 @@ function renderShortcutsList() {
 
 function renderShortcutsGrid() {
     shortcutsGrid.innerHTML = '';
-    shortcuts.forEach(shortcut => {
+    shortcuts.forEach((shortcut, index) => {
         const a = document.createElement("a");
         a.href = shortcut.url;
         a.className = "shortcut-item";
@@ -482,7 +516,12 @@ function renderShortcutsGrid() {
 
         const img = document.createElement("img");
         img.alt = shortcut.name;
-        img.src = shortcut.icon;
+        
+        // Use cached icon with unique key based on URL
+        const cacheKey = `shortcut_${index}_${shortcut.url}`;
+        img.dataset.cacheKey = cacheKey; // For updating after cache completes
+        const iconSrc = getIconSrc(cacheKey, shortcut.icon);
+        img.src = iconSrc;
 
         // Remove loading class when image loads or fails
         img.onload = () => iconDiv.classList.remove("loading");
