@@ -507,10 +507,17 @@ function renderShortcutsList() {
 
 function renderShortcutsGrid() {
     shortcutsGrid.innerHTML = '';
+    
+    // Apply hide-names class based on setting
+    const showNames = localStorage.getItem('showShortcutNames') !== 'false';
+    shortcutsGrid.classList.toggle('hide-names', !showNames);
+    
     shortcuts.forEach((shortcut, index) => {
         const a = document.createElement("a");
         a.href = shortcut.url;
         a.className = "shortcut-item";
+        a.draggable = true;
+        a.dataset.index = index;
 
         const iconDiv = document.createElement("div");
         iconDiv.className = "shortcut-icon loading"; // Add loading class for skeleton
@@ -543,6 +550,14 @@ function renderShortcutsGrid() {
 
         a.appendChild(iconDiv);
         a.appendChild(nameDiv);
+        
+        // Add drag event listeners
+        a.addEventListener('dragstart', handleShortcutDragStart);
+        a.addEventListener('dragend', handleShortcutDragEnd);
+        a.addEventListener('dragover', handleShortcutDragOver);
+        a.addEventListener('drop', handleShortcutDrop);
+        a.addEventListener('dragleave', handleShortcutDragLeave);
+        
         shortcutsGrid.appendChild(a);
     });
 }
@@ -685,6 +700,169 @@ document.addEventListener("click", (e) => {
     if (!engineSelector.contains(e.target)) engineSelector.classList.remove("active");
 });
 
+// ==================== Shortcut Name Display Toggle ====================
+const showShortcutNamesCheckbox = document.getElementById('showShortcutNames');
+if (showShortcutNamesCheckbox) {
+    // Load saved setting
+    const showNames = localStorage.getItem('showShortcutNames') !== 'false';
+    showShortcutNamesCheckbox.checked = showNames;
+    
+    showShortcutNamesCheckbox.addEventListener('change', (e) => {
+        localStorage.setItem('showShortcutNames', e.target.checked);
+        shortcutsGrid.classList.toggle('hide-names', !e.target.checked);
+    });
+}
+
+// ==================== Shortcut Drag & Drop Sorting ====================
+let draggedShortcutIndex = null;
+
+function handleShortcutDragStart(e) {
+    draggedShortcutIndex = parseInt(e.currentTarget.dataset.index);
+    e.currentTarget.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', draggedShortcutIndex);
+
+    // Use icon as drag image for a tighter preview
+    const iconEl = e.currentTarget.querySelector('.shortcut-icon');
+    if (iconEl && e.dataTransfer.setDragImage) {
+        const { width, height } = iconEl.getBoundingClientRect();
+        e.dataTransfer.setDragImage(iconEl, width / 2, height / 2);
+    }
+
+    if (shortcutsGrid) {
+        shortcutsGrid.classList.add('dragging-active');
+    }
+}
+
+function handleShortcutDragEnd(e) {
+    e.currentTarget.classList.remove('dragging');
+    // Remove drag-over class from all items
+    document.querySelectorAll('.shortcut-item').forEach(item => {
+        item.classList.remove('drag-over');
+    });
+    if (shortcutsGrid) {
+        shortcutsGrid.classList.remove('dragging-active');
+    }
+    draggedShortcutIndex = null;
+}
+
+function handleShortcutDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    const target = e.currentTarget;
+    const targetIndex = parseInt(target.dataset.index);
+    
+    if (draggedShortcutIndex !== null && targetIndex !== draggedShortcutIndex) {
+        target.classList.add('drag-over');
+    }
+}
+
+function handleShortcutDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
+}
+
+function handleShortcutDrop(e) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    if (shortcutsGrid) {
+        shortcutsGrid.classList.remove('dragging-active');
+    }
+    
+    const targetIndex = parseInt(e.currentTarget.dataset.index);
+    
+    if (draggedShortcutIndex !== null && targetIndex !== draggedShortcutIndex) {
+        // Reorder shortcuts array
+        const draggedItem = shortcuts[draggedShortcutIndex];
+        shortcuts.splice(draggedShortcutIndex, 1);
+        shortcuts.splice(targetIndex, 0, draggedItem);
+        
+        // Save and re-render
+        saveShortcuts();
+    }
+}
+
+// ==================== Settings List Drag & Drop ====================
+function initSettingsListDragDrop() {
+    const shortcutsList = document.getElementById('shortcutsList');
+    if (!shortcutsList) return;
+    
+    // Use MutationObserver to add drag handlers to new items
+    const observer = new MutationObserver(() => {
+        const items = shortcutsList.querySelectorAll('.list-item');
+        items.forEach((item, index) => {
+            if (!item.dataset.dragInit) {
+                item.draggable = true;
+                item.dataset.index = index;
+                item.dataset.dragInit = 'true';
+                
+                // Add drag handle icon
+                if (!item.querySelector('.drag-handle')) {
+                    const handle = document.createElement('span');
+                    handle.className = 'drag-handle';
+                    handle.innerHTML = '⋮⋮';
+                    item.insertBefore(handle, item.firstChild);
+                }
+                
+                item.addEventListener('dragstart', handleListDragStart);
+                item.addEventListener('dragend', handleListDragEnd);
+                item.addEventListener('dragover', handleListDragOver);
+                item.addEventListener('drop', handleListDrop);
+                item.addEventListener('dragleave', handleListDragLeave);
+            }
+        });
+    });
+    
+    observer.observe(shortcutsList, { childList: true });
+}
+
+let draggedListIndex = null;
+
+function handleListDragStart(e) {
+    draggedListIndex = parseInt(e.currentTarget.dataset.index);
+    e.currentTarget.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleListDragEnd(e) {
+    e.currentTarget.classList.remove('dragging');
+    document.querySelectorAll('.list-item').forEach(item => {
+        item.classList.remove('drag-over');
+    });
+    draggedListIndex = null;
+}
+
+function handleListDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    const targetIndex = parseInt(e.currentTarget.dataset.index);
+    if (draggedListIndex !== null && targetIndex !== draggedListIndex) {
+        e.currentTarget.classList.add('drag-over');
+    }
+}
+
+function handleListDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
+}
+
+function handleListDrop(e) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    
+    const targetIndex = parseInt(e.currentTarget.dataset.index);
+    
+    if (draggedListIndex !== null && targetIndex !== draggedListIndex) {
+        // Reorder shortcuts array
+        const draggedItem = shortcuts[draggedListIndex];
+        shortcuts.splice(draggedListIndex, 1);
+        shortcuts.splice(targetIndex, 0, draggedItem);
+        
+        // Save and re-render
+        saveShortcuts();
+    }
+}
+
 // Init
 async function init() {
     // Initialize i18n module first
@@ -737,6 +915,9 @@ async function init() {
     renderShortcutsList();
     renderShortcutsGrid();
     searchInput.addEventListener("keydown", handleSearch);
+    
+    // Initialize settings list drag & drop
+    initSettingsListDragDrop();
 
     // Ensure focus (autofocus attribute handles initial, this is backup)
     searchInput.focus();

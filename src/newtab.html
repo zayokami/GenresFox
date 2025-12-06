@@ -121,6 +121,14 @@
 
                         <div class="control-item">
                             <label>
+                                <span data-i18n="searchBoxScale">Size</span>
+                                <span class="control-value" id="searchScaleValue">100%</span>
+                            </label>
+                            <input type="range" id="searchScaleSlider" min="80" max="150" value="100" class="slider">
+                        </div>
+
+                        <div class="control-item">
+                            <label>
                                 <span data-i18n="searchBoxPosition">Vertical Position</span>
                                 <span class="control-value" id="searchPositionValue">40%</span>
                             </label>
@@ -141,7 +149,14 @@
                     </div>
                     <div class="setting-group">
                         <h3 data-i18n="shortcuts">Shortcuts</h3>
-                        <div id="shortcutsList" class="list-group"></div>
+                        <div class="shortcut-options">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="showShortcutNames" checked>
+                                <span data-i18n="showShortcutNames">Show shortcut names</span>
+                            </label>
+                        </div>
+                        <p class="setting-hint" data-i18n="shortcutDragHint">💡 Drag shortcuts to reorder them</p>
+                        <div id="shortcutsList" class="list-group sortable-list"></div>
                         <div class="add-form">
                             <input type="text" id="newShortcutName" placeholder="Name">
                             <input type="text" id="newShortcutUrl" placeholder="URL (e.g. https://github.com)">

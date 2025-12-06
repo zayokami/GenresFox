@@ -11,6 +11,7 @@
     --wallpaper-vignette: transparent;
     --search-width: 600px;
     --search-position: 40vh;
+    --search-scale: 1;
 }
 
 * {
@@ -106,13 +107,15 @@ body::after {
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 9999px;
-    padding: 8px;
+    padding: 10px 14px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     transition: transform 0.4s var(--transition-curve), box-shadow 0.4s var(--transition-curve), border-color 0.4s var(--transition-curve), background 0.4s ease;
+    transform-origin: center center;
+    transform: scale(var(--search-scale));
 }
 
 .search-box:focus-within {
-    transform: scale(1.02);
+    transform: scale(calc(var(--search-scale) * 1.02));
     box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
     border-color: rgba(255, 255, 255, 0.3);
     background: rgba(0, 0, 0, 0.5);
@@ -136,7 +139,7 @@ body::after {
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.8);
-    transition: background 0.2s ease, color 0.2s ease;
+    transition: background 0.2s ease, color 0.2s ease, width 0.2s ease, height 0.2s ease;
 }
 
 .selected-engine:hover {
@@ -685,6 +688,97 @@ input[type="text"]:focus {
     padding: 4px;
 }
 
+/* Checkbox label styling */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    padding: 8px 0;
+    user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent-color);
+    cursor: pointer;
+}
+
+.shortcut-options {
+    margin-bottom: 12px;
+}
+
+.setting-hint {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 12px;
+    font-style: italic;
+}
+
+/* Sortable list styles */
+.sortable-list .list-item {
+    cursor: grab;
+    transition: all 0.2s ease;
+}
+
+.sortable-list .list-item:active {
+    cursor: grabbing;
+}
+
+.sortable-list .list-item.dragging {
+    opacity: 0.5;
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px dashed var(--accent-color);
+}
+
+.sortable-list .list-item.drag-over {
+    border-top: 2px solid var(--accent-color);
+    margin-top: -2px;
+}
+
+.sortable-list .list-item .drag-handle {
+    color: rgba(255, 255, 255, 0.3);
+    margin-right: 8px;
+    cursor: grab;
+}
+
+.sortable-list .list-item:hover .drag-handle {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Shortcut grid drag styles */
+.shortcut-item.dragging {
+    opacity: 0.65;
+    transform: scale(0.92) rotate(-1deg);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35),
+                0 0 0 2px rgba(59, 130, 246, 0.35);
+    z-index: 5;
+    cursor: grabbing;
+}
+
+.shortcut-item.drag-over {
+    transform: scale(1.05);
+    box-shadow: 0 8px 18px rgba(59, 130, 246, 0.25);
+}
+
+#shortcuts.dragging-active .shortcut-item:not(.dragging) {
+    filter: brightness(0.9) saturate(0.9);
+    transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.shortcut-item.drag-over::after {
+    content: "";
+    position: absolute;
+    inset: -8px;
+    border: 2px dashed var(--accent-color);
+    border-radius: 14px;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.35);
+    pointer-events: none;
+}
+
 .add-form {
     display: flex;
     flex-direction: column;
@@ -720,8 +814,9 @@ input[type="text"]:focus {
     align-items: center;
     text-decoration: none;
     color: rgba(255, 255, 255, 0.8);
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-                color 0.2s ease;
+    position: relative;
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+                color 0.3s ease;
 }
 
 .shortcut-item:hover {
@@ -744,7 +839,7 @@ input[type="text"]:focus {
     margin-bottom: 8px;
     backdrop-filter: blur(5px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
     position: relative;
     overflow: hidden;
 }
@@ -771,6 +866,20 @@ input[type="text"]:focus {
     width: 100%;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
     font-weight: 500;
+    transition: opacity 0.3s ease, max-height 0.3s ease;
+    max-height: 20px;
+}
+
+/* Hide shortcut names when disabled */
+.shortcuts-grid.hide-names .shortcut-name {
+    opacity: 0;
+    max-height: 0;
+    margin-top: 0;
+    overflow: hidden;
+}
+
+.shortcuts-grid.hide-names .shortcut-icon {
+    margin-bottom: 0;
 }
 
 @keyframes shimmer {

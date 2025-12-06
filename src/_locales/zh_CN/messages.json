@@ -56,8 +56,17 @@
     "searchBoxWidth": {
         "message": "宽度"
     },
+    "searchBoxScale": {
+        "message": "大小"
+    },
     "searchBoxPosition": {
         "message": "垂直位置"
+    },
+    "showShortcutNames": {
+        "message": "显示快捷方式名称"
+    },
+    "shortcutDragHint": {
+        "message": "💡 拖拽快捷方式可调整顺序"
     },
     "livePreview": {
         "message": "实时预览"

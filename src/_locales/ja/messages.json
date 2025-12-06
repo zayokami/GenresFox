@@ -56,8 +56,17 @@
     "searchBoxWidth": {
         "message": "幅"
     },
+    "searchBoxScale": {
+        "message": "サイズ"
+    },
     "searchBoxPosition": {
         "message": "垂直位置"
+    },
+    "showShortcutNames": {
+        "message": "ショートカット名を表示"
+    },
+    "shortcutDragHint": {
+        "message": "💡 ショートカットをドラッグして並べ替え"
     },
     "livePreview": {
         "message": "ライブプレビュー"

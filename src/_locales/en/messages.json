@@ -56,8 +56,17 @@
     "searchBoxWidth": {
         "message": "Width"
     },
+    "searchBoxScale": {
+        "message": "Size"
+    },
     "searchBoxPosition": {
         "message": "Vertical Position"
+    },
+    "showShortcutNames": {
+        "message": "Show shortcut names"
+    },
+    "shortcutDragHint": {
+        "message": "💡 Drag shortcuts to reorder them"
     },
     "livePreview": {
         "message": "Live Preview"

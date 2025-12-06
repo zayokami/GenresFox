@@ -56,8 +56,17 @@
     "searchBoxWidth": {
         "message": "寬度"
     },
+    "searchBoxScale": {
+        "message": "大小"
+    },
     "searchBoxPosition": {
         "message": "垂直位置"
+    },
+    "showShortcutNames": {
+        "message": "顯示捷徑名稱"
+    },
+    "shortcutDragHint": {
+        "message": "💡 拖曳捷徑可調整順序"
     },
     "livePreview": {
         "message": "即時預覽"
