@@ -95,12 +95,14 @@ GenresFox/
 │   ├── manifest.json       # Extension manifest
 │   ├── newtab.html         # Main HTML file
 │   ├── script.js           # Main JavaScript logic
+│   ├── search.js           # Search bar & search button logic
 │   ├── i18n.js             # Internationalization module
 │   ├── wallpaper.js        # Wallpaper management module
 │   ├── accessibility.js    # Accessibility features module
 │   ├── image-processor.js  # High-performance image processing module
 │   ├── image-worker.js     # Web Worker for background image processing
 │   ├── styles.css          # Main styles
+│   ├── search.css          # Search bar styles
 │   └── accessibility.css   # Accessibility styles
 ├── CHANGELOG.md
 └── README.md
@@ -146,7 +148,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - Inspired by modern web design trends
 - Icons from Google Material Design
-- Favicon service by Google
+- Favicon service by DuckDuckGo (primary) and Google s2 (fallback)
 - Daily wallpapers by Bing
 
 ---
@@ -232,12 +234,14 @@ GenresFox/
 │   ├── manifest.json       # 扩展清单
 │   ├── newtab.html         # 主 HTML 文件
 │   ├── script.js           # 主 JavaScript 逻辑
+│   ├── search.js           # 搜索栏与搜索按钮逻辑
 │   ├── i18n.js             # 国际化模块
 │   ├── wallpaper.js        # 壁纸管理模块
 │   ├── accessibility.js    # 无障碍功能模块
 │   ├── image-processor.js  # 高性能图片处理模块
 │   ├── image-worker.js     # Web Worker 后台图片处理
 │   ├── styles.css          # 主样式文件
+│   ├── search.css          # 搜索栏样式文件
 │   └── accessibility.css   # 无障碍样式文件
 ├── CHANGELOG.md
 └── README.md
@@ -283,7 +287,7 @@ GenresFox/
 
 - 灵感来自现代网页设计趋势
 - 图标来自 Google Material Design
-- Favicon 服务由 Google 提供
+- Favicon 服务由 DuckDuckGo（主）与 Google s2（备）提供
 - 每日壁纸由 Bing 提供
 
 ---
