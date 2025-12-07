@@ -2,6 +2,9 @@
     "searchPlaceholder": {
         "message": "搜索..."
     },
+    "searchActionLabel": {
+        "message": "搜索"
+    },
     "appTitle": {
         "message": "GenresFox"
     },

@@ -2,6 +2,9 @@
     "searchPlaceholder": {
         "message": "Search..."
     },
+    "searchActionLabel": {
+        "message": "Search"
+    },
     "appTitle": {
         "message": "GenresFox"
     },

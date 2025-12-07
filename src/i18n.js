@@ -11,6 +11,7 @@ const I18n = (function () {
         "zh_CN": {
             "appTitle": "GenresFox",
             "searchPlaceholder": "搜索...",
+            "searchActionLabel": "搜索",
             "settingsTitle": "设置",
             "tabWallpaper": "壁纸",
             "tabSearch": "搜索与快捷方式",
@@ -80,6 +81,7 @@ const I18n = (function () {
         "en": {
             "appTitle": "GenresFox",
             "searchPlaceholder": "Search...",
+            "searchActionLabel": "Search",
             "settingsTitle": "Settings",
             "tabWallpaper": "Wallpaper",
             "tabSearch": "Search & Shortcuts",
@@ -149,6 +151,7 @@ const I18n = (function () {
         "zh_TW": {
             "appTitle": "GenresFox",
             "searchPlaceholder": "搜尋...",
+            "searchActionLabel": "搜尋",
             "settingsTitle": "設定",
             "tabWallpaper": "桌布",
             "tabSearch": "搜尋與捷徑",
@@ -218,6 +221,7 @@ const I18n = (function () {
         "ja": {
             "appTitle": "GenresFox",
             "searchPlaceholder": "検索...",
+            "searchActionLabel": "検索",
             "settingsTitle": "設定",
             "tabWallpaper": "壁紙",
             "tabSearch": "検索とショートカット",

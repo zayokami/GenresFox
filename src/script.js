@@ -281,6 +281,8 @@ const addShortcutBtn = document.getElementById("addShortcutBtn");
 const engineSelector = document.querySelector(".engine-selector");
 const selectedEngineIcon = document.querySelector(".selected-engine");
 const engineDropdown = document.querySelector(".engine-dropdown");
+const searchActionBtn = document.getElementById("searchActionBtn");
+const searchActionLabel = document.getElementById("searchActionLabel");
 
 // Default Data
 const defaultEngines = {
@@ -526,6 +528,15 @@ function getIconSrc(key, url) {
 }
 
 // --- UI Rendering ---
+function _updateSearchActionWidth() {
+    if (!searchActionBtn || !searchActionLabel) return;
+    const labelWidth = searchActionLabel.scrollWidth;
+    const base = 44; // collapsed width
+    const padding = 32; // padding and gap
+    const expanded = Math.max(base + padding + labelWidth, 112);
+    searchActionBtn.style.setProperty('--search-action-expand', `${expanded}px`);
+}
+
 function updateUI() {
     // Update selected engine icon
     const engine = engines[currentEngine] || engines.google;
@@ -795,24 +806,28 @@ addShortcutBtn.addEventListener("click", () => {
 });
 
 // Search Logic
+function executeSearch() {
+    let val = searchInput.value.trim();
+    if (!val) return;
+    const isUrl = /^(http(s)?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w- ./?%&=]*)?$/i.test(val);
+    if (isUrl) {
+        if (!/^http(s)?:\/\//i.test(val)) val = "https://" + val;
+        location.href = val;
+    } else {
+        const engine = engines[currentEngine];
+        let searchUrl = engine.url;
+        if (searchUrl.includes("%s")) {
+            searchUrl = searchUrl.replace("%s", encodeURIComponent(val));
+        } else {
+            searchUrl += encodeURIComponent(val);
+        }
+        location.href = searchUrl;
+    }
+}
+
 function handleSearch(e) {
     if (e.key === "Enter") {
-        let val = searchInput.value.trim();
-        if (!val) return;
-        const isUrl = /^(http(s)?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w- ./?%&=]*)?$/i.test(val);
-        if (isUrl) {
-            if (!/^http(s)?:\/\//i.test(val)) val = "https://" + val;
-            location.href = val;
-        } else {
-            const engine = engines[currentEngine];
-            let searchUrl = engine.url;
-            if (searchUrl.includes("%s")) {
-                searchUrl = searchUrl.replace("%s", encodeURIComponent(val));
-            } else {
-                searchUrl += encodeURIComponent(val);
-            }
-            location.href = searchUrl;
-        }
+        executeSearch();
     }
 }
 
@@ -1040,6 +1055,11 @@ async function init() {
     renderShortcutsList();
     renderShortcutsGrid();
     searchInput.addEventListener("keydown", handleSearch);
+    if (searchActionBtn) {
+        searchActionBtn.addEventListener("click", executeSearch);
+        _updateSearchActionWidth();
+        window.addEventListener('resize', _updateSearchActionWidth);
+    }
     
     // Initialize settings list drag & drop
     initSettingsListDragDrop();
