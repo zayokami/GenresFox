@@ -319,6 +319,8 @@ try {
 
 let currentEngine = localStorage.getItem("preferredEngine") || "google";
 
+const FOLDER_FEATURE_ENABLED = false; // Temporarily disable folder feature
+
 let shortcuts;
 try {
     const stored = localStorage.getItem("shortcuts");
@@ -331,6 +333,24 @@ try {
 if (!shortcuts || !Array.isArray(shortcuts) || shortcuts.length === 0) {
     shortcuts = defaultShortcuts;
     localStorage.setItem("shortcuts", JSON.stringify(shortcuts));
+}
+
+// Folder helpers
+function _isFolder(item) {
+    return item && item.type === 'folder' && Array.isArray(item.items);
+}
+
+function _createFolderName() {
+    const base = (window.I18n && I18n.t) ? I18n.t('folderDefault', 'Folder') : 'Folder';
+    const ts = Date.now().toString().slice(-3);
+    return `${base} ${ts}`;
+}
+
+function _ensureShortcutId(item) {
+    if (!item.id) {
+        item.id = `shortcut_${Math.random().toString(36).slice(2, 8)}`;
+    }
+    return item;
 }
 
 // --- Helper Functions ---
@@ -349,10 +369,45 @@ function saveShortcuts() {
 function getFavicon(url) {
     try {
         const domain = new URL(url).hostname;
-        return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+        // DuckDuckGo icon service returns CORS-enabled .ico
+        return `https://icons.duckduckgo.com/ip3/${domain}.ico`;
     } catch (e) {
         return "icon.png";
     }
+}
+
+function _buildIconCandidates(rawIconUrl, pageUrl) {
+    const candidates = [];
+    const seen = new Set();
+    const add = (u) => {
+        if (!u || seen.has(u)) return;
+        candidates.push(u);
+        seen.add(u);
+    };
+
+    // Start with provided icon URL (if any)
+    if (rawIconUrl) add(rawIconUrl);
+
+    const basisUrl = pageUrl || rawIconUrl;
+    if (basisUrl) {
+        try {
+            const urlObj = new URL(basisUrl);
+            const origin = urlObj.origin;
+            const domain = urlObj.hostname;
+            add(`${origin}/favicon.ico`);
+            add(`${origin}/apple-touch-icon.png`);
+            add(`${origin}/apple-touch-icon-precomposed.png`);
+            // DuckDuckGo icon service (CORS)
+            add(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
+            // Google s2 (may be non-CORS; keep as late fallback)
+            add(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`);
+        } catch (e) {
+            // Ignore parse errors
+        }
+    }
+
+    if (candidates.length === 0) add("icon.png");
+    return candidates;
 }
 
 // --- Icon Caching Logic (IndexedDB with expiry and fallback) ---
@@ -419,8 +474,8 @@ function _updateImagesForKey(key, dataUrl) {
 async function _fetchIconAsDataUrl(url) {
     // Direct fetch first
     const response = await fetch(url, { mode: 'cors' });
-    if (!response.ok) throw new Error('Network response was not ok');
-    const blob = await response.blob();
+        if (!response.ok) throw new Error('Network response was not ok');
+        const blob = await response.blob();
     return await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result);
@@ -450,14 +505,11 @@ async function _loadIconViaImage(url) {
     });
 }
 
-async function cacheIcon(key, url) {
+async function cacheIcon(key, rawIconUrl, pageUrl) {
     if (_iconCacheInFlight.has(key)) return _iconCacheInFlight.get(key);
 
     const task = (async () => {
-        // Attempt direct URL; on failure fall back to favicon API once.
-        const fallbackUrl = getFavicon(url);
-        const candidates = [url];
-        if (fallbackUrl && fallbackUrl !== url) candidates.push(fallbackUrl);
+        const candidates = _buildIconCandidates(rawIconUrl, pageUrl);
 
         for (const candidate of candidates) {
             try {
@@ -491,7 +543,9 @@ async function cacheIcon(key, url) {
     return task;
 }
 
-function getIconSrc(key, url) {
+function getIconSrc(key, url, pageUrl) {
+    const preferredUrl = url || (pageUrl ? getFavicon(pageUrl) : null) || "icon.png";
+
     // 1) In-memory cache
     const mem = _iconCacheInMemory.get(key);
     if (mem && _isIconFresh(mem)) return mem.data;
@@ -502,7 +556,7 @@ function getIconSrc(key, url) {
         _iconCacheInMemory.set(key, { data: legacy, updatedAt: 0, version: ICON_CACHE_VERSION });
         _putIconToDB(key, legacy).catch(() => {});
         // Refresh asynchronously to ensure freshness
-        cacheIcon(key, url);
+        cacheIcon(key, preferredUrl, pageUrl);
         return legacy;
     }
 
@@ -515,14 +569,14 @@ function getIconSrc(key, url) {
             // Stale: show it first, then refresh
             _iconCacheInMemory.set(key, entry);
             _updateImagesForKey(key, entry.data);
-            cacheIcon(key, url);
+            cacheIcon(key, preferredUrl, pageUrl);
         } else {
-            cacheIcon(key, url);
+            cacheIcon(key, preferredUrl, pageUrl);
         }
-    }).catch(() => cacheIcon(key, url));
+    }).catch(() => cacheIcon(key, preferredUrl, pageUrl));
 
     // 4) Fallback to live URL while cache resolves
-    return url;
+    return preferredUrl;
 }
 
 // --- UI Rendering ---
@@ -610,23 +664,31 @@ function renderShortcutsList() {
         div.className = "list-item";
 
         const spanInfo = document.createElement("span");
-        const img = document.createElement('img');
-        // Prefer cached icon; cache key matches grid view (url as stable identifier)
-        const cacheKey = `shortcut_${shortcut.url}`;
-        img.src = getIconSrc(cacheKey, shortcut.icon);
-        img.dataset.cacheKey = cacheKey;
-        img.width = 20;
-        img.height = 20;
-        img.onerror = () => {
-            // Fallback to first letter to avoid repeated remote fetch retries
-            img.style.display = 'none';
-            const fallback = document.createElement('span');
-            fallback.textContent = shortcut.name.charAt(0).toUpperCase();
-            fallback.style.fontWeight = '600';
-            spanInfo.appendChild(fallback);
-        };
-        spanInfo.appendChild(img);
-        spanInfo.appendChild(document.createTextNode(' ' + shortcut.name));
+        if (_isFolder(shortcut)) {
+            const folderIcon = document.createElement('span');
+            folderIcon.textContent = '[Folder]';
+            folderIcon.style.marginRight = '8px';
+            spanInfo.appendChild(folderIcon);
+            spanInfo.appendChild(document.createTextNode(shortcut.name || 'Folder'));
+        } else {
+            const img = document.createElement('img');
+            // Prefer cached icon; cache key matches grid view (url as stable identifier)
+            const cacheKey = `shortcut_${shortcut.url}`;
+            img.src = getIconSrc(cacheKey, shortcut.icon, shortcut.url);
+            img.dataset.cacheKey = cacheKey;
+            img.width = 20;
+            img.height = 20;
+            img.onerror = () => {
+                // Fallback to first letter to avoid repeated remote fetch retries
+                img.style.display = 'none';
+                const fallback = document.createElement('span');
+                fallback.textContent = shortcut.name.charAt(0).toUpperCase();
+                fallback.style.fontWeight = '600';
+                spanInfo.appendChild(fallback);
+            };
+            spanInfo.appendChild(img);
+            spanInfo.appendChild(document.createTextNode(' ' + shortcut.name));
+        }
         div.appendChild(spanInfo);
 
         const deleteBtn = document.createElement("span");
@@ -648,22 +710,65 @@ function renderShortcutsGrid() {
     
     shortcuts.forEach((shortcut, index) => {
         const a = document.createElement("a");
-        a.href = shortcut.url;
         a.className = "shortcut-item";
         a.draggable = true;
         a.dataset.index = index;
+
+        if (_isFolder(shortcut) && FOLDER_FEATURE_ENABLED) {
+            a.classList.add('shortcut-folder');
+            a.href = 'javascript:void(0)';
+            a.dataset.type = 'folder';
+            a.addEventListener('click', () => openFolderOverlay(index));
+
+            const iconDiv = document.createElement("div");
+            iconDiv.className = "shortcut-icon folder-icon";
+
+            const stack = document.createElement('div');
+            stack.className = 'folder-stack';
+            const previews = shortcut.items.slice(0, 4);
+            previews.forEach(item => {
+                const cell = document.createElement('div');
+                cell.className = 'folder-stack-cell';
+                const img = document.createElement('img');
+                img.alt = item.name;
+                const cacheKey = `shortcut_${item.url || item.id}`;
+                img.src = getIconSrc(cacheKey, item.icon || '', item.url);
+                img.onerror = () => {
+                    img.style.display = 'none';
+                    cell.textContent = (item.name || '?').charAt(0).toUpperCase();
+                };
+                cell.appendChild(img);
+                stack.appendChild(cell);
+            });
+            if (previews.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'folder-stack-empty';
+                empty.textContent = '[Folder]';
+                stack.appendChild(empty);
+            }
+            iconDiv.appendChild(stack);
+
+            const nameDiv = document.createElement("div");
+            nameDiv.className = "shortcut-name";
+            nameDiv.textContent = shortcut.name || 'Folder';
+
+            a.appendChild(iconDiv);
+            a.appendChild(nameDiv);
+        } else {
+            a.href = shortcut.url;
+            a.dataset.type = 'item';
 
         const iconDiv = document.createElement("div");
         iconDiv.className = "shortcut-icon loading"; // Add loading class for skeleton
 
         const img = document.createElement("img");
         img.alt = shortcut.name;
-        
-        // Use cached icon with stable key based on URL (not index, which changes on delete)
-        const cacheKey = `shortcut_${shortcut.url}`;
-        img.dataset.cacheKey = cacheKey; // For updating after cache completes
-        const iconSrc = getIconSrc(cacheKey, shortcut.icon);
-        img.src = iconSrc;
+            
+            // Use cached icon with stable key based on URL (not index, which changes on delete)
+            const cacheKey = `shortcut_${shortcut.url}`;
+            img.dataset.cacheKey = cacheKey; // For updating after cache completes
+            const iconSrc = getIconSrc(cacheKey, shortcut.icon, shortcut.url);
+            img.src = iconSrc;
 
         // Remove loading class when image loads or fails
         img.onload = () => iconDiv.classList.remove("loading");
@@ -684,6 +789,7 @@ function renderShortcutsGrid() {
 
         a.appendChild(iconDiv);
         a.appendChild(nameDiv);
+        }
         
         // Add drag event listeners
         a.addEventListener('dragstart', handleShortcutDragStart);
@@ -827,9 +933,18 @@ if (showShortcutNamesCheckbox) {
 
 // ==================== Shortcut Drag & Drop Sorting ====================
 let draggedShortcutIndex = null;
+let folderOverlay = null;
+let folderOverlayContent = null;
+let folderOverlayInput = null;
+let currentFolderIndex = null;
+let mergeHoverTimer = null;
+let mergeAllowedIndex = null;
+let currentMergeTargetIndex = null;
 
 function handleShortcutDragStart(e) {
     draggedShortcutIndex = parseInt(e.currentTarget.dataset.index);
+    currentMergeTargetIndex = null;
+    mergeAllowedIndex = null;
     e.currentTarget.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', draggedShortcutIndex);
@@ -851,11 +966,15 @@ function handleShortcutDragEnd(e) {
     // Remove drag-over class from all items
     document.querySelectorAll('.shortcut-item').forEach(item => {
         item.classList.remove('drag-over');
+        item.classList.remove('drag-over-merge');
     });
     if (shortcutsGrid) {
         shortcutsGrid.classList.remove('dragging-active');
     }
+    if (mergeHoverTimer) clearTimeout(mergeHoverTimer);
     draggedShortcutIndex = null;
+    currentMergeTargetIndex = null;
+    mergeAllowedIndex = null;
 }
 
 function handleShortcutDragOver(e) {
@@ -867,31 +986,236 @@ function handleShortcutDragOver(e) {
     
     if (draggedShortcutIndex !== null && targetIndex !== draggedShortcutIndex) {
         target.classList.add('drag-over');
+
+        if (!FOLDER_FEATURE_ENABLED) return;
+
+        // Only start timer if we are new to this target
+        if (currentMergeTargetIndex !== targetIndex) {
+            // Clean up previous target if any
+            if (mergeHoverTimer) clearTimeout(mergeHoverTimer);
+            if (currentMergeTargetIndex !== null) {
+                const oldEl = shortcutsGrid.querySelector(`.shortcut-item[data-index="${currentMergeTargetIndex}"]`);
+                if (oldEl) oldEl.classList.remove('drag-over-merge');
+            }
+            
+            currentMergeTargetIndex = targetIndex;
+            mergeAllowedIndex = null;
+
+            mergeHoverTimer = setTimeout(() => {
+                // Double check if we are still on the same target
+                if (currentMergeTargetIndex === targetIndex) {
+                    mergeAllowedIndex = targetIndex;
+                    target.classList.add('drag-over-merge');
+                }
+            }, 800); // 0.8s hover to allow merge
+        }
     }
 }
 
 function handleShortcutDragLeave(e) {
-    e.currentTarget.classList.remove('drag-over');
+    const target = e.currentTarget;
+    // Ignore leave events triggered by children
+    if (target.contains(e.relatedTarget)) return;
+
+    target.classList.remove('drag-over');
+    target.classList.remove('drag-over-merge');
+    
+    if (!FOLDER_FEATURE_ENABLED) return;
+
+    const targetIndex = parseInt(target.dataset.index);
+    if (currentMergeTargetIndex === targetIndex) {
+        if (mergeHoverTimer) clearTimeout(mergeHoverTimer);
+        currentMergeTargetIndex = null;
+        mergeAllowedIndex = null;
+    }
 }
 
 function handleShortcutDrop(e) {
     e.preventDefault();
     e.currentTarget.classList.remove('drag-over');
+    e.currentTarget.classList.remove('drag-over-merge');
     if (shortcutsGrid) {
         shortcutsGrid.classList.remove('dragging-active');
     }
+    if (mergeHoverTimer) clearTimeout(mergeHoverTimer);
     
     const targetIndex = parseInt(e.currentTarget.dataset.index);
+    currentMergeTargetIndex = null;
     
-    if (draggedShortcutIndex !== null && targetIndex !== draggedShortcutIndex) {
-        // Reorder shortcuts array
-        const draggedItem = shortcuts[draggedShortcutIndex];
+    if (draggedShortcutIndex === null || targetIndex === draggedShortcutIndex) return;
+
+    const draggedItem = shortcuts[draggedShortcutIndex];
+    const targetItem = shortcuts[targetIndex];
+
+    // If drop target is a folder, push into folder (only when feature enabled)
+    if (FOLDER_FEATURE_ENABLED && _isFolder(targetItem)) {
+        shortcuts.splice(draggedShortcutIndex, 1);
+        _ensureShortcutId(draggedItem);
+        targetItem.items.push(draggedItem);
+        saveShortcuts();
+        return;
+    }
+
+    const allowMerge = FOLDER_FEATURE_ENABLED && mergeAllowedIndex === targetIndex;
+
+    // If dragging a folder onto item, just reorder
+    if (_isFolder(draggedItem) && !_isFolder(targetItem)) {
         shortcuts.splice(draggedShortcutIndex, 1);
         shortcuts.splice(targetIndex, 0, draggedItem);
-        
-        // Save and re-render
         saveShortcuts();
+            return;
+        }
+
+    // Create folder when item dropped onto another item
+    if (!_isFolder(draggedItem) && !_isFolder(targetItem) && allowMerge) {
+        const higher = Math.max(draggedShortcutIndex, targetIndex);
+        const lower = Math.min(draggedShortcutIndex, targetIndex);
+        const first = shortcuts[lower];
+        const second = shortcuts[higher];
+        shortcuts.splice(higher, 1);
+        shortcuts.splice(lower, 1);
+        _ensureShortcutId(first);
+        _ensureShortcutId(second);
+        const folder = {
+            type: 'folder',
+            name: _createFolderName(),
+            items: [first, second]
+        };
+        shortcuts.splice(lower, 0, folder);
+        saveShortcuts();
+        return;
     }
+
+    // Default reorder
+    shortcuts.splice(draggedShortcutIndex, 1);
+    shortcuts.splice(targetIndex, 0, draggedItem);
+    saveShortcuts();
+}
+
+// ==================== Folder Overlay / Management ====================
+
+function _ensureFolderOverlay() {
+    if (folderOverlay) return;
+    folderOverlay = document.createElement('div');
+    folderOverlay.className = 'folder-overlay';
+    folderOverlay.innerHTML = `
+        <div class="folder-bubble">
+            <div class="folder-bubble-header">
+                <input id="folderOverlayInput" class="folder-bubble-input" />
+                <button id="folderOverlayClose" class="folder-bubble-close">&times;</button>
+            </div>
+            <div id="folderOverlayContent" class="folder-bubble-content"></div>
+        </div>
+    `;
+    document.body.appendChild(folderOverlay);
+    folderOverlayContent = folderOverlay.querySelector('#folderOverlayContent');
+    folderOverlayInput = folderOverlay.querySelector('#folderOverlayInput');
+    const closeBtn = folderOverlay.querySelector('#folderOverlayClose');
+    closeBtn.addEventListener('click', closeFolderOverlay);
+    folderOverlay.addEventListener('click', (e) => {
+        if (e.target === folderOverlay) closeFolderOverlay();
+    });
+}
+
+function _positionFolderOverlay(targetEl) {
+    if (!folderOverlay || !targetEl) return;
+    const rect = targetEl.getBoundingClientRect();
+    const bubble = folderOverlay.querySelector('.folder-bubble');
+    const bubbleRect = bubble.getBoundingClientRect();
+    const top = rect.bottom + 12;
+    let left = rect.left + rect.width / 2 - bubbleRect.width / 2;
+    left = Math.max(12, Math.min(left, window.innerWidth - bubbleRect.width - 12));
+    folderOverlay.style.display = 'flex';
+    bubble.style.top = `${top}px`;
+    bubble.style.left = `${left}px`;
+}
+
+function openFolderOverlay(index) {
+    currentFolderIndex = index;
+    const folder = shortcuts[index];
+    if (!_isFolder(folder)) return;
+    _ensureFolderOverlay();
+    folderOverlayInput.value = folder.name || '';
+    folderOverlayContent.innerHTML = '';
+    folder.items.forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.className = 'folder-item-row';
+        const left = document.createElement('div');
+        left.className = 'folder-item-info';
+        const img = document.createElement('img');
+        const cacheKey = `shortcut_${item.url || item.id}`;
+        img.src = getIconSrc(cacheKey, item.icon || '', item.url);
+        img.onerror = () => {
+            img.style.display = 'none';
+            const fallback = document.createElement('span');
+            fallback.textContent = (item.name || '?').charAt(0).toUpperCase();
+            fallback.className = 'folder-item-fallback';
+            left.appendChild(fallback);
+        };
+        img.width = 20;
+        img.height = 20;
+        left.appendChild(img);
+        const text = document.createElement('span');
+        text.textContent = item.name;
+        left.appendChild(text);
+
+        const actions = document.createElement('div');
+        actions.className = 'folder-item-actions';
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = 'Remove';
+        removeBtn.addEventListener('click', () => {
+            folder.items.splice(idx, 1);
+            if (folder.items.length === 1) {
+                const lone = folder.items[0];
+                shortcuts.splice(index, 1, lone);
+            } else if (folder.items.length === 0) {
+                shortcuts.splice(index, 1);
+            }
+            saveShortcuts();
+            openFolderOverlay(index);
+        });
+
+        const extractBtn = document.createElement('button');
+        extractBtn.textContent = 'Extract';
+        extractBtn.addEventListener('click', () => {
+            const extracted = folder.items.splice(idx, 1)[0];
+            shortcuts.splice(index + 1, 0, extracted);
+            if (folder.items.length === 1) {
+                const lone = folder.items[0];
+                shortcuts.splice(index, 1, lone);
+            } else if (folder.items.length === 0) {
+                shortcuts.splice(index, 1);
+            }
+            saveShortcuts();
+            openFolderOverlay(index);
+        });
+
+        actions.appendChild(removeBtn);
+        actions.appendChild(extractBtn);
+
+        row.appendChild(left);
+        row.appendChild(actions);
+        folderOverlayContent.appendChild(row);
+    });
+
+    folderOverlayInput.onchange = () => {
+        const folder = shortcuts[currentFolderIndex];
+        if (_isFolder(folder)) {
+            folder.name = folderOverlayInput.value.trim() || folder.name;
+        saveShortcuts();
+        }
+    };
+
+    _positionFolderOverlay(shortcutsGrid.querySelector(`.shortcut-item[data-index="${index}"]`));
+    document.body.classList.add('modal-open');
+}
+
+function closeFolderOverlay() {
+    if (folderOverlay) {
+        folderOverlay.style.display = 'none';
+    }
+    currentFolderIndex = null;
+    document.body.classList.remove('modal-open');
 }
 
 // ==================== Settings List Drag & Drop ====================
@@ -996,7 +1320,7 @@ async function init() {
     if (typeof WallpaperManager !== 'undefined') {
         try {
             await WallpaperManager.init();
-        } catch (e) {
+    } catch (e) {
             console.warn('Failed to initialize WallpaperManager:', e);
         }
     }
