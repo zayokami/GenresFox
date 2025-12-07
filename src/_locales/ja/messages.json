@@ -202,6 +202,18 @@
     },
     "resetToBing": {
         "message": "Bing 日替わり壁紙に切り替えました"
+    },
+    "deleteShortcutConfirm": {
+        "message": "ショートカット「%s」を削除しますか？"
+    },
+    "searchErrorUnsafeUrl": {
+        "message": "この URL は安全ではない可能性があります。"
+    },
+    "searchErrorNavigationFailed": {
+        "message": "リンクを開けませんでした。"
+    },
+    "searchErrorNoEngine": {
+        "message": "利用できる検索エンジンがありません。"
     }
 }
 

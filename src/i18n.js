@@ -76,7 +76,11 @@ const I18n = (function () {
             "processingStarting": "开始处理...",
             "errorImageTooLarge": "图片文件过大（最大 50MB）",
             "errorResolutionTooHigh": "图片分辨率过高（最大 5000 万像素）",
-            "resetToBing": "已切换到 Bing 每日壁纸"
+            "resetToBing": "已切换到 Bing 每日壁纸",
+            "deleteShortcutConfirm": "确认删除快捷方式“%s”？",
+            "searchErrorUnsafeUrl": "无法访问此网址，可能不安全。",
+            "searchErrorNavigationFailed": "链接打开失败。",
+            "searchErrorNoEngine": "没有可用的搜索引擎。"
         },
         "en": {
             "appTitle": "GenresFox",
@@ -146,7 +150,11 @@ const I18n = (function () {
             "processingStarting": "Starting...",
             "errorImageTooLarge": "Image file too large (max 50MB)",
             "errorResolutionTooHigh": "Image resolution too high (max 50 megapixels)",
-            "resetToBing": "Switched to Bing Daily Wallpaper"
+            "resetToBing": "Switched to Bing Daily Wallpaper",
+            "deleteShortcutConfirm": "Delete shortcut \"%s\"?",
+            "searchErrorUnsafeUrl": "This URL may be unsafe.",
+            "searchErrorNavigationFailed": "Failed to open the link.",
+            "searchErrorNoEngine": "No available search engine."
         },
         "zh_TW": {
             "appTitle": "GenresFox",
@@ -216,7 +224,11 @@ const I18n = (function () {
             "processingStarting": "開始處理...",
             "errorImageTooLarge": "圖片檔案過大（最大 50MB）",
             "errorResolutionTooHigh": "圖片解析度過高（最大 5000 萬像素）",
-            "resetToBing": "已切換到 Bing 每日桌布"
+            "resetToBing": "已切換到 Bing 每日桌布",
+            "deleteShortcutConfirm": "確認刪除捷徑「%s」？",
+            "searchErrorUnsafeUrl": "無法訪問此網址，可能不安全。",
+            "searchErrorNavigationFailed": "連結開啟失敗。",
+            "searchErrorNoEngine": "沒有可用的搜尋引擎。"
         },
         "ja": {
             "appTitle": "GenresFox",
@@ -286,7 +298,11 @@ const I18n = (function () {
             "processingStarting": "処理を開始...",
             "errorImageTooLarge": "画像ファイルが大きすぎます（最大 50MB）",
             "errorResolutionTooHigh": "画像の解像度が高すぎます（最大 5000 万ピクセル）",
-            "resetToBing": "Bing 日替わり壁紙に切り替えました"
+            "resetToBing": "Bing 日替わり壁紙に切り替えました",
+            "deleteShortcutConfirm": "ショートカット「%s」を削除しますか？",
+            "searchErrorUnsafeUrl": "この URL は安全ではない可能性があります。",
+            "searchErrorNavigationFailed": "リンクを開けませんでした。",
+            "searchErrorNoEngine": "利用できる検索エンジンがありません。"
         }
     };
 

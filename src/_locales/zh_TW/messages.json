@@ -202,6 +202,18 @@
     },
     "resetToBing": {
         "message": "已切換到 Bing 每日桌布"
+    },
+    "deleteShortcutConfirm": {
+        "message": "確認刪除捷徑「%s」？"
+    },
+    "searchErrorUnsafeUrl": {
+        "message": "無法訪問此網址，可能不安全。"
+    },
+    "searchErrorNavigationFailed": {
+        "message": "連結開啟失敗。"
+    },
+    "searchErrorNoEngine": {
+        "message": "沒有可用的搜尋引擎。"
     }
 }
 

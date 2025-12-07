@@ -10,6 +10,7 @@
 
 [English](#english) | [中文](#中文)
 
+![Home - Dark](assets/Screenshots/Show-1.png)
 </div>
 
 ---

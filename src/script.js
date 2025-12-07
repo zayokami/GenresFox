@@ -822,7 +822,38 @@ window.deleteEngine = (key) => {
     saveEngines();
 };
 
-window.deleteShortcut = (index) => {
+window.deleteShortcut = (index, options = {}) => {
+    const shortcut = shortcuts[index];
+    if (!shortcut) return;
+
+    const { silent } = options;
+    if (!silent) {
+        const label = shortcut.name || shortcut.url || 'shortcut';
+        const i18nMsg = (window.I18n && I18n.getMessage) ? I18n.getMessage('deleteShortcutConfirm') : '';
+        let message = i18nMsg || '';
+
+        // Fallback to browser language if i18n not ready or missing
+        if (!message) {
+            const lang = (window.I18n && I18n.getCurrentLanguage && I18n.getCurrentLanguage()) ||
+                (navigator.language || '').toLowerCase();
+            if (lang.startsWith('zh')) {
+                message = '确认删除快捷方式“%s”？';
+            } else if (lang.startsWith('ja')) {
+                message = 'ショートカット「%s」を削除しますか？';
+            } else {
+                message = 'Delete shortcut "%s"?';
+            }
+        }
+
+        if (message.includes('%s')) {
+            message = message.replace('%s', label);
+        } else {
+            message = `${message} "${label}"?`;
+        }
+        const confirmed = confirm(message);
+        if (!confirmed) return;
+    }
+
     shortcuts.splice(index, 1);
     saveShortcuts();
 };
@@ -857,10 +888,24 @@ if (resetShortcutsBtn) {
     });
 }
 
-// Security: Check if URL uses dangerous protocol
+// Security: Allow only http/https and reject control chars / blank
 function isDangerousUrl(url) {
-    const dangerous = /^(javascript|data|vbscript|file):/i;
-    return dangerous.test(url.trim());
+    if (!url || typeof url !== 'string') return true;
+    const trimmed = url.trim();
+    // Reject control/non-printable chars
+    if (/[^\x20-\x7E]/.test(trimmed)) return true;
+
+    try {
+        // If protocol missing, assume https for validation only
+        const candidate = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+        const parsed = new URL(candidate);
+        const proto = (parsed.protocol || '').toLowerCase();
+        if (proto !== 'http:' && proto !== 'https:') return true;
+        return false;
+    } catch (e) {
+        // If parsing失败，视为危险
+        return true;
+    }
 }
 
 // Add Engine
@@ -1301,29 +1346,35 @@ function handleListDrop(e) {
 
 // Init
 async function init() {
+    const safeInit = async (label, fn) => {
+        try {
+            await fn();
+        } catch (e) {
+            console.warn(`Failed to initialize ${label}:`, e);
+        }
+    };
+
     // Initialize i18n module first
-    if (typeof I18n !== 'undefined') {
-        I18n.init();
-    }
+    await safeInit('i18n', () => {
+        if (typeof I18n !== 'undefined' && I18n.init) {
+            I18n.init();
+        }
+    });
 
     // Initialize Accessibility Manager (applies theme/font settings early)
     // Note: Don't sync UI yet, custom selects aren't created
-    if (typeof AccessibilityManager !== 'undefined') {
-        try {
+    await safeInit('AccessibilityManager', () => {
+        if (typeof AccessibilityManager !== 'undefined' && AccessibilityManager.init) {
             AccessibilityManager.init();
-        } catch (e) {
-            console.warn('Failed to initialize AccessibilityManager:', e);
         }
-    }
+    });
 
     // Initialize Wallpaper Manager
-    if (typeof WallpaperManager !== 'undefined') {
-        try {
-            await WallpaperManager.init();
-    } catch (e) {
-            console.warn('Failed to initialize WallpaperManager:', e);
+    await safeInit('WallpaperManager', async () => {
+        if (typeof WallpaperManager !== 'undefined' && WallpaperManager.init) {
+            return WallpaperManager.init();
         }
-    }
+    });
 
     // Ensure shortcuts exist (Double check)
     if (!shortcuts || shortcuts.length === 0) {
@@ -1337,14 +1388,18 @@ async function init() {
     }
     
     // Initialize custom selects after i18n is applied
-    if (typeof CustomSelect !== 'undefined') {
-        CustomSelect.init('#tab-accessibility select');
-    }
+    await safeInit('CustomSelect', () => {
+        if (typeof CustomSelect !== 'undefined' && CustomSelect.init) {
+            CustomSelect.init('#tab-accessibility select');
+        }
+    });
     
     // Now sync accessibility UI after custom selects exist
-    if (typeof AccessibilityManager !== 'undefined' && AccessibilityManager.syncUI) {
-        AccessibilityManager.syncUI();
-    }
+    await safeInit('AccessibilityManager.syncUI', () => {
+        if (typeof AccessibilityManager !== 'undefined' && AccessibilityManager.syncUI) {
+            AccessibilityManager.syncUI();
+        }
+    });
     
     updateUI();
     renderEnginesList();
