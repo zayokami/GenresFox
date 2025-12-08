@@ -53,6 +53,12 @@
     "resetShortcuts": {
         "message": "重置快捷方式"
     },
+    "shortcutOpenCurrent": {
+        "message": "当前页面打开"
+    },
+    "shortcutOpenNewTab": {
+        "message": "新标签页打开"
+    },
     "searchBoxSettings": {
         "message": "搜索框设置"
     },

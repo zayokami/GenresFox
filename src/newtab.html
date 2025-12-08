@@ -179,6 +179,16 @@
                                 <input type="checkbox" id="showShortcutNames" checked>
                                 <span data-i18n="showShortcutNames">Show shortcut names</span>
                             </label>
+                            <div class="radio-group">
+                                <label class="checkbox-label">
+                                    <input type="radio" name="shortcutOpenTarget" id="shortcutOpenCurrent" value="current" checked>
+                                    <span data-i18n="shortcutOpenCurrent">Open in current tab</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="radio" name="shortcutOpenTarget" id="shortcutOpenNewTab" value="newtab">
+                                    <span data-i18n="shortcutOpenNewTab">Open in new tab</span>
+                                </label>
+                            </div>
                         </div>
                         <p class="setting-hint" data-i18n="shortcutDragHint">💡 Drag shortcuts to reorder them</p>
                         <div id="shortcutsList" class="list-group sortable-list"></div>
@@ -284,7 +294,7 @@
                 <div class="tab-content" id="tab-about">
                     <div class="about-info">
                         <h3>GenresFox</h3>
-                        <p>Version 0.3.7</p>
+                        <p>Version 0.3.8</p>
                         <p data-i18n="aboutDescription">A fully open-source, extremely clean, and highly customizable new tab page extension.</p>
                         <p>&copy; 2025 zayoka. All rights reserved.</p>
                         <br>

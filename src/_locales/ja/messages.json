@@ -53,6 +53,12 @@
     "resetShortcuts": {
         "message": "ショートカットをリセット"
     },
+    "shortcutOpenCurrent": {
+        "message": "現在のタブで開く"
+    },
+    "shortcutOpenNewTab": {
+        "message": "新しいタブで開く"
+    },
     "searchBoxSettings": {
         "message": "検索ボックス設定"
     },

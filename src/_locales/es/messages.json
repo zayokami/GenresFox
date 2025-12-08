@@ -17,6 +17,8 @@
     "blurAmount": { "message": "Desenfoque" },
     "vignetteAmount": { "message": "Viñeta" },
     "resetShortcuts": { "message": "Restablecer accesos" },
+    "shortcutOpenCurrent": { "message": "Abrir en la pestaña actual" },
+    "shortcutOpenNewTab": { "message": "Abrir en nueva pestaña" },
     "searchBoxSettings": { "message": "Ajustes de la caja de búsqueda" },
     "searchBoxWidth": { "message": "Ancho" },
     "searchBoxScale": { "message": "Tamaño" },

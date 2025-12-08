@@ -114,6 +114,19 @@ const WallpaperManager = (function () {
     // ==================== IndexedDB Operations ====================
 
     /**
+     * Run a task when the browser is idle (fallback to setTimeout)
+     * @param {Function} fn
+     * @param {number} timeout
+     */
+    function _runWhenIdle(fn, timeout = 1000) {
+        if (typeof requestIdleCallback === 'function') {
+            requestIdleCallback(() => fn(), { timeout });
+        } else {
+            setTimeout(fn, 0);
+        }
+    }
+
+    /**
      * Open IndexedDB database connection
      * @returns {Promise<IDBDatabase>}
      */
@@ -1713,24 +1726,13 @@ const WallpaperManager = (function () {
         // If nothing loaded yet, respect saved source preference
         if (!wallpaperLoaded) {
             try {
-                // Don't block UI on network; kick off Bing fetch in background
-                _applyBingWallpaper().catch((e) => console.warn('Failed to load Bing wallpaper (async):', e));
+                // Don't block UI on network; kick off Bing fetch in background when idle
+                _runWhenIdle(() => {
+                    _applyBingWallpaper().catch((e) => console.warn('Failed to load Bing wallpaper (async):', e));
+                }, 1500);
                 wallpaperLoaded = true; // allow UI to continue with transparent/previous state
             } catch (e) {
                 console.warn('Failed to load preferred wallpaper source:', e);
-            }
-        }
-
-        // If still no wallpaper, fall back to Bing daily wallpaper
-        if (!wallpaperLoaded) {
-            try {
-                const bingLoaded = await _applyBingWallpaper();
-                if (bingLoaded) {
-                    wallpaperLoaded = true;
-                    console.log('Loaded Bing daily wallpaper');
-                }
-            } catch (e) {
-                console.warn('Failed to load Bing wallpaper:', e);
             }
         }
 
@@ -1765,8 +1767,8 @@ const WallpaperManager = (function () {
         // 3. Bind events
         _bindEvents();
 
-        // 4. Load wallpaper
-        await _loadWallpaper();
+        // 4. Load wallpaper (non-blocking to avoid first-paint stall)
+        _loadWallpaper().catch((e) => console.warn('Wallpaper load failed:', e));
 
         // 5. Apply effects
         _applyWallpaperEffects();

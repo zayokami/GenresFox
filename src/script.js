@@ -281,6 +281,8 @@ const addShortcutBtn = document.getElementById("addShortcutBtn");
 const engineSelector = document.querySelector(".engine-selector");
 const selectedEngineIcon = document.querySelector(".selected-engine");
 const engineDropdown = document.querySelector(".engine-dropdown");
+const shortcutOpenCurrent = document.getElementById("shortcutOpenCurrent");
+const shortcutOpenNewTab = document.getElementById("shortcutOpenNewTab");
 
 // Default Data
 const defaultEngines = {
@@ -320,6 +322,15 @@ try {
 let currentEngine = localStorage.getItem("preferredEngine") || "google";
 
 const FOLDER_FEATURE_ENABLED = false; // Temporarily disable folder feature
+const SHORTCUT_TARGET_KEY = 'shortcutOpenTarget';
+
+// --- Image helpers to reduce hotlink failures ---
+function _decorateImg(img) {
+    if (!img) return;
+    img.referrerPolicy = 'no-referrer';
+    img.decoding = 'async';
+    img.loading = 'lazy';
+}
 
 let shortcuts;
 try {
@@ -599,6 +610,11 @@ function updateUI() {
     img.alt = engine.name;
     img.width = 20;
     img.height = 20;
+    _decorateImg(img);
+    img.onerror = () => {
+        img.onerror = null;
+        img.src = 'icon.png';
+    };
     img.dataset.cacheKey = currentEngine; // For updating after cache completes
     selectedEngineIcon.appendChild(img);
 
@@ -617,6 +633,11 @@ function renderEngineDropdown() {
         img.src = getIconSrc(key, engine.icon);
         img.width = 20;
         img.height = 20;
+        _decorateImg(img);
+        img.onerror = () => {
+            img.onerror = null;
+            img.src = 'icon.png';
+        };
         img.dataset.cacheKey = key; // For updating after cache completes
         
         const span = document.createElement('span');
@@ -641,6 +662,11 @@ function renderEnginesList() {
         img.src = getIconSrc(key, engine.icon);
         img.width = 20;
         img.height = 20;
+        _decorateImg(img);
+        img.onerror = () => {
+            img.onerror = null;
+            img.src = 'icon.png';
+        };
         spanInfo.appendChild(img);
         spanInfo.appendChild(document.createTextNode(' ' + engine.name));
         div.appendChild(spanInfo);
@@ -672,6 +698,7 @@ function renderShortcutsList() {
             spanInfo.appendChild(document.createTextNode(shortcut.name || 'Folder'));
         } else {
             const img = document.createElement('img');
+            _decorateImg(img);
             // Prefer cached icon; cache key matches grid view (url as stable identifier)
             const cacheKey = `shortcut_${shortcut.url}`;
             img.src = getIconSrc(cacheKey, shortcut.icon, shortcut.url);
@@ -707,12 +734,17 @@ function renderShortcutsGrid() {
     // Apply hide-names class based on setting
     const showNames = localStorage.getItem('showShortcutNames') !== 'false';
     shortcutsGrid.classList.toggle('hide-names', !showNames);
+    const targetPref = (localStorage.getItem(SHORTCUT_TARGET_KEY) || 'current') === 'newtab' ? '_blank' : '_self';
     
     shortcuts.forEach((shortcut, index) => {
         const a = document.createElement("a");
         a.className = "shortcut-item";
         a.draggable = true;
         a.dataset.index = index;
+        a.target = targetPref;
+        if (targetPref === '_blank') {
+            a.rel = 'noopener noreferrer';
+        }
 
         if (_isFolder(shortcut) && FOLDER_FEATURE_ENABLED) {
             a.classList.add('shortcut-folder');
@@ -763,6 +795,7 @@ function renderShortcutsGrid() {
 
         const img = document.createElement("img");
         img.alt = shortcut.name;
+        _decorateImg(img);
             
             // Use cached icon with stable key based on URL (not index, which changes on delete)
             const cacheKey = `shortcut_${shortcut.url}`;
@@ -973,6 +1006,33 @@ if (showShortcutNamesCheckbox) {
     showShortcutNamesCheckbox.addEventListener('change', (e) => {
         localStorage.setItem('showShortcutNames', e.target.checked);
         shortcutsGrid.classList.toggle('hide-names', !e.target.checked);
+    });
+}
+
+// ==================== Shortcut Open Target ====================
+function _syncShortcutTargetUI() {
+    const target = localStorage.getItem(SHORTCUT_TARGET_KEY) || 'current';
+    if (shortcutOpenCurrent) shortcutOpenCurrent.checked = target !== 'newtab';
+    if (shortcutOpenNewTab) shortcutOpenNewTab.checked = target === 'newtab';
+}
+
+_syncShortcutTargetUI();
+
+if (shortcutOpenCurrent) {
+    shortcutOpenCurrent.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            localStorage.setItem(SHORTCUT_TARGET_KEY, 'current');
+            renderShortcutsGrid();
+        }
+    });
+}
+
+if (shortcutOpenNewTab) {
+    shortcutOpenNewTab.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            localStorage.setItem(SHORTCUT_TARGET_KEY, 'newtab');
+            renderShortcutsGrid();
+        }
     });
 }
 

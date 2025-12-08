@@ -53,6 +53,12 @@
     "resetShortcuts": {
         "message": "重設捷徑"
     },
+    "shortcutOpenCurrent": {
+        "message": "在當前頁面開啟"
+    },
+    "shortcutOpenNewTab": {
+        "message": "在新分頁開啟"
+    },
     "searchBoxSettings": {
         "message": "搜尋框設定"
     },

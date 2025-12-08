@@ -53,6 +53,12 @@
     "resetShortcuts": {
         "message": "Reset Shortcuts"
     },
+    "shortcutOpenCurrent": {
+        "message": "Open in current tab"
+    },
+    "shortcutOpenNewTab": {
+        "message": "Open in new tab"
+    },
     "searchBoxSettings": {
         "message": "Search Box Settings"
     },

@@ -17,6 +17,8 @@
     "blurAmount": { "message": "Flou" },
     "vignetteAmount": { "message": "Vignette" },
     "resetShortcuts": { "message": "Réinitialiser les raccourcis" },
+    "shortcutOpenCurrent": { "message": "Ouvrir dans l’onglet actuel" },
+    "shortcutOpenNewTab": { "message": "Ouvrir dans un nouvel onglet" },
     "searchBoxSettings": { "message": "Paramètres de la recherche" },
     "searchBoxWidth": { "message": "Largeur" },
     "searchBoxScale": { "message": "Taille" },
