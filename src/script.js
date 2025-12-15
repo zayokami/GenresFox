@@ -564,9 +564,10 @@ function getIconSrc(key, url, pageUrl) {
     // 2) Legacy localStorage (migrate to DB asynchronously)
     const legacy = localStorage.getItem(`icon_cache_${key}`);
     if (legacy) {
-        _iconCacheInMemory.set(key, { data: legacy, updatedAt: 0, version: ICON_CACHE_VERSION });
+        // Treat legacy localStorage entry as fresh for this session so we don't refetch every render
+        _iconCacheInMemory.set(key, { data: legacy, updatedAt: Date.now(), version: ICON_CACHE_VERSION });
         _putIconToDB(key, legacy).catch(() => {});
-        // Refresh asynchronously to ensure freshness
+        // Refresh asynchronously to ensure long-term freshness
         cacheIcon(key, preferredUrl, pageUrl);
         return legacy;
     }
