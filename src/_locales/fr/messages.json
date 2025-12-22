@@ -67,7 +67,7 @@
     "processingSaving": { "message": "Enregistrement..." },
     "processingStarting": { "message": "Démarrage..." },
     "errorImageTooLarge": { "message": "Fichier trop volumineux (max 50MB)" },
-    "errorResolutionTooHigh": { "message": "Résolution trop élevée (max 50 mégapixels)" },
+    "errorResolutionTooHigh": { "message": "Résolution trop élevée (max 80 mégapixels)" },
     "resetToBing": { "message": "Passé au fond quotidien Bing" },
     "deleteShortcutConfirm": { "message": "Supprimer le raccourci \"%s\" ?" },
     "searchErrorUnsafeUrl": { "message": "Cette URL peut être dangereuse." },

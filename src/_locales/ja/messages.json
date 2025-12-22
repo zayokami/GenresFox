@@ -204,7 +204,7 @@
         "message": "画像ファイルが大きすぎます（最大 50MB）"
     },
     "errorResolutionTooHigh": {
-        "message": "画像の解像度が高すぎます（最大 5000 万ピクセル）"
+        "message": "画像の解像度が高すぎます（最大 8000 万ピクセル）"
     },
     "resetToBing": {
         "message": "Bing 日替わり壁紙に切り替えました"

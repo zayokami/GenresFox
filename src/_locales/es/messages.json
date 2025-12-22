@@ -67,7 +67,7 @@
     "processingSaving": { "message": "Guardando..." },
     "processingStarting": { "message": "Iniciando..." },
     "errorImageTooLarge": { "message": "Imagen demasiado grande (máx 50MB)" },
-    "errorResolutionTooHigh": { "message": "Resolución demasiado alta (máx 50 megapíxeles)" },
+    "errorResolutionTooHigh": { "message": "Resolución demasiado alta (máx 80 megapíxeles)" },
     "resetToBing": { "message": "Cambiado a fondo diario de Bing" },
     "deleteShortcutConfirm": { "message": "¿Eliminar acceso directo \"%s\"?" },
     "searchErrorUnsafeUrl": { "message": "Esta URL puede ser insegura." },

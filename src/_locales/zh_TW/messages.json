@@ -204,7 +204,7 @@
         "message": "圖片檔案過大（最大 50MB）"
     },
     "errorResolutionTooHigh": {
-        "message": "圖片解析度過高（最大 5000 萬像素）"
+        "message": "圖片解析度過高（最大 8000 萬像素）"
     },
     "resetToBing": {
         "message": "已切換到 Bing 每日桌布"

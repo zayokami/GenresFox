@@ -204,7 +204,7 @@
         "message": "图片文件过大（最大 50MB）"
     },
     "errorResolutionTooHigh": {
-        "message": "图片分辨率过高（最大 5000 万像素）"
+        "message": "图片分辨率过高（最大 8000 万像素）"
     },
     "resetToBing": {
         "message": "已切换到 Bing 每日壁纸"

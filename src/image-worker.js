@@ -17,7 +17,8 @@ let CONFIG = {
     FALLBACK_FORMAT: 'image/jpeg',
     TARGET_OUTPUT_SIZE: 5 * 1024 * 1024,
     WASM_URL: null,
-    WASM_ENABLED: false
+    WASM_ENABLED: false,
+    MAX_PIXELS: 80 * 1000 * 1000 // Keep for symmetry; enforced in main thread
 };
 
 // WASM state
@@ -25,7 +26,8 @@ const WASM = {
     instance: null,
     exports: null,
     ready: false,
-    allocPtr: 0
+    allocPtr: 0,
+    heapCapacity: 0
 };
 
 /**
@@ -167,6 +169,7 @@ async function loadWasm(url) {
         WASM.exports = instance.exports;
         WASM.ready = true;
         WASM.allocPtr = 0;
+        WASM.heapCapacity = instance.exports?.memory?.buffer?.byteLength || 0;
         console.log('[Worker] WASM loaded');
     } catch (err) {
         console.warn('[Worker] WASM load failed:', err);
@@ -185,11 +188,11 @@ function wasmAlloc(size) {
     const pageSize = 64 * 1024;
     const alignedSize = (size + 7) & ~7;
     let needed = WASM.allocPtr + alignedSize;
-    const current = memory.buffer.byteLength;
-    if (needed > current) {
-        const growPages = Math.ceil((needed - current) / pageSize);
+    if (needed > WASM.heapCapacity) {
+        const growPages = Math.ceil((needed - WASM.heapCapacity) / pageSize);
         try {
             memory.grow(growPages);
+            WASM.heapCapacity = memory.buffer.byteLength;
         } catch (e) {
             return null;
         }
@@ -267,34 +270,72 @@ ctx.onmessage = async function(e) {
                 // Process image
                 const { 
                     imageData, 
+                    imageBitmap,
                     maxWidth, 
                     maxHeight, 
                     screenWidth, 
                     screenHeight,
-                    format 
+                    format,
+                    alreadyScaled,
+                    originalWidth,
+                    originalHeight
                 } = data;
                 
                 const startTime = performance.now();
                 
-                // Calculate target dimensions
-                const { width: targetWidth, height: targetHeight } = calculateDimensions(
-                    imageData.width,
-                    imageData.height,
-                    maxWidth || CONFIG.MAX_WIDTH,
-                    maxHeight || CONFIG.MAX_HEIGHT,
-                    screenWidth,
-                    screenHeight
-                );
-                
-                // Process image
-                const canvas = await processImageData(
-                    imageData,
-                    targetWidth,
-                    targetHeight,
-                    (progress) => {
-                        ctx.postMessage({ type: 'progress', progress, id });
+                let targetWidth = maxWidth || CONFIG.MAX_WIDTH;
+                let targetHeight = maxHeight || CONFIG.MAX_HEIGHT;
+                let canvas;
+
+                if (alreadyScaled) {
+                    // Already scaled: prefer ImageBitmap path if provided
+                    const source = imageBitmap || imageData;
+                    targetWidth = source.width;
+                    targetHeight = source.height;
+                    canvas = new OffscreenCanvas(targetWidth, targetHeight);
+                    const outCtx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+                    if (imageBitmap) {
+                        outCtx.drawImage(imageBitmap, 0, 0, targetWidth, targetHeight);
+                        imageBitmap.close();
+                    } else {
+                        outCtx.putImageData(imageData, 0, 0);
                     }
-                );
+                    // Progress update for scaled path
+                    ctx.postMessage({ type: 'progress', progress: 60, id });
+                } else {
+                    // Calculate target dimensions
+                    const dims = calculateDimensions(
+                        (imageBitmap && imageBitmap.width) || imageData.width,
+                        (imageBitmap && imageBitmap.height) || imageData.height,
+                        maxWidth || CONFIG.MAX_WIDTH,
+                        maxHeight || CONFIG.MAX_HEIGHT,
+                        screenWidth,
+                        screenHeight
+                    );
+                    targetWidth = dims.width;
+                    targetHeight = dims.height;
+                    
+                    // Process image
+                    const src = imageBitmap || imageData;
+                    if (imageBitmap) {
+                        canvas = new OffscreenCanvas(targetWidth, targetHeight);
+                        const ctx2d = canvas.getContext('2d', { alpha: false, desynchronized: true });
+                        ctx2d.drawImage(imageBitmap, 0, 0, targetWidth, targetHeight);
+                        imageBitmap.close();
+                    } else {
+                        canvas = await processImageData(
+                            imageData,
+                            targetWidth,
+                            targetHeight,
+                            (progress) => {
+                                // Reduce progress chatter: only key stages
+                                if (progress === 35 || progress === 70 || progress === 90) {
+                                    ctx.postMessage({ type: 'progress', progress, id });
+                                }
+                            }
+                        );
+                    }
+                }
                 
                 ctx.postMessage({ type: 'progress', progress: 75, id });
                 
@@ -314,8 +355,8 @@ ctx.onmessage = async function(e) {
                         blob,
                         width: targetWidth,
                         height: targetHeight,
-                        originalWidth: imageData.width,
-                        originalHeight: imageData.height,
+                        originalWidth: originalWidth || imageData.width,
+                        originalHeight: originalHeight || imageData.height,
                         processedSize: blob.size,
                         processingTime: Math.round(endTime - startTime)
                     }

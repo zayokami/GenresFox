@@ -204,7 +204,7 @@
         "message": "Image file too large (max 50MB)"
     },
     "errorResolutionTooHigh": {
-        "message": "Image resolution too high (max 50 megapixels)"
+        "message": "Image resolution too high (max 80 megapixels)"
     },
     "resetToBing": {
         "message": "Switched to Bing Daily Wallpaper"
