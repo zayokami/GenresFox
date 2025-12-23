@@ -220,5 +220,11 @@
     },
     "searchErrorNoEngine": {
         "message": "没有可用的搜索引擎。"
+    },
+    "themeSectionTitle": {
+        "message": "主题"
+    },
+    "themeUseWallpaperAccent": {
+        "message": "使用壁纸主色作为主题色"
     }
 }

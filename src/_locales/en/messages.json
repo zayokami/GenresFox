@@ -220,5 +220,11 @@
     },
     "searchErrorNoEngine": {
         "message": "No available search engine."
+    },
+    "themeSectionTitle": {
+        "message": "Theme"
+    },
+    "themeUseWallpaperAccent": {
+        "message": "Use wallpaper colors as accent"
     }
 }

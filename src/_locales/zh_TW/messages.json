@@ -220,6 +220,12 @@
     },
     "searchErrorNoEngine": {
         "message": "沒有可用的搜尋引擎。"
+    },
+    "themeSectionTitle": {
+        "message": "主題"
+    },
+    "themeUseWallpaperAccent": {
+        "message": "使用桌布主色作為主題色"
     }
 }
 

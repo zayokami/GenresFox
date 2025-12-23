@@ -220,5 +220,11 @@
     },
     "searchErrorNoEngine": {
         "message": "Нет доступных поисковых систем."
+    },
+    "themeSectionTitle": {
+        "message": "Тема"
+    },
+    "themeUseWallpaperAccent": {
+        "message": "Использовать основные цвета обоев как акцент"
     }
 }

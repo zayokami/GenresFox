@@ -220,6 +220,12 @@
     },
     "searchErrorNoEngine": {
         "message": "利用できる検索エンジンがありません。"
+    },
+    "themeSectionTitle": {
+        "message": "テーマ"
+    },
+    "themeUseWallpaperAccent": {
+        "message": "壁紙の主色をアクセントに使う"
     }
 }
 

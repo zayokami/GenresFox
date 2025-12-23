@@ -19,7 +19,10 @@
         0 0 0 1px rgba(255, 255, 255, 0.08),
         0 12px 34px rgba(0, 0, 0, var(--search-shadow-alpha)),
         0 6px 18px rgba(0, 0, 0, var(--search-shadow-soft));
-    transition: transform 0.35s var(--transition-curve), box-shadow 0.35s var(--transition-curve), border-color 0.35s var(--transition-curve), background 0.35s ease;
+    transition: transform var(--transition-slow) var(--transition-curve),
+                box-shadow var(--transition-slow) var(--transition-curve),
+                border-color var(--transition-slow) var(--transition-curve),
+                background var(--transition-slow) ease;
     transform-origin: center center;
     transform: scale(var(--search-scale));
 }

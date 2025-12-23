@@ -1,6 +1,9 @@
 # Editor directories and files
 .vscode/
 .idea/
+.cursor/
+.cursorrules/
+.claude/
 *.suo
 *.ntvs*
 *.njsproj

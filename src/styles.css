@@ -1,14 +1,41 @@
 :root {
+    /* Core palette */
     --bg-color: #0f0f11;
+    --bg-elevated: #1e1e24;
     --text-color: #ffffff;
+    --text-muted: rgba(255, 255, 255, 0.7);
     --accent-color: #3b82f6;
+
+    /* Glass / surfaces */
     --glass-bg: rgba(255, 255, 255, 0.08);
     --glass-border: rgba(255, 255, 255, 0.1);
-    --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+
+    /* Radius scale */
+    --radius-xs: 4px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-pill: 999px;
+
+    /* Shadow scale */
+    --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.2);
+    --shadow-medium: 0 8px 24px rgba(0, 0, 0, 0.3);
+    --shadow-strong: 0 20px 50px rgba(0, 0, 0, 0.5);
+
+    /* Motion */
     --transition-curve: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --transition-bouncy: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --transition-fast: 0.18s;
+    --transition-normal: 0.25s;
+    --transition-slow: 0.35s;
+
+    /* Wallpaper */
     --wallpaper-image: none;
     --wallpaper-blur: 0px;
     --wallpaper-vignette: transparent;
+
+    /* Search layout */
     --search-width: 600px;
     --search-position: 40vh;
     --search-scale: 1;
@@ -16,6 +43,22 @@
     --search-shadow-alpha: 0.4;
     --search-shadow-soft: 0.2;
     --search-action-expand: 120px;
+}
+
+/* Light theme overrides (applied when html has class `theme-light`) */
+:root.theme-light {
+    --bg-color: #f5f5f8;
+    --bg-elevated: #ffffff;
+    --text-color: #111827;
+    --text-muted: rgba(15, 23, 42, 0.7);
+    --accent-color: #2563eb;
+
+    --glass-bg: rgba(255, 255, 255, 0.9);
+    --glass-border: rgba(15, 23, 42, 0.06);
+
+    --shadow-soft: 0 6px 16px rgba(15, 23, 42, 0.12);
+    --shadow-medium: 0 14px 30px rgba(15, 23, 42, 0.16);
+    --shadow-strong: 0 22px 60px rgba(15, 23, 42, 0.22);
 }
 
 * {
@@ -27,7 +70,7 @@
 }
 
 body {
-    background: #0f0f11;
+    background: var(--bg-color);
     color: var(--text-color);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     min-height: 100vh;
@@ -124,7 +167,7 @@ body::after {
     height: 36px;
     min-width: 36px;
     min-height: 36px;
-    border-radius: 50%;
+    border-radius: var(--radius-pill);
     background: rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.8);
     transition: background 0.2s ease, color 0.2s ease, width 0.2s ease, height 0.2s ease;
@@ -382,7 +425,7 @@ body::after {
     background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 50%;
+    border-radius: var(--radius-pill);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -390,7 +433,7 @@ body::after {
     color: #fff;
     transition: all 0.3s ease;
     z-index: 100;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-soft);
 }
 
 .settings-btn:hover {
@@ -421,17 +464,17 @@ body::after {
 }
 
 .modal {
-    background: #1e1e24;
+    background: var(--bg-elevated);
     width: 90%;
     max-width: 600px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--glass-border);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-strong);
     display: flex;
     flex-direction: column;
     overflow: visible; /* allow floating popovers (custom selects, tooltips) */
     transform: scale(0.97);
-    transition: transform 0.18s var(--transition-curve);
+    transition: transform var(--transition-fast) var(--transition-curve);
     max-height: 80vh;
 }
 
@@ -549,11 +592,11 @@ input[type="text"]:focus {
 .btn-primary,
 .btn-secondary {
     padding: 10px 18px;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     border: none;
     cursor: pointer;
     font-weight: 500;
-    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all var(--transition-normal) var(--transition-bouncy);
     position: relative;
     overflow: hidden;
 }
@@ -597,11 +640,11 @@ input[type="text"]:focus {
 
 .btn-danger {
     padding: 8px 14px;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     border: 1px solid rgba(255, 77, 77, 0.2);
     cursor: pointer;
     font-weight: 500;
-    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all var(--transition-normal) var(--transition-bouncy);
     background: rgba(255, 77, 77, 0.1);
     color: #ff4d4d;
     font-size: 0.85rem;
@@ -1044,7 +1087,7 @@ input[type="text"]:focus {
     height: 48px;
     background: rgba(255, 255, 255, 0.16);
     border: 1.2px solid rgba(255, 255, 255, 0.28);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -1052,11 +1095,11 @@ input[type="text"]:focus {
     backdrop-filter: blur(5px);
     box-shadow:
         0 0 0 1px rgba(255, 255, 255, 0.06),
-        0 4px 12px rgba(0, 0, 0, 0.15);
-    transition: background 0.22s cubic-bezier(0.25, 0.9, 0.35, 1.2),
-                border-color 0.22s cubic-bezier(0.25, 0.9, 0.35, 1.2),
-                box-shadow 0.22s cubic-bezier(0.25, 0.9, 0.35, 1.2),
-                transform 0.22s cubic-bezier(0.25, 0.9, 0.35, 1.2);
+        var(--shadow-soft);
+    transition: background var(--transition-normal) var(--transition-bouncy),
+                border-color var(--transition-normal) var(--transition-bouncy),
+                box-shadow var(--transition-normal) var(--transition-bouncy),
+                transform var(--transition-normal) var(--transition-bouncy);
     position: relative;
     overflow: hidden;
 }
@@ -1553,4 +1596,107 @@ input[type="text"]:focus {
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+}
+
+/* ==================== Responsive Layout ==================== */
+
+/* Medium screens: tablets / small laptops */
+@media (max-width: 1024px) {
+    :root {
+        --search-width: 520px;
+        --search-position: 35vh;
+    }
+
+    .container {
+        padding: 16px;
+    }
+
+    .shortcuts-grid {
+        max-width: 520px;
+        gap: 14px;
+    }
+
+    .modal {
+        max-width: 560px;
+        max-height: 85vh;
+    }
+}
+
+/* Small screens: narrow windows / vertical monitors */
+@media (max-width: 768px) {
+    :root {
+        --search-width: 100%;
+        --search-position: 28vh;
+        --search-scale: 0.96;
+    }
+
+    body {
+        align-items: flex-start;
+    }
+
+    .container {
+        padding: 16px 12px;
+        top: var(--search-position);
+    }
+
+    .search-container {
+        width: 100%;
+    }
+
+    .shortcuts-grid {
+        max-width: 100%;
+        grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+        gap: 12px;
+    }
+
+    .shortcut-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 11px;
+    }
+
+    .settings-btn {
+        bottom: 16px;
+        right: 16px;
+    }
+
+    .modal {
+        width: 96%;
+        max-width: 480px;
+        max-height: 88vh;
+    }
+
+    .upload-zone {
+        padding: 28px 16px;
+    }
+}
+
+/* Extra small screens: very narrow windows */
+@media (max-width: 480px) {
+    :root {
+        --search-position: 24vh;
+        --search-radius: 28px;
+        --search-action-expand: 110px;
+    }
+
+    .container {
+        padding: 12px 10px;
+    }
+
+    .shortcuts-grid {
+        gap: 10px;
+    }
+
+    .shortcut-name {
+        font-size: 11px;
+        max-width: 72px;
+    }
+
+    .modal-header {
+        padding: 14px 16px;
+    }
+
+    .modal-body {
+        padding: 14px 16px;
+    }
 }

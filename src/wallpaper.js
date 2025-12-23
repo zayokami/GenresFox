@@ -20,7 +20,8 @@ const WallpaperManager = (function () {
             BING_WALLPAPER_CACHE: 'bingWallpaperCache',
             WALLPAPER_SOURCE: 'wallpaperSource',
             BING_MARKET: 'bingMarket',
-            WALLPAPER_PREVIEW_SMALL: 'wallpaperPreviewSmall'
+            WALLPAPER_PREVIEW_SMALL: 'wallpaperPreviewSmall',
+            THEME_SETTINGS: 'themeSettings'
         },
         CSS_VARS: {
             WALLPAPER_IMAGE: '--wallpaper-image',
@@ -72,7 +73,11 @@ const WallpaperManager = (function () {
         isInitialized: false,
         dbInstance: null,
         bingPreloadScheduled: false,
-        bingMarket: 'en-US'
+        bingMarket: 'en-US',
+        themeSettings: {
+            useWallpaperAccent: false,  // whether to derive accent from wallpaper
+            accentColor: null           // cached accent color string (e.g. rgb(...))
+        }
     };
 
     // In-memory LRU cache for Bing blobs
@@ -258,6 +263,111 @@ const WallpaperManager = (function () {
         document.documentElement.style.setProperty(name, value);
     }
 
+    /**
+     * Save theme settings to localStorage
+     */
+    function _saveThemeSettings() {
+        try {
+            localStorage.setItem(CONFIG.STORAGE_KEYS.THEME_SETTINGS, JSON.stringify(_state.themeSettings));
+        } catch (e) {
+            console.warn('Failed to save theme settings:', e);
+        }
+    }
+
+    /**
+     * Apply theme settings (mode + accent color) to the document
+     */
+    function _applyThemeSettings() {
+        const root = document.documentElement;
+
+        // Accent color
+        const defaultAccent = '#3b82f6';
+        const accent = _state.themeSettings.useWallpaperAccent && _state.themeSettings.accentColor
+            ? _state.themeSettings.accentColor
+            : defaultAccent;
+
+        root.style.setProperty('--accent-color', accent);
+    }
+
+    /**
+     * Update accent color from wallpaper analysis
+     * @param {string} color - CSS color string (e.g. rgb(...) or hex)
+     */
+    function _updateAccentFromWallpaper(color) {
+        if (!color || typeof color !== 'string') return;
+        _state.themeSettings.accentColor = color;
+        _saveThemeSettings();
+        _applyThemeSettings();
+    }
+
+    /**
+     * Enable/disable using wallpaper accent color
+     * @param {boolean} useAccent
+     */
+    function _setUseWallpaperAccent(useAccent) {
+        _state.themeSettings.useWallpaperAccent = !!useAccent;
+        _saveThemeSettings();
+        _applyThemeSettings();
+    }
+
+    /**
+     * Extract a soft accent color from a canvas
+     * Uses coarse sampling for performance
+     * @param {CanvasRenderingContext2D} ctx
+     * @param {number} width
+     * @param {number} height
+     * @returns {string|null} CSS rgb() string
+     */
+    function _extractAccentColor(ctx, width, height) {
+        try {
+            const step = 8;
+            const sampleWidth = Math.max(1, Math.floor(width / step));
+            const sampleHeight = Math.max(1, Math.floor(height / step));
+            const imageData = ctx.getImageData(0, 0, width, height).data;
+
+            let r = 0, g = 0, b = 0, count = 0;
+
+            for (let y = 0; y < height; y += step) {
+                for (let x = 0; x < width; x += step) {
+                    const idx = (y * width + x) * 4;
+                    const alpha = imageData[idx + 3];
+                    if (alpha < 128) continue;
+                    const pr = imageData[idx];
+                    const pg = imageData[idx + 1];
+                    const pb = imageData[idx + 2];
+                    // Skip extremely dark / bright pixels to avoid extremes
+                    const brightness = (pr + pg + pb) / 3;
+                    if (brightness < 16 || brightness > 240) continue;
+                    r += pr;
+                    g += pg;
+                    b += pb;
+                    count++;
+                }
+            }
+
+            if (!count) return null;
+
+            r = Math.round(r / count);
+            g = Math.round(g / count);
+            b = Math.round(b / count);
+
+            // Slightly boost saturation by nudging away from grey
+            const avg = (r + g + b) / 3;
+            const boost = 0.15;
+            r = Math.round(r + (r - avg) * boost);
+            g = Math.round(g + (g - avg) * boost);
+            b = Math.round(b + (b - avg) * boost);
+
+            r = Math.min(255, Math.max(0, r));
+            g = Math.min(255, Math.max(0, g));
+            b = Math.min(255, Math.max(0, b));
+
+            return `rgb(${r}, ${g}, ${b})`;
+        } catch (_) {
+            return null;
+        }
+    }
+
     // ==================== Core Wallpaper Functions ====================
 
     /**
@@ -303,6 +413,15 @@ const WallpaperManager = (function () {
                 const ctx = canvas.getContext('2d', { alpha: false });
                 ctx.drawImage(img, 0, 0, w, h);
 
+                // Optionally derive an accent color from custom wallpapers
+                let accentColor = null;
+                if (kind === CONFIG.WALLPAPER_SOURCES.CUSTOM) {
+                    accentColor = _extractAccentColor(ctx, w, h);
+                    if (accentColor) {
+                        _updateAccentFromWallpaper(accentColor);
+                    }
+                }
+
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
                 canvas.width = 0;
                 canvas.height = 0;
@@ -313,7 +432,8 @@ const WallpaperManager = (function () {
                     width: w,
                     height: h,
                     kind,
-                    ts: Date.now()
+                    ts: Date.now(),
+                    accentColor: accentColor || null
                 };
                 try {
                     localStorage.setItem(CONFIG.STORAGE_KEYS.WALLPAPER_PREVIEW_SMALL, JSON.stringify(payload));
@@ -1693,7 +1813,8 @@ const WallpaperManager = (function () {
             searchScaleValue: document.getElementById('searchScaleValue'),
             searchRadiusValue: document.getElementById('searchRadiusValue'),
             searchShadowValue: document.getElementById('searchShadowValue'),
-            useBingWallpaper: document.getElementById('useBingWallpaper')
+            useBingWallpaper: document.getElementById('useBingWallpaper'),
+            themeUseWallpaperAccent: document.getElementById('uiThemeUseWallpaperAccent')
         };
     }
 
@@ -1757,6 +1878,13 @@ const WallpaperManager = (function () {
         if (_elements.useBingWallpaper) {
             _elements.useBingWallpaper.addEventListener('click', () => _applyBingWallpaper());
         }
+
+        // Theme controls
+        if (_elements.themeUseWallpaperAccent) {
+            _elements.themeUseWallpaperAccent.addEventListener('change', () => {
+                _setUseWallpaperAccent(_elements.themeUseWallpaperAccent.checked);
+            });
+        }
     }
 
     /**
@@ -1791,6 +1919,20 @@ const WallpaperManager = (function () {
                 };
             } catch (e) {
                 console.warn('Failed to parse search box settings:', e);
+            }
+        }
+
+        // Load theme settings
+        const savedThemeSettings = localStorage.getItem(CONFIG.STORAGE_KEYS.THEME_SETTINGS);
+        if (savedThemeSettings) {
+            try {
+                const parsed = JSON.parse(savedThemeSettings);
+                _state.themeSettings = {
+                    useWallpaperAccent: !!parsed.useWallpaperAccent,
+                    accentColor: typeof parsed.accentColor === 'string' ? parsed.accentColor : null
+                };
+            } catch (e) {
+                console.warn('Failed to parse theme settings:', e);
             }
         }
     }
@@ -1846,6 +1988,10 @@ const WallpaperManager = (function () {
         }
         if (_elements.searchShadowValue) {
             _elements.searchShadowValue.textContent = `${shadow}%`;
+        }
+
+        if (_elements.themeUseWallpaperAccent) {
+            _elements.themeUseWallpaperAccent.checked = _state.themeSettings.useWallpaperAccent;
         }
 
         // Always show wallpaper controls (works with both custom and Bing wallpaper)
@@ -1945,22 +2091,25 @@ const WallpaperManager = (function () {
         // 2. Load stored settings
         _loadSettings();
 
-        // 3. Bind events
+        // 3. Apply theme settings before wiring events so initial paint matches preference
+        _applyThemeSettings();
+
+        // 4. Bind events
         _bindEvents();
 
-        // 4. Load wallpaper (non-blocking to avoid first-paint stall)
+        // 5. Load wallpaper (non-blocking to avoid first-paint stall)
         _loadWallpaper().catch((e) => console.warn('Wallpaper load failed:', e));
 
-        // 4.1 Warm today's Bing cache in background so switching is instant later
+        // 5.1 Warm today's Bing cache in background so switching is instant later
         _runWhenIdle(() => {
             _warmBingCache().catch((e) => console.warn('Bing cache warm failed:', e));
         }, 1500);
 
-        // 5. Apply effects
+        // 6. Apply effects
         _applyWallpaperEffects();
         _applySearchBoxSettings();
 
-        // 6. Sync UI
+        // 7. Sync UI
         _syncUI();
 
         _state.isInitialized = true;
