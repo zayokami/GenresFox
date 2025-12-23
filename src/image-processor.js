@@ -53,6 +53,11 @@ const ImageProcessor = (function() {
         // Cache settings
         CACHE_MAX_ENTRIES: 10,
         CACHE_MAX_SIZE: 50 * 1024 * 1024, // 50MB total cache
+        
+        // WASM settings - auto-enabled for large images
+        WASM_ENABLED: false,  // Will be auto-enabled for large images
+        WASM_URL: null,       // Set to WASM file path or CDN URL if available
+        WASM_AUTO_ENABLE_THRESHOLD: 20 * 1000 * 1000, // 20MP - auto-enable WASM for images larger than this
     };
 
     // ==================== State ====================
@@ -245,11 +250,18 @@ const ImageProcessor = (function() {
                 worker.__busy = false;
                 _state.workers.push(worker);
 
-                // Initialize worker with config
+                // Initialize worker with config (including WASM settings if available)
                 worker.postMessage({
                     type: 'init',
                     id: 0,
-                    data: { config: CONFIG }
+                    data: { 
+                        config: {
+                            ...CONFIG,
+                            // Only pass WASM config if URL is available
+                            WASM_ENABLED: CONFIG.WASM_URL ? CONFIG.WASM_ENABLED : false,
+                            WASM_URL: CONFIG.WASM_URL || null
+                        }
+                    }
                 });
             } catch (e) {
                 console.warn('Failed to create Worker:', e);
@@ -743,27 +755,6 @@ const ImageProcessor = (function() {
             useWorker = true
         } = options;
 
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/751b1d1b-8840-4313-824c-084ba8b745ba',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({
-                sessionId:'debug-session',
-                runId:'pre-fix-1',
-                hypothesisId:'H1',
-                location:'image-processor.js:processImage:start',
-                message:'processImage start',
-                data:{
-                    fileSize:file && file.size,
-                    useWorker,
-                    useCache,
-                    workerReadyCount:_state.workerReadyCount
-                },
-                timestamp:Date.now()
-            })
-        }).catch(()=>{});
-        // #endregion
-        
         try {
             // Validate file size
             if (file.size > CONFIG.MAX_FILE_SIZE) {
@@ -819,6 +810,32 @@ const ImageProcessor = (function() {
                 img.width, img.height, maxWidth, maxHeight
             );
             
+            // Auto-enable WASM for large images if WASM URL is available
+            let shouldUseWasm = false;
+            if (CONFIG.WASM_URL && totalPixels >= CONFIG.WASM_AUTO_ENABLE_THRESHOLD) {
+                shouldUseWasm = true;
+                // Enable WASM in all workers if not already enabled
+                if (!CONFIG.WASM_ENABLED) {
+                    CONFIG.WASM_ENABLED = true;
+                    // Notify all workers to load WASM
+                    _state.workers.forEach(worker => {
+                        if (worker && worker.__ready) {
+                            worker.postMessage({
+                                type: 'init',
+                                id: 0,
+                                data: { 
+                                    config: { 
+                                        WASM_ENABLED: true, 
+                                        WASM_URL: CONFIG.WASM_URL 
+                                    } 
+                                }
+                            });
+                        }
+                    });
+                    console.log(`[ImageProcessor] Auto-enabled WASM for large image (${(totalPixels / 1000000).toFixed(1)}MP)`);
+                }
+            }
+            
             let blob;
             let usedWorker = false;
             
@@ -852,23 +869,6 @@ const ImageProcessor = (function() {
                     
                 } catch (workerError) {
                     console.warn('Worker processing failed, falling back to main thread:', workerError);
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/751b1d1b-8840-4313-824c-084ba8b745ba',{
-                        method:'POST',
-                        headers:{'Content-Type':'application/json'},
-                        body:JSON.stringify({
-                            sessionId:'debug-session',
-                            runId:'pre-fix-1',
-                            hypothesisId:'H1',
-                            location:'image-processor.js:processImage:workerError',
-                            message:'Worker processing error',
-                            data:{
-                                error:String(workerError && workerError.message || workerError)
-                            },
-                            timestamp:Date.now()
-                        })
-                    }).catch(()=>{});
-                    // #endregion
                     // Fall through to main thread processing
                 }
             }
@@ -919,29 +919,7 @@ const ImageProcessor = (function() {
                 processingTime: Math.round(endTime - startTime)
             };
             
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/751b1d1b-8840-4313-824c-084ba8b745ba',{
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({
-                    sessionId:'debug-session',
-                    runId:'pre-fix-1',
-                    hypothesisId:'H1',
-                    location:'image-processor.js:processImage:end',
-                    message:'processImage end',
-                    data:{
-                        fileSize:file && file.size,
-                        usedWorker,
-                        processingTime:result.processingTime,
-                        originalSize:result.originalSize,
-                        processedSize:result.processedSize
-                    },
-                    timestamp:Date.now()
-                })
-            }).catch(()=>{});
-            // #endregion
-
-            console.log(`Processed in ${result.processingTime}ms: ${file.size} → ${blob.size} bytes`);
+            console.log(`Processed in ${result.processingTime}ms: ${file.size} ${blob.size} bytes`);
             
             // Cache result
             if (useCache) {
@@ -995,6 +973,56 @@ const ImageProcessor = (function() {
     function init() {
         _initWorkers();
         _checkWebPSupport();
+        
+        // Auto-load local WASM file if available
+        try {
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+                const wasmUrl = chrome.runtime.getURL('resize.wasm');
+                setWasmUrl(wasmUrl);
+            }
+        } catch (e) {
+            // WASM file not available, will use Canvas fallback
+            // Silently fail - this is expected if WASM file doesn't exist
+        }
+    }
+    
+    /**
+     * Set WASM URL for high-performance image processing
+     * WASM will be automatically enabled for images larger than WASM_AUTO_ENABLE_THRESHOLD (20MP)
+     * 
+     * @param {string} wasmUrl - URL to the WASM file (must export resize_rgba function)
+     * @example
+     * // Set WASM URL (e.g., from CDN or local file)
+     * ImageProcessor.setWasmUrl('https://cdn.example.com/resize.wasm');
+     * // Or local file (must be in extension's web_accessible_resources)
+     * ImageProcessor.setWasmUrl('resize.wasm');
+     */
+    function setWasmUrl(wasmUrl) {
+        if (!wasmUrl || typeof wasmUrl !== 'string') {
+            console.warn('[ImageProcessor] Invalid WASM URL provided');
+            return;
+        }
+        
+        CONFIG.WASM_URL = wasmUrl;
+        CONFIG.WASM_ENABLED = false; // Will be auto-enabled for large images
+        
+        // Notify existing workers to load WASM if they're ready
+        _state.workers.forEach(worker => {
+            if (worker && worker.__ready) {
+                worker.postMessage({
+                    type: 'init',
+                    id: 0,
+                    data: { 
+                        config: { 
+                            WASM_ENABLED: false, // Don't auto-load, wait for large image
+                            WASM_URL: wasmUrl 
+                        } 
+                    }
+                });
+            }
+        });
+        
+        console.log(`[ImageProcessor] WASM URL set: ${wasmUrl} (will auto-enable for images > ${CONFIG.WASM_AUTO_ENABLE_THRESHOLD / 1000000}MP)`);
     }
 
     // ==================== Public API ====================
@@ -1004,6 +1032,9 @@ const ImageProcessor = (function() {
         processImageToUrl,
         generatePreview,
         generateProgressivePreview,
+        
+        // Configuration
+        setWasmUrl,
         
         // Cleanup
         cleanup,
@@ -1044,6 +1075,6 @@ if (typeof window !== 'undefined') {
 /**
  * Give a civilisation to the years, not years to a civilisation. 
  * 给岁月以文明，而不是给文明以岁月。
- * — From "The Three-Body Problem: Death's End".
- * — 出自《三体3：死神永生》。
+ * From "The Three-Body Problem: Death's End".
+ * 出自《三体：死神永生》
 */
