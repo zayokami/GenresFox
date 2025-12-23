@@ -72,6 +72,9 @@
     "deleteShortcutConfirm": { "message": "¿Eliminar acceso directo \"%s\"?" },
     "searchErrorUnsafeUrl": { "message": "Esta URL puede ser insegura." },
     "searchErrorNavigationFailed": { "message": "No se pudo abrir el enlace." },
-    "searchErrorNoEngine": { "message": "No hay motor de búsqueda disponible." }
+    "searchErrorNoEngine": { "message": "No hay motor de búsqueda disponible." },
+    "themeSectionTitle": { "message": "Tema" },
+    "themeUseWallpaperAccent": { "message": "Usar colores del fondo como acento" },
+    "snowEffectToggle": { "message": "Efecto de nieve" }
 }
 

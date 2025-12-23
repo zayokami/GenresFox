@@ -126,6 +126,14 @@
                             </label>
                             <input type="range" id="vignetteSlider" min="0" max="100" value="0" class="slider">
                         </div>
+
+                        <!-- Snow Effect Toggle (only visible after easter egg is triggered) -->
+                        <div class="control-item" id="snowEffectToggleContainer" style="display: none;">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="snowEffectToggle">
+                                <span data-i18n="snowEffectToggle">Snow Effect</span>
+                            </label>
+                        </div>
                     </div>
 
                     <div class="setting-group">
@@ -170,6 +178,14 @@
                             </label>
                             <input type="range" id="searchShadowSlider" min="0" max="100" value="40" class="slider">
                         </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <h3 data-i18n="themeSectionTitle">Theme</h3>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="uiThemeUseWallpaperAccent">
+                            <span data-i18n="themeUseWallpaperAccent">Use wallpaper colors as accent</span>
+                        </label>
                     </div>
                 </div>
 
@@ -334,6 +350,7 @@
     <script src="wallpaper.js"></script>
     <script src="accessibility.js"></script>
     <script src="search.js"></script>
+    <script src="snow-effect.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

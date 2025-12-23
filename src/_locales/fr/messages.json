@@ -72,6 +72,9 @@
     "deleteShortcutConfirm": { "message": "Supprimer le raccourci \"%s\" ?" },
     "searchErrorUnsafeUrl": { "message": "Cette URL peut être dangereuse." },
     "searchErrorNavigationFailed": { "message": "Impossible d'ouvrir le lien." },
-    "searchErrorNoEngine": { "message": "Aucun moteur de recherche disponible." }
+    "searchErrorNoEngine": { "message": "Aucun moteur de recherche disponible." },
+    "themeSectionTitle": { "message": "Thème" },
+    "themeUseWallpaperAccent": { "message": "Utiliser les couleurs du fond comme accent" },
+    "snowEffectToggle": { "message": "Effet de neige" }
 }
 

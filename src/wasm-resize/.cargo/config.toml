@@ -3,12 +3,15 @@ target = "wasm32-unknown-unknown"
 
 [target.wasm32-unknown-unknown]
 rustflags = [
+    # Enable explicit exports for minimal WASM surface
     "-C", "link-arg=--export=resize_rgba",
     "-C", "link-arg=--export=resize_rgba_nearest",
     "-C", "link-arg=--export=alloc_memory",
     "-C", "link-arg=--export=dealloc_memory",
     "-C", "link-arg=--export=get_last_error",
     "-C", "link-arg=--export=memory",
+    # Enable WebAssembly SIMD (simd128) for auto-vectorization of hot loops by the compiler
+    "-C", "target-feature=+simd128",
 ]
 
 # China Mirror Source Configuration (Accelerates Dependency Downloads)

@@ -82,7 +82,10 @@ const I18n = (function () {
             "deleteShortcutConfirm": "确认删除快捷方式“%s”？",
             "searchErrorUnsafeUrl": "无法访问此网址，可能不安全。",
             "searchErrorNavigationFailed": "链接打开失败。",
-            "searchErrorNoEngine": "没有可用的搜索引擎。"
+            "searchErrorNoEngine": "没有可用的搜索引擎。",
+            "themeSectionTitle": "主题",
+            "themeUseWallpaperAccent": "使用壁纸主色作为主题色",
+            "snowEffectToggle": "雪花效果"
         },
         "en": {
             "appTitle": "GenresFox",
@@ -158,7 +161,10 @@ const I18n = (function () {
             "deleteShortcutConfirm": "Delete shortcut \"%s\"?",
             "searchErrorUnsafeUrl": "This URL may be unsafe.",
             "searchErrorNavigationFailed": "Failed to open the link.",
-            "searchErrorNoEngine": "No available search engine."
+            "searchErrorNoEngine": "No available search engine.",
+            "themeSectionTitle": "Theme",
+            "themeUseWallpaperAccent": "Use wallpaper colors as accent",
+            "snowEffectToggle": "Snow Effect"
         },
         "zh_TW": {
             "appTitle": "GenresFox",
@@ -234,7 +240,10 @@ const I18n = (function () {
             "deleteShortcutConfirm": "確認刪除捷徑「%s」？",
             "searchErrorUnsafeUrl": "無法訪問此網址，可能不安全。",
             "searchErrorNavigationFailed": "連結開啟失敗。",
-            "searchErrorNoEngine": "沒有可用的搜尋引擎。"
+            "searchErrorNoEngine": "沒有可用的搜尋引擎。",
+            "themeSectionTitle": "主題",
+            "themeUseWallpaperAccent": "使用桌布主色作為主題色",
+            "snowEffectToggle": "雪花效果"
         },
         "ja": {
             "appTitle": "GenresFox",
@@ -310,7 +319,10 @@ const I18n = (function () {
             "deleteShortcutConfirm": "ショートカット「%s」を削除しますか？",
             "searchErrorUnsafeUrl": "この URL は安全ではない可能性があります。",
             "searchErrorNavigationFailed": "リンクを開けませんでした。",
-            "searchErrorNoEngine": "利用できる検索エンジンがありません。"
+            "searchErrorNoEngine": "利用できる検索エンジンがありません。",
+            "themeSectionTitle": "テーマ",
+            "themeUseWallpaperAccent": "壁紙の主色をアクセントに使う",
+            "snowEffectToggle": "雪のエフェクト"
         },
         "es": {
             "appTitle": "GenresFox",
@@ -386,7 +398,10 @@ const I18n = (function () {
             "deleteShortcutConfirm": "¿Eliminar acceso directo \"%s\"?",
             "searchErrorUnsafeUrl": "Esta URL puede ser insegura.",
             "searchErrorNavigationFailed": "No se pudo abrir el enlace.",
-            "searchErrorNoEngine": "No hay motor de búsqueda disponible."
+            "searchErrorNoEngine": "No hay motor de búsqueda disponible.",
+            "themeSectionTitle": "Tema",
+            "themeUseWallpaperAccent": "Usar colores del fondo como acento",
+            "snowEffectToggle": "Efecto de nieve"
         },
         "fr": {
             "appTitle": "GenresFox",
@@ -462,7 +477,10 @@ const I18n = (function () {
             "deleteShortcutConfirm": "Supprimer le raccourci \"%s\" ?",
             "searchErrorUnsafeUrl": "Cette URL peut être dangereuse.",
             "searchErrorNavigationFailed": "Impossible d'ouvrir le lien.",
-            "searchErrorNoEngine": "Aucun moteur de recherche disponible."
+            "searchErrorNoEngine": "Aucun moteur de recherche disponible.",
+            "themeSectionTitle": "Thème",
+            "themeUseWallpaperAccent": "Utiliser les couleurs du fond comme accent",
+            "snowEffectToggle": "Effet de neige"
         },
         "de": {
             "appTitle": "GenresFox",
@@ -538,7 +556,10 @@ const I18n = (function () {
             "deleteShortcutConfirm": "Sind Sie sicher, dass Sie den Schnellzugriff „%s“ löschen möchten?",
             "searchErrorUnsafeUrl": "Zugriff auf diese URL nicht möglich – möglicherweise unsicher.",
             "searchErrorNavigationFailed": "Link konnte nicht geöffnet werden.",
-            "searchErrorNoEngine": "Keine Suchmaschinen verfügbar."
+            "searchErrorNoEngine": "Keine Suchmaschinen verfügbar.",
+            "themeSectionTitle": "Thema",
+            "themeUseWallpaperAccent": "Hintergrundfarben als Akzent verwenden",
+            "snowEffectToggle": "Schneeeffekt"
         },
         "ru": {
             "appTitle": "GenresFox",
@@ -614,7 +635,10 @@ const I18n = (function () {
             "deleteShortcutConfirm": "Удалить ярлык «%s»?",
             "searchErrorUnsafeUrl": "Невозможно получить доступ к этому адресу — он может быть небезопасным.",
             "searchErrorNavigationFailed": "Не удалось открыть ссылку.",
-            "searchErrorNoEngine": "Нет доступных поисковых систем."
+            "searchErrorNoEngine": "Нет доступных поисковых систем.",
+            "themeSectionTitle": "Тема",
+            "themeUseWallpaperAccent": "Использовать основные цвета обоев как акцент",
+            "snowEffectToggle": "Эффект снега"
         }
     };
 

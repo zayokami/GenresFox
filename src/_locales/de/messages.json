@@ -220,5 +220,14 @@
     },
     "searchErrorNoEngine": {
         "message": "Keine Suchmaschinen verfügbar."
+    },
+    "themeSectionTitle": {
+        "message": "Thema"
+    },
+    "themeUseWallpaperAccent": {
+        "message": "Hintergrundfarben als Akzent verwenden"
+    },
+    "snowEffectToggle": {
+        "message": "Schneeeffekt"
     }
 }

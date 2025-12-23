@@ -290,7 +290,7 @@ GenresFox/
 - **原生 JavaScript**: 纯粹的性能
 - **CSS3**: 现代样式与玻璃态效果
 - **Web Workers**: 后台图片处理，不阻塞 UI
-- **WebAssembly**: 大图片高性能缩放处理
+- **WebAssembly**: 大图片高性能缩放处理（使用 release 模式编译的 Rust WASM）
 - **IndexedDB**: 用于存储大型壁纸文件和缓存
 - **LocalStorage**: 用于持久化设置和元数据缓存
 - **Chrome 扩展 API**: 用于国际化和浏览器集成
@@ -343,7 +343,11 @@ WASM 模块 (`resize.wasm`) **100% 开源且可审计**：
 
 **对于最终用户**：已包含预编译的 WASM 文件 - 无需 Rust 或编译！
 
-**对于开发者**：安装 Rust 后即可立即构建 - 零依赖需要下载。
+**对于开发者**：安装 Rust 后即可立即构建 - 无需任何依赖需要下载。
+
+> ⚠️ **WASM 构建请使用 release 模式**  
+> - 推荐命令：`cargo build --release --target wasm32-unknown-unknown`（或运行项目自带的 `build.sh` / `build.bat`）  
+> - 在 **debug 模式** 下，Rust 会对整数溢出等做运行时检查，一旦触发会在 WASM 内部 panic，最终在浏览器里表现为 JS 异常，**不适合作为扩展实际加载的 WASM 文件**。
 
 ### 🙏 致谢
 
