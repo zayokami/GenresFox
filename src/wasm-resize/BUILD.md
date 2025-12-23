@@ -21,8 +21,14 @@ If you want to modify the Rust source code and rebuild, you'll need:
 
 After installing Rust, the build process is:
 1. Install wasm32 target (one-time): `rustup target add wasm32-unknown-unknown`
-2. Build: `cargo build --release --target wasm32-unknown-unknown`
+2. **Build in release mode (recommended for production):**
+   - `cargo build --release --target wasm32-unknown-unknown`
 3. Copy: `cp target/wasm32-unknown-unknown/release/wasm_resize.wasm ../resize.wasm`
+
+> ⚠️ **Debug builds are not suitable for the browser runtime.**  
+> In `debug` mode, Rust inserts runtime checks (including integer overflow checks) that panic on failure.  
+> A panic inside WASM will propagate as an exception into JavaScript and can break image processing.  
+> Always use `--release` when building the WASM used by the extension.
 
 No `cargo fetch`, no dependency resolution, no waiting for crates to download!
 
@@ -84,7 +90,10 @@ chmod +x build.sh
 ### Manual Build
 ```bash
 cd src/wasm-resize
+
+# IMPORTANT: use --release for production WASM
 cargo build --release --target wasm32-unknown-unknown
+
 cp target/wasm32-unknown-unknown/release/wasm_resize.wasm ../resize.wasm
 ```
 

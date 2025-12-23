@@ -38,15 +38,17 @@ cd src\wasm-resize
 build.bat
 ```
 
-**Manual build:**
+**Manual build (production, recommended):**
 ```bash
 # Navigate to wasm-resize directory
 cd src/wasm-resize
 
-# Install wasm32 target
+# Install wasm32 target (one-time)
 rustup target add wasm32-unknown-unknown
 
-# Build
+# Build in release mode (debug builds are NOT suitable for browsers,
+# because Rust inserts overflow checks and other debug assertions that
+# panic inside WASM and surface as JS exceptions)
 cargo build --release --target wasm32-unknown-unknown
 
 # Copy to src directory

@@ -202,26 +202,28 @@ async function loadWasm(url) {
         if (!url) {
             throw new Error('WASM URL not provided');
         }
-        
-        const resp = await fetch(url);
-        if (!resp.ok) {
-            throw new Error(`Failed to fetch WASM: ${resp.status} ${resp.statusText}`);
-        }
-        
-        const wasmBinary = await resp.arrayBuffer();
-        if (!wasmBinary || wasmBinary.byteLength === 0) {
-            throw new Error('WASM file is empty');
-        }
-        
-        // Try instantiateStreaming first (more efficient), fallback to instantiate
-        let instance;
+
+        let instance = null;
+        let wasmBinary = null;
+
+        // Try instantiateStreaming first (more efficient, single network fetch)
         try {
-            // Create a new fetch for streaming (some browsers don't support resp.clone() in workers)
-            const streamResp = await fetch(url);
-            const module = await WebAssembly.instantiateStreaming(streamResp);
-            instance = module.instance;
+            const resp = await fetch(url);
+            if (!resp.ok) {
+                throw new Error(`Failed to fetch WASM: ${resp.status} ${resp.statusText}`);
+            }
+            const streamingModule = await WebAssembly.instantiateStreaming(resp);
+            instance = streamingModule.instance;
         } catch (streamErr) {
             // Fallback for browsers that don't support streaming
+            const resp = await fetch(url);
+            if (!resp.ok) {
+                throw new Error(`Failed to fetch WASM (fallback): ${resp.status} ${resp.statusText}`);
+            }
+            wasmBinary = await resp.arrayBuffer();
+            if (!wasmBinary || wasmBinary.byteLength === 0) {
+                throw new Error('WASM file is empty');
+            }
             const module = await WebAssembly.instantiate(wasmBinary, {});
             instance = module.instance;
         }
@@ -250,8 +252,16 @@ async function loadWasm(url) {
         WASM.allocPtr = 0;
         WASM.heapCapacity = instance.exports.memory.buffer.byteLength || 0;
         
-        console.log(`[Worker] WASM loaded successfully (${(wasmBinary.byteLength / 1024).toFixed(1)}KB)`);
-        console.log(`[Worker] WASM exports: resize_rgba=${!!exports.resize_rgba}, memory=${!!exports.memory}, resize_rgba_nearest=${!!exports.resize_rgba_nearest}`);
+        // wasmBinary may be null if instantiateStreaming succeeded; guard size logging
+        const sizeKB = wasmBinary ? (wasmBinary.byteLength / 1024).toFixed(1) : 'unknown';
+        console.log(`[Worker] WASM loaded successfully (${sizeKB}KB)`);
+        console.log(
+            `[Worker] WASM exports: ` +
+            `resize_rgba=${!!WASM.exports.resize_rgba}, ` +
+            `memory=${!!WASM.exports.memory}, ` +
+            `resize_rgba_nearest=${!!WASM.exports.resize_rgba_nearest}, ` +
+            `get_last_error=${!!WASM.exports.get_last_error}`
+        );
     } catch (err) {
         console.warn('[Worker] WASM load failed, will use Canvas fallback:', err.message);
         WASM.instance = null;
@@ -330,7 +340,30 @@ async function processImageDataWithWasm(imageData, targetWidth, targetHeight, on
         );
         
         if (errorCode !== 0) {
-            console.warn(`[Worker] WASM resize failed with error code: ${errorCode}`);
+            let errorMsg = '';
+            try {
+                if (typeof exports.get_last_error === 'function') {
+                    const errPtr = exports.get_last_error();
+                    if (errPtr) {
+                        const mem = new Uint8Array(exports.memory.buffer);
+                        let chars = [];
+                        // Read up to 256 bytes to avoid runaway in case of missing terminator
+                        for (let i = errPtr; i < mem.length && chars.length < 256; i++) {
+                            const code = mem[i];
+                            if (code === 0) break; // null-terminated
+                            chars.push(code);
+                        }
+                        errorMsg = String.fromCharCode.apply(null, chars);
+                    }
+                }
+            } catch (_) {
+                // Ignore get_last_error failures; we'll fall back to generic message
+            }
+            if (errorMsg) {
+                console.warn(`[Worker] WASM resize failed with error code: ${errorCode}, message: ${errorMsg}`);
+            } else {
+                console.warn(`[Worker] WASM resize failed with error code: ${errorCode}`);
+            }
             // Clean up allocated memory
             if (typeof exports.dealloc_memory === 'function') {
                 exports.dealloc_memory(srcPtr, srcSize);
