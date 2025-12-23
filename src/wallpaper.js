@@ -413,13 +413,10 @@ const WallpaperManager = (function () {
                 const ctx = canvas.getContext('2d', { alpha: false });
                 ctx.drawImage(img, 0, 0, w, h);
 
-                // Optionally derive an accent color from custom wallpapers
-                let accentColor = null;
-                if (kind === CONFIG.WALLPAPER_SOURCES.CUSTOM) {
-                    accentColor = _extractAccentColor(ctx, w, h);
-                    if (accentColor) {
-                        _updateAccentFromWallpaper(accentColor);
-                    }
+                // Derive an accent color from the wallpaper (Bing or custom)
+                let accentColor = _extractAccentColor(ctx, w, h);
+                if (accentColor) {
+                    _updateAccentFromWallpaper(accentColor);
                 }
 
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
@@ -1537,6 +1534,11 @@ const WallpaperManager = (function () {
         if (!bingLoaded) {
             _setWallpaper('none');
             _state.wallpaperSource = CONFIG.WALLPAPER_SOURCES.DEFAULT;
+
+            // If no wallpaper is available, fall back to default accent color
+            _state.themeSettings.accentColor = null;
+            _saveThemeSettings();
+            _applyThemeSettings();
         } else {
             _showStatusMessage(_getLocalizedMessage('resetToBing', 'Switched to Bing Daily Wallpaper'), 2200);
         }
