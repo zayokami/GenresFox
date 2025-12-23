@@ -226,5 +226,8 @@
     },
     "themeUseWallpaperAccent": {
         "message": "使用壁纸主色作为主题色"
+    },
+    "snowEffectToggle": {
+        "message": "雪花效果"
     }
 }

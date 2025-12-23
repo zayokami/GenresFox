@@ -226,5 +226,8 @@
     },
     "themeUseWallpaperAccent": {
         "message": "Использовать основные цвета обоев как акцент"
+    },
+    "snowEffectToggle": {
+        "message": "Эффект снега"
     }
 }

@@ -226,6 +226,9 @@
     },
     "themeUseWallpaperAccent": {
         "message": "壁紙の主色をアクセントに使う"
+    },
+    "snowEffectToggle": {
+        "message": "雪のエフェクト"
     }
 }
 

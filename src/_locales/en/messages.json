@@ -226,5 +226,8 @@
     },
     "themeUseWallpaperAccent": {
         "message": "Use wallpaper colors as accent"
+    },
+    "snowEffectToggle": {
+        "message": "Snow Effect"
     }
 }

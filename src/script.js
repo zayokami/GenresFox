@@ -982,6 +982,8 @@ tabBtns.forEach(btn => {
         tabContents.forEach(c => c.classList.remove("active"));
         btn.classList.add("active");
         document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+        // Update snow toggle visibility when switching tabs
+        _updateSnowToggleVisibility();
     });
 });
 
@@ -1480,6 +1482,149 @@ function handleListDrop(e) {
 }
 
 // Init
+// ==================== Snow Effect Easter Egg ====================
+
+/**
+ * Setup snow effect easter egg (click GenresFox 3 times)
+ */
+function _setupSnowEasterEgg() {
+    if (typeof SnowEffect === 'undefined') return;
+
+    const aboutTab = document.getElementById('tab-about');
+    if (!aboutTab) return;
+
+    const genresFoxHeading = aboutTab.querySelector('h3');
+    if (!genresFoxHeading || genresFoxHeading.textContent.trim() !== 'GenresFox') return;
+
+    let clickCount = 0;
+    let clickTimeout = null;
+    const CLICK_RESET_TIME = 2000; // Reset count after 2 seconds
+
+    genresFoxHeading.style.cursor = 'pointer';
+    genresFoxHeading.title = ''; // Will be set by i18n if needed
+
+    genresFoxHeading.addEventListener('click', () => {
+        // Clear previous timeout
+        if (clickTimeout) {
+            clearTimeout(clickTimeout);
+        }
+
+        clickCount++;
+        
+        // Reset count after delay
+        clickTimeout = setTimeout(() => {
+            clickCount = 0;
+        }, CLICK_RESET_TIME);
+
+        // Trigger on 3rd click
+        if (clickCount >= 3) {
+            clickCount = 0;
+            if (clickTimeout) {
+                clearTimeout(clickTimeout);
+                clickTimeout = null;
+            }
+
+            // Check if in holiday period
+            if (SnowEffect.isHolidayPeriod()) {
+                SnowEffect.trigger();
+                _updateSnowToggleVisibility();
+                _showChristmasEmojis(genresFoxHeading);
+                // Show a subtle notification (optional)
+                console.log('❄️ Snow effect activated!');
+            }
+        }
+    });
+}
+
+/**
+ * Show Christmas emojis next to GenresFox heading
+ * @param {HTMLElement} heading - The GenresFox heading element
+ */
+function _showChristmasEmojis(heading) {
+    if (!heading) return;
+
+    // Check if emojis already exist
+    if (heading.querySelector('.christmas-emoji')) return;
+
+    // Create emoji container
+    const emojiContainer = document.createElement('span');
+    emojiContainer.className = 'christmas-emoji';
+    emojiContainer.style.cssText = `
+        display: inline-block;
+        margin-left: 8px;
+        font-size: 1.2em;
+        animation: fadeInScale 0.5s ease-out;
+    `;
+    emojiContainer.textContent = '🦊🎄';
+
+    // Add animation style if not already added
+    if (!document.getElementById('christmas-emoji-style')) {
+        const style = document.createElement('style');
+        style.id = 'christmas-emoji-style';
+        style.textContent = `
+            @keyframes fadeInScale {
+                from {
+                    opacity: 0;
+                    transform: scale(0.5);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+            .christmas-emoji {
+                user-select: none;
+                pointer-events: none;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Append emojis to heading
+    heading.appendChild(emojiContainer);
+}
+
+/**
+ * Update snow toggle visibility in wallpaper settings
+ */
+function _updateSnowToggleVisibility() {
+    if (typeof SnowEffect === 'undefined') return;
+
+    const toggleContainer = document.getElementById('snowEffectToggleContainer');
+    if (!toggleContainer) return;
+
+    // Show toggle only if snow effect has been triggered
+    if (SnowEffect.isTriggered()) {
+        toggleContainer.style.display = 'block';
+        
+        // Sync checkbox state
+        const snowToggle = document.getElementById('snowEffectToggle');
+        if (snowToggle) {
+            snowToggle.checked = SnowEffect.isEnabled();
+        }
+    } else {
+        toggleContainer.style.display = 'none';
+    }
+}
+
+/**
+ * Setup snow toggle event listener
+ */
+function _setupSnowToggle() {
+    if (typeof SnowEffect === 'undefined') return;
+
+    const snowToggle = document.getElementById('snowEffectToggle');
+    if (!snowToggle) return;
+
+    snowToggle.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            SnowEffect.enable();
+        } else {
+            SnowEffect.disable();
+        }
+    });
+}
+
 async function init() {
     const safeInit = async (label, fn) => {
         try {
@@ -1508,6 +1653,14 @@ async function init() {
     await safeInit('WallpaperManager', async () => {
         if (typeof WallpaperManager !== 'undefined' && WallpaperManager.init) {
             return WallpaperManager.init();
+        }
+    });
+
+    // Initialize Snow Effect (easter egg)
+    await safeInit('SnowEffect', () => {
+        if (typeof SnowEffect !== 'undefined') {
+            SnowEffect.init();
+            _setupSnowEasterEgg();
         }
     });
 
@@ -1540,6 +1693,8 @@ async function init() {
     renderEnginesList();
     renderShortcutsList();
     renderShortcutsGrid();
+    _updateSnowToggleVisibility();
+    _setupSnowToggle();
     if (window.SearchBar && typeof window.SearchBar.init === 'function') {
         window.SearchBar.init({
             searchInputId: 'search',

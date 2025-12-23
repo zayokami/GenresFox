@@ -226,5 +226,8 @@
     },
     "themeUseWallpaperAccent": {
         "message": "Hintergrundfarben als Akzent verwenden"
+    },
+    "snowEffectToggle": {
+        "message": "Schneeeffekt"
     }
 }

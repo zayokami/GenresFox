@@ -74,6 +74,7 @@
     "searchErrorNavigationFailed": { "message": "Impossible d'ouvrir le lien." },
     "searchErrorNoEngine": { "message": "Aucun moteur de recherche disponible." },
     "themeSectionTitle": { "message": "Thème" },
-    "themeUseWallpaperAccent": { "message": "Utiliser les couleurs du fond comme accent" }
+    "themeUseWallpaperAccent": { "message": "Utiliser les couleurs du fond comme accent" },
+    "snowEffectToggle": { "message": "Effet de neige" }
 }
 
