@@ -554,3 +554,5 @@ pub unsafe extern "C" fn resize_rgba(
         })
     })
 }
+
+// Ars longa, vita brevis.
