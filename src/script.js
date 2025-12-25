@@ -527,25 +527,69 @@ function _updateImagesForKey(key, dataUrl) {
     });
 }
 
+/**
+ * Check if URL is from a service that doesn't support CORS
+ * @param {string} url
+ * @returns {boolean}
+ */
+function _isNonCorsService(url) {
+    if (!url) return false;
+    try {
+        const urlObj = new URL(url);
+        // DuckDuckGo icon service doesn't support CORS
+        return urlObj.hostname === 'icons.duckduckgo.com';
+    } catch (e) {
+        return false;
+    }
+}
+
 async function _fetchIconAsDataUrl(url) {
-    // Direct fetch first
-    const response = await fetch(url, { mode: 'cors' });
+    // For services that don't support CORS, skip fetch and use Image fallback
+    if (_isNonCorsService(url)) {
+        throw new Error('Service does not support CORS, use Image fallback');
+    }
+    
+    try {
+        // Try with CORS first (for services that support it)
+        const response = await fetch(url, { 
+            mode: 'cors',
+            credentials: 'omit' // Don't send credentials
+        });
         if (!response.ok) throw new Error('Network response was not ok');
         const blob = await response.blob();
-    return await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
+        return await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (fetchErr) {
+        // If CORS fails, throw to trigger Image fallback
+        throw fetchErr;
+    }
 }
 
 async function _loadIconViaImage(url) {
     return new Promise((resolve, reject) => {
         const img = new Image();
-        img.crossOrigin = 'anonymous';
+        
+        // Only set crossOrigin for services that support CORS
+        // For non-CORS services (like DuckDuckGo), don't set crossOrigin
+        // This allows the image to load but we can't convert to data URL
+        if (!_isNonCorsService(url)) {
+            img.crossOrigin = 'anonymous';
+        }
+        
         img.onload = () => {
             try {
+                // For non-CORS images, we can't use canvas.toDataURL due to tainted canvas
+                // Instead, return the original URL as data URL is not possible
+                if (_isNonCorsService(url)) {
+                    // Return the URL directly - browser will handle it
+                    resolve(url);
+                    return;
+                }
+                
                 const canvas = document.createElement('canvas');
                 canvas.width = img.width || 64;
                 canvas.height = img.height || 64;
@@ -553,7 +597,12 @@ async function _loadIconViaImage(url) {
                 ctx.drawImage(img, 0, 0);
                 resolve(canvas.toDataURL('image/png'));
             } catch (err) {
-                reject(err);
+                // If canvas conversion fails (tainted canvas), return original URL
+                if (err.name === 'SecurityError' || err.message.includes('tainted')) {
+                    resolve(url);
+                } else {
+                    reject(err);
+                }
             }
         };
         img.onerror = () => reject(new Error('Image load failed'));
@@ -568,6 +617,7 @@ async function cacheIcon(key, rawIconUrl, pageUrl) {
         const candidates = _buildIconCandidates(rawIconUrl, pageUrl);
         for (const candidate of candidates) {
             try {
+                // Try fetch first (for CORS-enabled services)
                 const dataUrl = await _fetchIconAsDataUrl(candidate);
                 _iconCacheInMemory.set(key, { data: dataUrl, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
                 await _putIconToDB(key, dataUrl);
@@ -576,19 +626,31 @@ async function cacheIcon(key, rawIconUrl, pageUrl) {
                 localStorage.setItem(`icon_cache_${key}`, dataUrl);
                 return;
             } catch (fetchErr) {
-                // If fetch failed, try canvas-based fallback
+                // If fetch failed (CORS or other error), try Image-based fallback
                 try {
-                    const dataUrl = await _loadIconViaImage(candidate);
-                    _iconCacheInMemory.set(key, { data: dataUrl, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
-                    await _putIconToDB(key, dataUrl);
-                    _updateImagesForKey(key, dataUrl);
-                    localStorage.setItem(`icon_cache_${key}`, dataUrl);
+                    const result = await _loadIconViaImage(candidate);
+                    // result might be a data URL or the original URL (for non-CORS services)
+                    _iconCacheInMemory.set(key, { data: result, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
+                    // Only store in DB if it's a data URL (not a regular URL)
+                    if (result.startsWith('data:')) {
+                        await _putIconToDB(key, result);
+                        localStorage.setItem(`icon_cache_${key}`, result);
+                    } else {
+                        // For non-CORS URLs, store the URL itself but mark as 'url' type
+                        // Don't store in DB/localStorage as it's not a data URL
+                    }
+                    _updateImagesForKey(key, result);
                     return;
                 } catch (imgErr) {
-                    // Continue to next candidate
+                    // Silently continue to next candidate
+                    // Don't log CORS errors as they're expected for some services
+                    if (!imgErr.message.includes('CORS') && !imgErr.message.includes('tainted')) {
+                        // Only log non-CORS errors
+                    }
                 }
             }
         }
+        // Only warn if all candidates failed (including non-CORS fallbacks)
         console.warn(`Failed to cache icon: ${key}`);
         // Mark this key as failed so future getIconSrc() calls won't keep retrying
         const failedEntry = {
@@ -1542,7 +1604,7 @@ function _setupSnowEasterEgg() {
                 _updateSnowToggleVisibility();
                 _showChristmasEmojis(genresFoxHeading);
                 // Show a subtle notification (optional)
-                console.log('❄️ Snow effect activated!');
+                console.log('[OK] Snow effect activated!');
             }
         }
     });
