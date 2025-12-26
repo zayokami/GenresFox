@@ -6,6 +6,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Chrome](https://img.shields.io/badge/chrome-manifest%20v3-orange.svg)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/zayokami/GenresFox)
+[![Greptile](https://img.shields.io/badge/Greptile-Indexed-brightgreen.svg)](https://app.greptile.com)
 
 **A fully open-source, extremely clean, and highly customizable new tab page extension.**
 
@@ -83,6 +84,16 @@
 5. Click "Reset to Default" to restore the original background
 
 ### 🔧 Development
+
+#### Greptile Integration
+
+This project is indexed by [Greptile](https://app.greptile.com) for AI-powered code understanding and querying. The `.greptileignore` file specifies which files should be excluded from indexing (build artifacts, dependencies, etc.).
+
+To connect this repository to Greptile:
+1. Visit [app.greptile.com](https://app.greptile.com)
+2. Connect your GitHub account
+3. Select this repository
+4. Greptile will automatically index the codebase according to `.greptileignore` rules
 
 #### Project Structure
 ```
@@ -253,6 +264,16 @@ The WASM module (`resize.wasm`) is **100% open source and auditable**:
 5. 点击"恢复默认"可还原原始背景
 
 ### 🔧 开发
+
+#### Greptile 集成
+
+本项目已接入 [Greptile](https://app.greptile.com)，支持 AI 驱动的代码理解和查询。`.greptileignore` 文件指定了需要从索引中排除的文件（构建产物、依赖等）。
+
+要将此仓库连接到 Greptile：
+1. 访问 [app.greptile.com](https://app.greptile.com)
+2. 连接您的 GitHub 账户
+3. 选择此仓库
+4. Greptile 将根据 `.greptileignore` 规则自动索引代码库
 
 #### 项目结构
 ```
