@@ -20,11 +20,15 @@ const ImageProcessor = (function() {
         MAX_WIDTH: 3840,
         MAX_HEIGHT: 2160,
         
-        // Quality settings
-        QUALITY_HIGH: 0.92,
-        QUALITY_MEDIUM: 0.85,
-        QUALITY_LOW: 0.7,
+        // Quality settings (optimized for perceptual quality)
+        QUALITY_HIGH: 0.95,      // Increased for better quality
+        QUALITY_MEDIUM: 0.88,   // Balanced quality/size
+        QUALITY_LOW: 0.75,      // Minimum acceptable quality
         QUALITY_PREVIEW: 0.4,
+        
+        // Progressive compression settings
+        PROGRESSIVE_STEPS: 3,   // Number of quality steps to try
+        QUALITY_TOLERANCE: 0.05, // Acceptable size deviation (5%)
         
         // Preview settings - aggressive downsampling for speed
         PREVIEW_TINY: 100,      // Ultra-fast first preview
@@ -898,31 +902,120 @@ const ImageProcessor = (function() {
     }
 
     /**
-     * Optimize blob size
+     * Calculate image complexity score (0-1)
+     * Higher complexity = more detail = needs higher quality
+     */
+    async function _calculateImageComplexity(canvas) {
+        try {
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            const imageData = ctx.getImageData(0, 0, Math.min(canvas.width, 256), Math.min(canvas.height, 256));
+            const data = imageData.data;
+            
+            // Calculate variance (measure of detail/complexity)
+            let sum = 0;
+            let sumSq = 0;
+            const sampleSize = Math.min(data.length, 10000); // Sample for performance
+            
+            for (let i = 0; i < sampleSize; i += 4) {
+                const gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                sum += gray;
+                sumSq += gray * gray;
+            }
+            
+            const mean = sum / (sampleSize / 4);
+            const variance = (sumSq / (sampleSize / 4)) - (mean * mean);
+            const stdDev = Math.sqrt(Math.max(0, variance));
+            
+            // Normalize to 0-1 range (typical stdDev for images: 20-80)
+            const complexity = Math.min(1.0, stdDev / 80.0);
+            return complexity;
+        } catch (e) {
+            // Fallback: assume medium complexity
+            return 0.5;
+        }
+    }
+    
+    /**
+     * Optimize blob size with intelligent quality selection
+     * Uses progressive compression and perceptual quality optimization
      */
     async function _optimizeBlobSize(canvas, targetSize) {
-        let quality = CONFIG.QUALITY_HIGH;
+        // Calculate image complexity to adjust quality baseline
+        const complexity = await _calculateImageComplexity(canvas);
+        
+        // Adjust quality based on complexity:
+        // High complexity (detailed images) -> higher quality needed
+        // Low complexity (simple images) -> can use lower quality
+        const baseQuality = CONFIG.QUALITY_HIGH + (complexity - 0.5) * 0.1;
+        const adjustedQuality = Math.max(CONFIG.QUALITY_LOW, Math.min(0.98, baseQuality));
+        
+        let quality = adjustedQuality;
         let blob = await _canvasToBlob(canvas, quality);
         
-        if (blob.size <= targetSize) return blob;
+        // If already within target, return immediately
+        if (blob.size <= targetSize) {
+            return blob;
+        }
         
-        let minQuality = 0.3;
-        let maxQuality = quality;
+        // Progressive compression: try multiple quality levels
+        const qualitySteps = [
+            adjustedQuality,
+            adjustedQuality * 0.9,
+            adjustedQuality * 0.8,
+            CONFIG.QUALITY_MEDIUM,
+            CONFIG.QUALITY_LOW
+        ];
         
+        // Binary search with quality tolerance
+        let minQuality = CONFIG.QUALITY_LOW;
+        let maxQuality = adjustedQuality;
+        let bestBlob = blob;
+        let bestQuality = quality;
+        
+        // Try progressive steps first (faster for most cases)
+        for (const stepQuality of qualitySteps) {
+            if (stepQuality < minQuality || stepQuality > maxQuality) continue;
+            
+            const testBlob = await _canvasToBlob(canvas, stepQuality);
+            
+            if (testBlob.size <= targetSize) {
+                // Within target, try to maximize quality
+                if (stepQuality > bestQuality || bestBlob.size > targetSize) {
+                    bestBlob = testBlob;
+                    bestQuality = stepQuality;
+                    maxQuality = stepQuality;
+                }
+            } else {
+                // Too large, need lower quality
+                minQuality = stepQuality;
+            }
+        }
+        
+        // If we found a good match, use it
+        if (bestBlob.size <= targetSize * (1 + CONFIG.QUALITY_TOLERANCE)) {
+            return bestBlob;
+        }
+        
+        // Fine-tune with binary search
         for (let i = 0; i < 5; i++) {
             quality = (minQuality + maxQuality) / 2;
             blob = await _canvasToBlob(canvas, quality);
             
-            if (blob.size > targetSize) {
+            if (blob.size > targetSize * (1 + CONFIG.QUALITY_TOLERANCE)) {
                 maxQuality = quality;
-            } else if (blob.size < targetSize * 0.8) {
+            } else if (blob.size < targetSize * (1 - CONFIG.QUALITY_TOLERANCE)) {
                 minQuality = quality;
+                if (quality > bestQuality) {
+                    bestBlob = blob;
+                    bestQuality = quality;
+                }
             } else {
-                break;
+                // Within tolerance, use this
+                return blob;
             }
         }
         
-        return blob;
+        return bestBlob;
     }
 
     // ==================== Progressive Preview ====================

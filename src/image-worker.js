@@ -21,8 +21,9 @@ const ctx = self;
 let CONFIG = {
     MAX_WIDTH: 3840,
     MAX_HEIGHT: 2160,
-    QUALITY_HIGH: 0.92,
-    QUALITY_MEDIUM: 0.85,
+    QUALITY_HIGH: 0.95,      // Increased for better quality
+    QUALITY_MEDIUM: 0.88,    // Balanced quality/size
+    QUALITY_LOW: 0.75,       // Minimum acceptable quality
     CHUNK_SIZE: 2048,
     OUTPUT_FORMAT: 'image/webp',
     FALLBACK_FORMAT: 'image/jpeg',
@@ -40,7 +41,8 @@ const WASM = {
     ready: false,
     allocPtr: 0,
     heapCapacity: 0,
-    hasNearest: false  // Whether nearest neighbor resize is available
+    hasNearest: false,  // Whether nearest neighbor resize is available
+    hasLanczos: false   // Whether Lanczos resampling is available
 };
 
 /**
@@ -158,34 +160,124 @@ async function processImageData(imageData, targetWidth, targetHeight, onProgress
 }
 
 /**
- * Optimize blob size with quality adjustment
+ * Calculate image complexity (simplified version for Worker)
+ * Returns complexity score 0-1
+ */
+function calculateImageComplexity(imageData) {
+    try {
+        const data = imageData.data;
+        const width = imageData.width;
+        const height = imageData.height;
+        
+        // Sample a subset for performance
+        const sampleWidth = Math.min(width, 128);
+        const sampleHeight = Math.min(height, 128);
+        const stepX = Math.max(1, Math.floor(width / sampleWidth));
+        const stepY = Math.max(1, Math.floor(height / sampleHeight));
+        
+        let sum = 0;
+        let sumSq = 0;
+        let count = 0;
+        
+        for (let y = 0; y < height; y += stepY) {
+            for (let x = 0; x < width; x += stepX) {
+                const idx = (y * width + x) * 4;
+                if (idx + 2 < data.length) {
+                    const gray = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+                    sum += gray;
+                    sumSq += gray * gray;
+                    count++;
+                }
+            }
+        }
+        
+        if (count === 0) return 0.5;
+        
+        const mean = sum / count;
+        const variance = (sumSq / count) - (mean * mean);
+        const stdDev = Math.sqrt(Math.max(0, variance));
+        
+        // Normalize to 0-1 (typical stdDev: 20-80)
+        return Math.min(1.0, stdDev / 80.0);
+    } catch (e) {
+        return 0.5; // Fallback
+    }
+}
+
+/**
+ * Optimize blob size with intelligent quality selection and progressive compression
  */
 async function optimizeBlobSize(canvas, targetSize, format) {
-    let quality = CONFIG.QUALITY_HIGH;
+    // Get image data for complexity analysis
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const imageData = ctx.getImageData(0, 0, Math.min(canvas.width, 256), Math.min(canvas.height, 256));
+    const complexity = calculateImageComplexity(imageData);
+    
+    // Adjust quality based on complexity
+    const baseQuality = CONFIG.QUALITY_HIGH + (complexity - 0.5) * 0.1;
+    const adjustedQuality = Math.max(0.7, Math.min(0.98, baseQuality));
+    
+    let quality = adjustedQuality;
     let blob = await canvas.convertToBlob({ type: format, quality });
     
     if (blob.size <= targetSize) {
         return blob;
     }
     
-    // Binary search for optimal quality
-    let minQuality = 0.3;
-    let maxQuality = quality;
+    // Progressive compression steps
+    const qualitySteps = [
+        adjustedQuality,
+        adjustedQuality * 0.9,
+        adjustedQuality * 0.8,
+        CONFIG.QUALITY_MEDIUM,
+        0.75,
+        0.7
+    ];
     
-    for (let i = 0; i < 5; i++) {
-        quality = (minQuality + maxQuality) / 2;
-        blob = await canvas.convertToBlob({ type: format, quality });
+    let minQuality = 0.5;
+    let maxQuality = adjustedQuality;
+    let bestBlob = blob;
+    let bestQuality = quality;
+    const tolerance = 0.05; // 5% tolerance
+    
+    // Try progressive steps
+    for (const stepQuality of qualitySteps) {
+        if (stepQuality < minQuality || stepQuality > maxQuality) continue;
         
-        if (blob.size > targetSize) {
-            maxQuality = quality;
-        } else if (blob.size < targetSize * 0.8) {
-            minQuality = quality;
+        const testBlob = await canvas.convertToBlob({ type: format, quality: stepQuality });
+        
+        if (testBlob.size <= targetSize * (1 + tolerance)) {
+            if (stepQuality > bestQuality || bestBlob.size > targetSize) {
+                bestBlob = testBlob;
+                bestQuality = stepQuality;
+                maxQuality = stepQuality;
+            }
         } else {
-            break;
+            minQuality = stepQuality;
         }
     }
     
-    return blob;
+    // Fine-tune with binary search if needed
+    if (bestBlob.size > targetSize * (1 + tolerance)) {
+        for (let i = 0; i < 5; i++) {
+            quality = (minQuality + maxQuality) / 2;
+            blob = await canvas.convertToBlob({ type: format, quality });
+            
+            if (blob.size > targetSize * (1 + tolerance)) {
+                maxQuality = quality;
+            } else if (blob.size < targetSize * (1 - tolerance)) {
+                minQuality = quality;
+                if (quality > bestQuality) {
+                    bestBlob = blob;
+                    bestQuality = quality;
+                }
+            } else {
+                return blob;
+            }
+        }
+    }
+    
+    return bestBlob;
 }
 
 /**
@@ -237,9 +329,12 @@ async function loadWasm(url) {
             throw new Error('WASM missing required export: resize_rgba');
         }
         
-        // Optional exports (for better performance)
+        // Optional exports (for better performance/quality)
         if (typeof instance.exports.resize_rgba_nearest === 'function') {
             WASM.hasNearest = true;
+        }
+        if (typeof instance.exports.resize_rgba_lanczos === 'function') {
+            WASM.hasLanczos = true;
         }
         
         if (!instance.exports.memory) {
@@ -260,6 +355,7 @@ async function loadWasm(url) {
             `resize_rgba=${!!WASM.exports.resize_rgba}, ` +
             `memory=${!!WASM.exports.memory}, ` +
             `resize_rgba_nearest=${!!WASM.exports.resize_rgba_nearest}, ` +
+            `resize_rgba_lanczos=${!!WASM.exports.resize_rgba_lanczos}, ` +
             `get_last_error=${!!WASM.exports.get_last_error}`
         );
     } catch (err) {
