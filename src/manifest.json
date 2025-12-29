@@ -12,6 +12,9 @@
         "https://www.google.com/*",
         "https://www.bing.com/*",
         "https://duckduckgo.com/*",
+        "https://yandex.com/*",
+        "https://search.yahoo.co.jp/*",
+        "https://www.yahoo.co.jp/*",
         "https://bing.biturl.top/*"
     ],
     "web_accessible_resources": [

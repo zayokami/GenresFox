@@ -729,4 +729,10 @@ pub unsafe extern "C" fn resize_rgba(
     })
 }
 
-// Ars longa, vita brevis.
+/* 
+ * Empty your mind, be formless, shapeless, like water. 
+ * Now you put water into a cup, it becomes the cup; Put it in a teapot, it becomes the teapot. 
+ * Water can flow, or creep, or drip, or crash. 
+ * Be water, my friend.
+ * -- Bruce Lee
+*/

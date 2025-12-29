@@ -300,6 +300,16 @@ const defaultEngines = {
         name: "DuckDuckGo",
         url: "https://duckduckgo.com/?q=%s",
         icon: "https://duckduckgo.com/favicon.ico"
+    },
+    yandex: {
+        name: "Yandex",
+        url: "https://yandex.com/search/?text=%s",
+        icon: "https://yandex.com/favicon.ico"
+    },
+    yahoojapan: {
+        name: "Yahoo Japan",
+        url: "https://search.yahoo.co.jp/search?p=%s",
+        icon: "https://www.yahoo.co.jp/favicon.ico"
     }
 };
 
