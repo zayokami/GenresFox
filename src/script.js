@@ -300,16 +300,25 @@ const defaultEngines = {
         name: "DuckDuckGo",
         url: "https://duckduckgo.com/?q=%s",
         icon: "https://duckduckgo.com/favicon.ico"
+    },
+    yandex: {
+        name: "Yandex",
+        url: "https://yandex.com/search/?text=%s",
+        icon: "https://yandex.com/favicon.ico"
+    },
+    yahoojapan: {
+        name: "Yahoo Japan",
+        url: "https://search.yahoo.co.jp/search?p=%s",
+        icon: "https://www.yahoo.co.jp/favicon.ico"
     }
 };
 
 const defaultShortcuts = [
     { name: "GitHub", url: "https://github.com", icon: "https://github.com/favicon.ico" },
     { name: "YouTube", url: "https://youtube.com", icon: "https://www.youtube.com/favicon.ico" },
-    // Use DuckDuckGo icon service for Bilibili to avoid region / CORS issues with site favicon
-    { name: "Bilibili", url: "https://bilibili.com", icon: "https://icons.duckduckgo.com/ip3/bilibili.com.ico" },
-    // Use DuckDuckGo icon service for Gmail to avoid CORS issues on first load
-    { name: "Gmail", url: "https://mail.google.com", icon: "https://icons.duckduckgo.com/ip3/mail.google.com.ico" }
+    // Use site's own favicon first; fallback to icon services if needed
+    { name: "Bilibili", url: "https://bilibili.com", icon: "https://bilibili.com/favicon.ico" },
+    { name: "Gmail", url: "https://mail.google.com", icon: "https://mail.google.com/favicon.ico" }
 ];
 
 // State - with safe JSON parsing to handle corrupted data
@@ -331,7 +340,9 @@ function _decorateImg(img) {
     if (!img) return;
     img.referrerPolicy = 'no-referrer';
     img.decoding = 'async';
-    img.loading = 'lazy';
+    // Use eager loading for above-the-fold icons to improve LCP
+    // Lazy loading is applied only for below-the-fold content
+    img.loading = 'eager';
 }
 
 let shortcuts;
@@ -352,7 +363,8 @@ if (!shortcuts || !Array.isArray(shortcuts) || shortcuts.length === 0) {
     shortcuts.forEach((s) => {
         if (!s || typeof s.url !== 'string') return;
         if (s.url.includes('bilibili.com') && typeof s.icon === 'string' && s.icon.includes('www.bilibili.com')) {
-            s.icon = "https://icons.duckduckgo.com/ip3/bilibili.com.ico";
+            // Use site's own favicon instead of icon service to avoid CORS issues
+            s.icon = "https://bilibili.com/favicon.ico";
             migrated = true;
         }
     });
@@ -394,9 +406,9 @@ function saveShortcuts() {
 
 function getFavicon(url) {
     try {
-        const domain = new URL(url).hostname;
-        // DuckDuckGo icon service returns CORS-enabled .ico
-        return `https://icons.duckduckgo.com/ip3/${domain}.ico`;
+        const urlObj = new URL(url);
+        // Prefer site's own favicon (most reliable, no CORS issues)
+        return `${urlObj.origin}/favicon.ico`;
     } catch (e) {
         return "icon.png";
     }
@@ -411,22 +423,33 @@ function _buildIconCandidates(rawIconUrl, pageUrl) {
         seen.add(u);
     };
 
-    // Start with provided icon URL (if any)
-    if (rawIconUrl) add(rawIconUrl);
-
     const basisUrl = pageUrl || rawIconUrl;
     if (basisUrl) {
         try {
             const urlObj = new URL(basisUrl);
             const origin = urlObj.origin;
             const domain = urlObj.hostname;
+            // Prioritize site's own favicon first (most reliable, no CORS issues)
             add(`${origin}/favicon.ico`);
             add(`${origin}/apple-touch-icon.png`);
             add(`${origin}/apple-touch-icon-precomposed.png`);
-            // DuckDuckGo icon service (CORS)
-            add(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
-            // Google s2 (may be non-CORS; keep as late fallback)
+        } catch (e) {
+            // Ignore parse errors
+        }
+    }
+
+    // Then use provided icon URL (if any)
+    if (rawIconUrl) add(rawIconUrl);
+
+    // Finally, add icon services as fallbacks (may have CORS issues)
+    if (basisUrl) {
+        try {
+            const urlObj = new URL(basisUrl);
+            const domain = urlObj.hostname;
+            // Google s2 (more reliable than DuckDuckGo for some domains)
             add(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`);
+            // DuckDuckGo icon service (may have CORS issues, use as last resort)
+            add(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
         } catch (e) {
             // Ignore parse errors
         }
@@ -516,25 +539,69 @@ function _updateImagesForKey(key, dataUrl) {
     });
 }
 
+/**
+ * Check if URL is from a service that doesn't support CORS
+ * @param {string} url
+ * @returns {boolean}
+ */
+function _isNonCorsService(url) {
+    if (!url) return false;
+    try {
+        const urlObj = new URL(url);
+        // DuckDuckGo icon service doesn't support CORS
+        return urlObj.hostname === 'icons.duckduckgo.com';
+    } catch (e) {
+        return false;
+    }
+}
+
 async function _fetchIconAsDataUrl(url) {
-    // Direct fetch first
-    const response = await fetch(url, { mode: 'cors' });
+    // For services that don't support CORS, skip fetch and use Image fallback
+    if (_isNonCorsService(url)) {
+        throw new Error('Service does not support CORS, use Image fallback');
+    }
+    
+    try {
+        // Try with CORS first (for services that support it)
+        const response = await fetch(url, { 
+            mode: 'cors',
+            credentials: 'omit' // Don't send credentials
+        });
         if (!response.ok) throw new Error('Network response was not ok');
         const blob = await response.blob();
-    return await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
+        return await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (fetchErr) {
+        // If CORS fails, throw to trigger Image fallback
+        throw fetchErr;
+    }
 }
 
 async function _loadIconViaImage(url) {
     return new Promise((resolve, reject) => {
         const img = new Image();
-        img.crossOrigin = 'anonymous';
+        
+        // Only set crossOrigin for services that support CORS
+        // For non-CORS services (like DuckDuckGo), don't set crossOrigin
+        // This allows the image to load but we can't convert to data URL
+        if (!_isNonCorsService(url)) {
+            img.crossOrigin = 'anonymous';
+        }
+        
         img.onload = () => {
             try {
+                // For non-CORS images, we can't use canvas.toDataURL due to tainted canvas
+                // Instead, return the original URL as data URL is not possible
+                if (_isNonCorsService(url)) {
+                    // Return the URL directly - browser will handle it
+                    resolve(url);
+                    return;
+                }
+                
                 const canvas = document.createElement('canvas');
                 canvas.width = img.width || 64;
                 canvas.height = img.height || 64;
@@ -542,7 +609,12 @@ async function _loadIconViaImage(url) {
                 ctx.drawImage(img, 0, 0);
                 resolve(canvas.toDataURL('image/png'));
             } catch (err) {
-                reject(err);
+                // If canvas conversion fails (tainted canvas), return original URL
+                if (err.name === 'SecurityError' || err.message.includes('tainted')) {
+                    resolve(url);
+                } else {
+                    reject(err);
+                }
             }
         };
         img.onerror = () => reject(new Error('Image load failed'));
@@ -557,6 +629,7 @@ async function cacheIcon(key, rawIconUrl, pageUrl) {
         const candidates = _buildIconCandidates(rawIconUrl, pageUrl);
         for (const candidate of candidates) {
             try {
+                // Try fetch first (for CORS-enabled services)
                 const dataUrl = await _fetchIconAsDataUrl(candidate);
                 _iconCacheInMemory.set(key, { data: dataUrl, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
                 await _putIconToDB(key, dataUrl);
@@ -565,19 +638,31 @@ async function cacheIcon(key, rawIconUrl, pageUrl) {
                 localStorage.setItem(`icon_cache_${key}`, dataUrl);
                 return;
             } catch (fetchErr) {
-                // If fetch failed, try canvas-based fallback
+                // If fetch failed (CORS or other error), try Image-based fallback
                 try {
-                    const dataUrl = await _loadIconViaImage(candidate);
-                    _iconCacheInMemory.set(key, { data: dataUrl, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
-                    await _putIconToDB(key, dataUrl);
-                    _updateImagesForKey(key, dataUrl);
-                    localStorage.setItem(`icon_cache_${key}`, dataUrl);
+                    const result = await _loadIconViaImage(candidate);
+                    // result might be a data URL or the original URL (for non-CORS services)
+                    _iconCacheInMemory.set(key, { data: result, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
+                    // Only store in DB if it's a data URL (not a regular URL)
+                    if (result.startsWith('data:')) {
+                        await _putIconToDB(key, result);
+                        localStorage.setItem(`icon_cache_${key}`, result);
+                    } else {
+                        // For non-CORS URLs, store the URL itself but mark as 'url' type
+                        // Don't store in DB/localStorage as it's not a data URL
+                    }
+                    _updateImagesForKey(key, result);
                     return;
                 } catch (imgErr) {
-                    // Continue to next candidate
+                    // Silently continue to next candidate
+                    // Don't log CORS errors as they're expected for some services
+                    if (!imgErr.message.includes('CORS') && !imgErr.message.includes('tainted')) {
+                        // Only log non-CORS errors
+                    }
                 }
             }
         }
+        // Only warn if all candidates failed (including non-CORS fallbacks)
         console.warn(`Failed to cache icon: ${key}`);
         // Mark this key as failed so future getIconSrc() calls won't keep retrying
         const failedEntry = {
@@ -808,6 +893,8 @@ function renderShortcutsGrid() {
         a.draggable = true;
         a.dataset.index = index;
         a.target = targetPref;
+        // Prevent CLS: set href immediately to reserve space
+        a.href = shortcut.url || '#';
         if (targetPref === '_blank') {
             a.rel = 'noopener noreferrer';
         }
@@ -865,6 +952,9 @@ function renderShortcutsGrid() {
 
         const img = document.createElement("img");
         img.alt = shortcut.name;
+        // Prevent CLS: set explicit dimensions
+        img.width = 24;
+        img.height = 24;
         _decorateImg(img);
             
             // Use cached icon with stable key based on URL (not index, which changes on delete)
@@ -1531,7 +1621,7 @@ function _setupSnowEasterEgg() {
                 _updateSnowToggleVisibility();
                 _showChristmasEmojis(genresFoxHeading);
                 // Show a subtle notification (optional)
-                console.log('❄️ Snow effect activated!');
+                console.log('[OK] Snow effect activated!');
             }
         }
     });
@@ -1657,13 +1747,27 @@ async function init() {
         }
     });
 
-    // Initialize Snow Effect (easter egg)
-    await safeInit('SnowEffect', () => {
-        if (typeof SnowEffect !== 'undefined') {
-            SnowEffect.init();
-            _setupSnowEasterEgg();
-        }
-    });
+    // Initialize Snow Effect (easter egg) - deferred to not affect LCP
+    // Snow effect is non-critical and can be loaded after LCP
+    if (window.requestIdleCallback) {
+        requestIdleCallback(() => {
+            safeInit('SnowEffect', () => {
+                if (typeof SnowEffect !== 'undefined') {
+                    SnowEffect.init();
+                    _setupSnowEasterEgg();
+                }
+            });
+        }, { timeout: 3000 });
+    } else {
+        setTimeout(() => {
+            safeInit('SnowEffect', () => {
+                if (typeof SnowEffect !== 'undefined') {
+                    SnowEffect.init();
+                    _setupSnowEasterEgg();
+                }
+            });
+        }, 2000);
+    }
 
     // Ensure shortcuts exist (Double check)
     if (!shortcuts || shortcuts.length === 0) {
@@ -1690,12 +1794,8 @@ async function init() {
         }
     });
     
+    // Critical UI updates first (for LCP)
     updateUI();
-    renderEnginesList();
-    renderShortcutsList();
-    renderShortcutsGrid();
-    _updateSnowToggleVisibility();
-    _setupSnowToggle();
     if (window.SearchBar && typeof window.SearchBar.init === 'function') {
         window.SearchBar.init({
             searchInputId: 'search',
@@ -1706,15 +1806,31 @@ async function init() {
         });
     }
     
-    // Initialize settings list drag & drop
-    initSettingsListDragDrop();
+    // Render shortcuts grid (critical for LCP)
+    renderShortcutsGrid();
+    
+    // Non-critical UI updates deferred
+    requestIdleCallback(() => {
+        renderEnginesList();
+        renderShortcutsList();
+        _updateSnowToggleVisibility();
+        _setupSnowToggle();
+        // Initialize settings list drag & drop
+        initSettingsListDragDrop();
+    }, { timeout: 100 });
 
     // Ensure focus (autofocus attribute handles initial, this is backup)
     searchInput.focus();
 }
 
-// Focus immediately before any async operations
-searchInput.focus();
+// Focus immediately after DOM is ready (but not blocking)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        if (searchInput) searchInput.focus();
+    });
+} else {
+    if (searchInput) searchInput.focus();
+}
 
 // ==================== Ripple Effect ====================
 
@@ -1805,8 +1921,6 @@ window.initRippleEffects = initRippleEffects;
 init();
 
 /**
- * "And if I only could
- * I'd make a deal with God
- * And I'd get Him to swap our places"
- * - Kate Bush, "Running Up That Hill" (1985)
+ * Often, only those who have succeeded have a voice.
+ * The words of those who haven't yet succeeded or who have failed are often treated as a joke.
  */

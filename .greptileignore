@@ -1,0 +1,55 @@
+# Greptile ignore file
+# Files and directories to exclude from Greptile indexing
+
+# Build artifacts and compiled files
+src/wasm-resize/target/
+*.wasm
+!src/resize.wasm
+*.rlib
+*.rmeta
+*.d
+*.pdb
+
+# Rust build artifacts
+src/wasm-resize/Cargo.lock
+src/wasm-resize/**/*.rs.bk
+
+# Editor directories
+.vscode/
+.idea/
+.cursor/
+.cursorrules/
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
+
+# Package files
+*.crx
+*.pem
+*.zip
+
+# Build directories
+dist/
+build/
+
+# Node modules (if added later)
+node_modules/
+
+# Screenshots and assets (optional - uncomment if you want to exclude)
+# assets/
+
+# Documentation that's not code (optional - uncomment if you want to exclude)
+# CHANGELOG.md
+# VALUES.md
+# CLAUDE.md
+

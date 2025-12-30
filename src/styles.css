@@ -72,7 +72,8 @@
 body {
     background: var(--bg-color);
     color: var(--text-color);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    /* Use system fonts first for faster rendering, Inter as fallback if available */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     min-height: 100vh;
     display: flex;
     justify-content: center;
@@ -148,6 +149,9 @@ body::after {
     top: var(--search-position);
     left: 50%;
     transform: translateX(-50%);
+    /* Prevent any visual artifacts from containment */
+    outline: none;
+    border: none;
 }
 
 /* Search styles moved to search.css */
@@ -399,6 +403,9 @@ body::after {
     opacity: 0;
     transform: translateY(20px);
     animation: fadeInUp 0.8s var(--transition-curve) forwards;
+    /* Use lighter containment to prevent visual artifacts */
+    contain: layout;
+    will-change: opacity, transform;
 }
 
 .delay-1 {
@@ -414,6 +421,10 @@ body::after {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+.fade-in.animation-complete {
+    will-change: auto;
 }
 
 .settings-btn {
@@ -472,7 +483,7 @@ body::after {
     box-shadow: var(--shadow-strong);
     display: flex;
     flex-direction: column;
-    overflow: visible; /* allow floating popovers (custom selects, tooltips) */
+    overflow: visible;
     transform: scale(0.97);
     transition: transform var(--transition-fast) var(--transition-curve);
     max-height: 80vh;
@@ -511,7 +522,7 @@ body::after {
 .modal-body {
     padding: 20px;
     overflow-y: auto;
-    max-height: calc(80vh - 80px); /* account for header */
+    max-height: calc(80vh - 80px);
 }
 
 .tabs {
@@ -1055,6 +1066,8 @@ input[type="text"]:focus {
     max-width: 600px;
     margin-top: 40px;
     min-height: 80px;
+    contain: layout;
+    padding: 0;
 }
 
 .shortcut-item {
@@ -1066,6 +1079,9 @@ input[type="text"]:focus {
     position: relative;
     transition: transform 0.22s cubic-bezier(0.25, 0.9, 0.35, 1.2),
                 color 0.18s ease;
+    min-height: 80px;
+    min-width: 80px;
+    contain: layout style;
 }
 
 .shortcut-item:hover {
@@ -1080,9 +1096,13 @@ input[type="text"]:focus {
 .shortcut-icon {
     width: 48px;
     height: 48px;
+    min-width: 48px;
+    min-height: 48px;
     background: rgba(255, 255, 255, 0.16);
     border: 1.2px solid rgba(255, 255, 255, 0.28);
     border-radius: var(--radius-md);
+    contain: layout style paint;
+    aspect-ratio: 1;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -1120,6 +1140,10 @@ input[type="text"]:focus {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-height: 16px;
+    line-height: 1.2;
+    margin-top: 8px;
+    max-width: 80px;
     width: 100%;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
     font-weight: 500;

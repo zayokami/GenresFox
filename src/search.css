@@ -3,6 +3,10 @@
     max-width: var(--search-width);
     position: relative;
     z-index: 10;
+    /* Prevent visual artifacts from containment */
+    outline: none;
+    border: none;
+    background: transparent;
 }
 
 .search-box {
