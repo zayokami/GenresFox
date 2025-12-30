@@ -2,13 +2,13 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-0.4.1-blue.svg)
+![Version](https://img.shields.io/badge/version-0.4.2-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Chrome](https://img.shields.io/badge/chrome-manifest%20v3-orange.svg)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/zayokami/GenresFox)
 [![Greptile](https://img.shields.io/badge/Greptile-Indexed-brightgreen.svg)](https://app.greptile.com)
 
-**A fully open-source, extremely clean, and highly customizable new tab page extension.**
+**A completely open-source, high-performance, and extremely minimalist browser new tab page extension.**
 
 [English](#english) | [中文](#中文)
 
@@ -19,23 +19,23 @@
 
 ## English
 
-### ✨ Features
+### Features
 
-- **🎨 Modern Dark Theme**: Beautiful glassmorphism design with smooth animations
-- **🔍 Multi-Engine Search**: Built-in support for Google, Bing, and DuckDuckGo
-- **⚙️ Custom Search Engines**: Add your own search engines with custom URLs
-- **🔖 Quick Shortcuts**: Create shortcuts to your favorite websites with auto-fetched favicons
-- **🖼️ Custom Wallpapers**: Upload your own background images (up to 50MB, 50MP) with drag-and-drop support
-- **🌅 Bing Daily Wallpaper**: Beautiful daily wallpapers from Bing with smart 24-hour caching and preloading
-- **⚡ High-Performance Image Processing**: Web Worker support, WebAssembly acceleration, progressive preview, and intelligent compression
-- **🌍 Multi-language**: English, Simplified Chinese, Traditional Chinese, Japanese, Spanish, French, German, Russian
-- **♿ Accessibility**: High contrast themes, font controls, animation settings, keyboard shortcuts
-- **⌨️ Keyboard Shortcuts**: Quick engine switching (Alt+↑↓), focus search (/), open settings (Alt+,)
-- **💾 Smart Caching**: Icon caching, wallpaper caching, and processing result caching for faster loading
-- **🎯 Clean & Minimal**: Distraction-free interface focused on what matters
+- **Modern Dark Theme**: Beautiful glassmorphism design with smooth animations
+- **Multi-Engine Search**: Built-in support for Google, Bing, DuckDuckGo, Yandex, and Yahoo Japan
+- **Custom Search Engines**: Add your own search engines with custom URLs
+- **Quick Shortcuts**: Create shortcuts to your favorite websites with auto-fetched favicons
+- **Custom Wallpapers**: Upload your own background images (up to 50MB, 50MP) with drag-and-drop support
+- **Bing Daily Wallpaper**: Beautiful daily wallpapers from Bing with smart 24-hour caching and preloading
+- **High-Performance Image Processing**: Web Worker support, WebAssembly acceleration, progressive preview, and intelligent compression
+- **Multi-language**: English, Simplified Chinese, Traditional Chinese, Japanese, Spanish, French, German, Russian
+- **Accessibility**: High contrast themes, font controls, animation settings, keyboard shortcuts
+- **Keyboard Shortcuts**: Quick engine switching (Alt+↑↓), focus search (/), open settings (Alt+,)
+- **Smart Caching**: Icon caching, wallpaper caching, and processing result caching for faster loading
+- **Clean & Minimal**: Distraction-free interface focused on what matters
 
 
-### 🚀 Installation
+### Installation
 
 #### From Source
 
@@ -56,7 +56,7 @@
 
 > Coming soon...
 
-### 🛠️ Usage
+### Usage
 
 #### Search
 - Simply type in the search box and press Enter
@@ -83,7 +83,7 @@
 4. Images are automatically optimized and compressed for storage efficiency
 5. Click "Reset to Default" to restore the original background
 
-### 🔧 Development
+### Development
 
 #### Greptile Integration
 
@@ -146,7 +146,7 @@ GenresFox/
 5. Update `_supportedLanguages` array and `_detectLanguage()` function
 6. Add a language switch entry if needed in UI
 
-### 🤝 Contributing
+### Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
@@ -156,11 +156,11 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-### 📝 License
+### License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### 👤 Author
+### Author
 
 **zayoka**
 
@@ -172,7 +172,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - GitHub: [@KafuuChino](https://github.com/lian5727557)
 
-### 🔒 Security & Transparency
+### Security & Transparency
 
 The WASM module (`resize.wasm`) is **100% open source and auditable**:
 
@@ -188,7 +188,7 @@ The WASM module (`resize.wasm`) is **100% open source and auditable**:
 
 **For developers**: After installing Rust, you can build immediately - zero dependencies to download.
 
-### 🙏 Acknowledgments
+### Acknowledgments
 
 - Inspired by modern web design trends
 - Icons from Google Material Design
@@ -199,23 +199,23 @@ The WASM module (`resize.wasm`) is **100% open source and auditable**:
 
 ## 中文
 
-### ✨ 功能特性
+### 功能特性
 
-- **🎨 现代深色主题**: 精美的玻璃态设计，流畅的动画效果
-- **🔍 多引擎搜索**: 内置支持 Google、Bing 和 DuckDuckGo
-- **⚙️ 自定义搜索引擎**: 添加您自己的搜索引擎和自定义 URL
-- **🔖 快捷方式**: 创建常用网站的快捷方式，自动获取网站图标
-- **🖼️ 自定义壁纸**: 上传您自己的背景图片（最大 50MB，5000万像素），支持拖放上传
-- **🌅 必应每日壁纸**: 来自必应的精美每日壁纸，支持智能24小时缓存和预加载
-- **⚡ 高性能图片处理**: Web Worker 支持、WebAssembly 加速、渐进式预览、智能压缩
-- **🌍 多语言支持**: 简体中文、繁体中文、日语、英语、西班牙语、法语、德语、俄语
-- **♿ 无障碍功能**: 高对比度主题、字体控制、动画设置、键盘快捷键
-- **⌨️ 键盘快捷键**: 快速切换搜索引擎 (Alt+↑↓)、聚焦搜索框 (/)、打开设置 (Alt+,)
-- **💾 智能缓存**: 图标缓存、壁纸缓存、处理结果缓存，加快加载速度
-- **🎯 简洁极简**: 无干扰界面，专注于重要内容
+- **现代深色主题**: 精美的玻璃态设计，流畅的动画效果
+- **多引擎搜索**: 内置支持 Google、Bing、DuckDuckGo、Yandex 和 Yahoo Japan
+- **自定义搜索引擎**: 添加您自己的搜索引擎和自定义 URL
+- **快捷方式**: 创建常用网站的快捷方式，自动获取网站图标
+- **自定义壁纸**: 上传您自己的背景图片（最大 50MB，5000万像素），支持拖放上传
+- **必应每日壁纸**: 来自必应的精美每日壁纸，支持智能24小时缓存和预加载
+- **高性能图片处理**: Web Worker 支持、WebAssembly 加速、渐进式预览、智能压缩
+- **多语言支持**: 简体中文、繁体中文、日语、英语、西班牙语、法语、德语、俄语
+- **无障碍功能**: 高对比度主题、字体控制、动画设置、键盘快捷键
+- **键盘快捷键**: 快速切换搜索引擎 (Alt+↑↓)、聚焦搜索框 (/)、打开设置 (Alt+,)
+- **智能缓存**: 图标缓存、壁纸缓存、处理结果缓存，加快加载速度
+- **简洁极简**: 无干扰界面，专注于重要内容
 
 
-### 🚀 安装
+### 安装
 
 #### 从源码安装
 
@@ -236,7 +236,7 @@ The WASM module (`resize.wasm`) is **100% open source and auditable**:
 
 > 即将推出...
 
-### 🛠️ 使用方法
+### 使用方法
 
 #### 搜索
 - 在搜索框中输入内容并按回车
@@ -263,13 +263,13 @@ The WASM module (`resize.wasm`) is **100% open source and auditable**:
 4. 图片会自动优化和压缩以提高存储效率
 5. 点击"恢复默认"可还原原始背景
 
-### 🔧 开发
+### 开发
 
-#### Greptile 集成
+#### Greptile
 
 本项目已接入 [Greptile](https://app.greptile.com)，支持 AI 驱动的代码理解和查询。`.greptileignore` 文件指定了需要从索引中排除的文件（构建产物、依赖等）。
 
-要将此仓库连接到 Greptile：
+若要将此仓库连接到 Greptile：
 1. 访问 [app.greptile.com](https://app.greptile.com)
 2. 连接您的 GitHub 账户
 3. 选择此仓库
@@ -318,7 +318,7 @@ GenresFox/
 - **LocalStorage**: 用于持久化设置和元数据缓存
 - **Chrome 扩展 API**: 用于国际化和浏览器集成
 
-#### 添加新语言
+#### 多语言贡献
 1. 在 `src/_locales/` 中创建新文件夹，使用语言代码命名（如 `fr` 表示法语）
 2. 从 `en` 文件夹复制 `messages.json`
 3. 翻译所有消息值
@@ -326,7 +326,7 @@ GenresFox/
 5. 更新 `_supportedLanguages` 数组和 `_detectLanguage()` 函数
 6. 如需在界面中显示语言切换入口，请同步新增
 
-### 🤝 贡献
+### 贡献
 
 欢迎贡献！请随时提交 Pull Request。
 
@@ -336,11 +336,11 @@ GenresFox/
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
 5. 打开一个 Pull Request
 
-### 📝 许可证
+### 许可证
 
 本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件。
 
-### 👤 作者
+### 作者
 
 **zayoka**
 
@@ -352,7 +352,7 @@ GenresFox/
 
 - GitHub: [@KafuuChino](https://github.com/lian5727557)
 
-### 🔒 安全与透明度
+### 安全与透明度
 
 WASM 模块 (`resize.wasm`) **100% 开源且可审计**：
 
@@ -368,11 +368,11 @@ WASM 模块 (`resize.wasm`) **100% 开源且可审计**：
 
 **对于开发者**：安装 Rust 后即可立即构建 - 无需任何依赖需要下载。
 
-> ⚠️ **WASM 构建请使用 release 模式**  
+> 【注意】**WASM 构建请使用 release 模式**  
 > - 推荐命令：`cargo build --release --target wasm32-unknown-unknown`（或运行项目自带的 `build.sh` / `build.bat`）  
 > - 在 **debug 模式** 下，Rust 会对整数溢出等做运行时检查，一旦触发会在 WASM 内部 panic，最终在浏览器里表现为 JS 异常，**不适合作为扩展实际加载的 WASM 文件**。
 
-### 🙏 致谢
+###  致谢
 
 - 灵感来自现代网页设计趋势
 - 图标来自 Google Material Design
@@ -387,6 +387,6 @@ WASM 模块 (`resize.wasm`) **100% 开源且可审计**：
 
 **If this project has been helpful to you, please give it a ⭐️!**
 
-Made with ❤️ by zayoka
+Created and designed by zayoka.
 
 </div>

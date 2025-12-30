@@ -7,11 +7,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="appTitle">GenresFox</title>
+    <!-- Preload critical resources for faster LCP -->
+    <link rel="preload" href="styles.css" as="style">
+    <link rel="preload" href="inline-init.js" as="script">
+    <!-- Critical CSS loaded first (blocking) -->
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="accessibility.css">
-    <link rel="stylesheet" href="search.css">
     <!-- Critical inline script moved to external file to comply with CSP -->
     <script src="inline-init.js"></script>
+    <!-- Polyfill for requestIdleCallback (load early, before main scripts) -->
+    <script src="request-idle-callback-polyfill.js"></script>
+    <!-- Non-critical CSS loaded asynchronously (after critical scripts) -->
+    <script src="load-css-async.js" defer></script>
+    <noscript>
+        <link rel="stylesheet" href="accessibility.css">
+        <link rel="stylesheet" href="search.css">
+    </noscript>
 </head>
 
 <body>
@@ -312,9 +322,10 @@
                 <div class="tab-content" id="tab-about">
                     <div class="about-info">
                         <h3>GenresFox</h3>
-                        <p>Version 0.4.1</p>
-                        <p data-i18n="aboutDescription">A fully open-source, extremely clean, and highly customizable new tab page extension.</p>
+                        <p>Version 0.4.2</p>
+                        <p data-i18n="aboutDescription">A completely open-source, high-performance, and extremely minimalist browser new tab page extension.</p>
                         <p>&copy; 2025 zayoka. All rights reserved.</p>
+                        <p>Created and designed by zayoka.</p>
                         <br>
                         <p data-i18n="aboutOpenSource">GenresFox is an open-source project. You can find the source code on GitHub!</p>
                         <a href="https://github.com/zayokami/GenresFox" target="_blank" class="github-btn">

@@ -340,7 +340,9 @@ function _decorateImg(img) {
     if (!img) return;
     img.referrerPolicy = 'no-referrer';
     img.decoding = 'async';
-    img.loading = 'lazy';
+    // Use eager loading for above-the-fold icons to improve LCP
+    // Lazy loading is applied only for below-the-fold content
+    img.loading = 'eager';
 }
 
 let shortcuts;
@@ -891,6 +893,8 @@ function renderShortcutsGrid() {
         a.draggable = true;
         a.dataset.index = index;
         a.target = targetPref;
+        // Prevent CLS: set href immediately to reserve space
+        a.href = shortcut.url || '#';
         if (targetPref === '_blank') {
             a.rel = 'noopener noreferrer';
         }
@@ -948,6 +952,9 @@ function renderShortcutsGrid() {
 
         const img = document.createElement("img");
         img.alt = shortcut.name;
+        // Prevent CLS: set explicit dimensions
+        img.width = 24;
+        img.height = 24;
         _decorateImg(img);
             
             // Use cached icon with stable key based on URL (not index, which changes on delete)
@@ -1740,13 +1747,27 @@ async function init() {
         }
     });
 
-    // Initialize Snow Effect (easter egg)
-    await safeInit('SnowEffect', () => {
-        if (typeof SnowEffect !== 'undefined') {
-            SnowEffect.init();
-            _setupSnowEasterEgg();
-        }
-    });
+    // Initialize Snow Effect (easter egg) - deferred to not affect LCP
+    // Snow effect is non-critical and can be loaded after LCP
+    if (window.requestIdleCallback) {
+        requestIdleCallback(() => {
+            safeInit('SnowEffect', () => {
+                if (typeof SnowEffect !== 'undefined') {
+                    SnowEffect.init();
+                    _setupSnowEasterEgg();
+                }
+            });
+        }, { timeout: 3000 });
+    } else {
+        setTimeout(() => {
+            safeInit('SnowEffect', () => {
+                if (typeof SnowEffect !== 'undefined') {
+                    SnowEffect.init();
+                    _setupSnowEasterEgg();
+                }
+            });
+        }, 2000);
+    }
 
     // Ensure shortcuts exist (Double check)
     if (!shortcuts || shortcuts.length === 0) {
@@ -1773,12 +1794,8 @@ async function init() {
         }
     });
     
+    // Critical UI updates first (for LCP)
     updateUI();
-    renderEnginesList();
-    renderShortcutsList();
-    renderShortcutsGrid();
-    _updateSnowToggleVisibility();
-    _setupSnowToggle();
     if (window.SearchBar && typeof window.SearchBar.init === 'function') {
         window.SearchBar.init({
             searchInputId: 'search',
@@ -1789,15 +1806,31 @@ async function init() {
         });
     }
     
-    // Initialize settings list drag & drop
-    initSettingsListDragDrop();
+    // Render shortcuts grid (critical for LCP)
+    renderShortcutsGrid();
+    
+    // Non-critical UI updates deferred
+    requestIdleCallback(() => {
+        renderEnginesList();
+        renderShortcutsList();
+        _updateSnowToggleVisibility();
+        _setupSnowToggle();
+        // Initialize settings list drag & drop
+        initSettingsListDragDrop();
+    }, { timeout: 100 });
 
     // Ensure focus (autofocus attribute handles initial, this is backup)
     searchInput.focus();
 }
 
-// Focus immediately before any async operations
-searchInput.focus();
+// Focus immediately after DOM is ready (but not blocking)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        if (searchInput) searchInput.focus();
+    });
+} else {
+    if (searchInput) searchInput.focus();
+}
 
 // ==================== Ripple Effect ====================
 
@@ -1888,8 +1921,6 @@ window.initRippleEffects = initRippleEffects;
 init();
 
 /**
- * "And if I only could
- * I'd make a deal with God
- * And I'd get Him to swap our places"
- * - Kate Bush, "Running Up That Hill" (1985)
+ * Often, only those who have succeeded have a voice.
+ * The words of those who haven't yet succeeded or who have failed are often treated as a joke.
  */

@@ -2099,13 +2099,22 @@ const WallpaperManager = (function () {
         // 4. Bind events
         _bindEvents();
 
-        // 5. Load wallpaper (non-blocking to avoid first-paint stall)
-        _loadWallpaper().catch((e) => console.warn('Wallpaper load failed:', e));
+        // 5. Load wallpaper (non-blocking, deferred to not affect LCP)
+        // Use requestIdleCallback to ensure wallpaper loading doesn't block critical rendering
+        if (window.requestIdleCallback) {
+            requestIdleCallback(() => {
+                _loadWallpaper().catch((e) => console.warn('Wallpaper load failed:', e));
+            }, { timeout: 2000 });
+        } else {
+            setTimeout(() => {
+                _loadWallpaper().catch((e) => console.warn('Wallpaper load failed:', e));
+            }, 100);
+        }
 
         // 5.1 Warm today's Bing cache in background so switching is instant later
         _runWhenIdle(() => {
             _warmBingCache().catch((e) => console.warn('Bing cache warm failed:', e));
-        }, 1500);
+        }, 2000);
 
         // 6. Apply effects
         _applyWallpaperEffects();

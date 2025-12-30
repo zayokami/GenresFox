@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
     "name": "GenresFox",
-    "version": "0.4.1",
-    "description": "A fully open-source, extremely clean, and highly customizable new tab page extension.",
+    "version": "0.4.2",
+    "description": "A completely open-source, high-performance, and extremely minimalist browser new tab page extension.",
     "default_locale": "en",
     "chrome_url_overrides": {
         "newtab": "newtab.html"
