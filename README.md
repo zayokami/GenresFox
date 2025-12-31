@@ -57,6 +57,24 @@
 
 > Coming soon...
 
+#### Packaging Extension
+
+To package the extension into `.crx` format for distribution:
+
+1. **Using Chrome's built-in packager** (recommended):
+   - Open `chrome://extensions/` and enable "Developer mode"
+   - Click "Pack extension"
+   - Select the `src` folder as extension root
+   - Leave private key blank (for first-time packaging)
+   - Click "Pack Extension"
+
+2. **Using provided scripts**:
+   - Windows: Run `package.ps1` or `package.bat`
+   - macOS/Linux: Run `./package.sh` (make executable first: `chmod +x package.sh`)
+   - See `PACKAGING.md` for detailed instructions
+
+The output will be a `.crx` file ready for distribution.
+
 ### Usage
 
 #### Search
@@ -283,6 +301,24 @@ The WASM module (`resize.wasm`) is **100% open source and auditable**:
 #### 从 Chrome 网上应用店安装
 
 > 即将推出...
+
+#### 打包扩展
+
+将扩展打包为 `.crx` 格式用于分发：
+
+1. **使用 Chrome 内置打包工具**（推荐）：
+   - 打开 `chrome://extensions/` 并启用"开发者模式"
+   - 点击"打包扩展程序"
+   - 选择 `src` 文件夹作为扩展根目录
+   - 私钥文件留空（首次打包）
+   - 点击"打包扩展程序"
+
+2. **使用提供的脚本**：
+   - Windows: 运行 `package.ps1` 或 `package.bat`
+   - macOS/Linux: 运行 `./package.sh`（首次使用需先执行：`chmod +x package.sh`）
+   - 详细说明请参阅 `PACKAGING.md`
+
+打包完成后将生成 `.crx` 文件，可用于分发。
 
 ### 使用方法
 
