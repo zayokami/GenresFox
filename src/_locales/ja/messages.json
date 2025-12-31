@@ -229,6 +229,33 @@
     },
     "snowEffectToggle": {
         "message": "雪のエフェクト"
+    },
+    "exportConfigTitle": {
+        "message": "設定のエクスポート"
+    },
+    "exportConfigDescription": {
+        "message": "すべての設定、ショートカット、カスタマイズを JSON ファイルにエクスポートして、バックアップまたは共有できます。"
+    },
+    "exportConfigButton": {
+        "message": "設定をエクスポート"
+    },
+    "exportConfigSuccess": {
+        "message": "設定のエクスポートに成功しました！"
+    },
+    "exportConfigError": {
+        "message": "設定のエクスポートに失敗しました。"
+    },
+    "importConfigButton": {
+        "message": "設定をインポート"
+    },
+    "importConfigConfirm": {
+        "message": "これにより現在のすべての設定が置き換えられます。続行しますか？"
+    },
+    "importConfigSuccess": {
+        "message": "設定のインポートに成功しました！"
+    },
+    "importConfigError": {
+        "message": "設定のインポートに失敗しました："
     }
 }
 

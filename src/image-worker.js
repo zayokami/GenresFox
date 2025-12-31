@@ -41,8 +41,9 @@ const WASM = {
     ready: false,
     allocPtr: 0,
     heapCapacity: 0,
-    hasNearest: false,  // Whether nearest neighbor resize is available
-    hasLanczos: false   // Whether Lanczos resampling is available
+    hasNearest: false,      // Whether nearest neighbor resize is available
+    hasLanczos: false,      // Whether Lanczos resampling is available
+    hasGammaCorrect: false  // Whether gamma-correct resampling is available
 };
 
 /**
@@ -68,8 +69,15 @@ function calculateDimensions(width, height, maxWidth, maxHeight, screenWidth, sc
 
 /**
  * Process image using OffscreenCanvas (Worker-compatible)
+ * @param {ImageData} imageData - Source image data
+ * @param {number} targetWidth - Target width
+ * @param {number} targetHeight - Target height
+ * @param {Function} onProgress - Progress callback
+ * @param {Object} options - Processing options (optional)
+ * @param {boolean} options.gammaCorrect - Use gamma-correct resampling
+ * @param {string} options.algorithm - Resize algorithm
  */
-async function processImageData(imageData, targetWidth, targetHeight, onProgress) {
+async function processImageData(imageData, targetWidth, targetHeight, onProgress, options = {}) {
     const { width: srcWidth, height: srcHeight } = imageData;
     const totalPixels = srcWidth * srcHeight;
     
@@ -86,8 +94,14 @@ async function processImageData(imageData, targetWidth, targetHeight, onProgress
         
         // Try WASM if ready
         if (WASM.ready) {
-            console.log(`[Worker] Using WASM for image resize: ${srcWidth}x${srcHeight} -> ${targetWidth}x${targetHeight} (${(totalPixels / 1000000).toFixed(1)}MP)`);
-            const wasmCanvas = await processImageDataWithWasm(imageData, targetWidth, targetHeight, onProgress);
+            // Extract processing options
+            const wasmOptions = {
+                gammaCorrect: options.gammaCorrect || false,
+                algorithm: options.algorithm || 'auto'
+            };
+            
+            console.log(`[Worker] Using WASM for image resize: ${srcWidth}x${srcHeight} -> ${targetWidth}x${targetHeight} (${(totalPixels / 1000000).toFixed(1)}MP, gammaCorrect: ${wasmOptions.gammaCorrect}, algorithm: ${wasmOptions.algorithm})`);
+            const wasmCanvas = await processImageDataWithWasm(imageData, targetWidth, targetHeight, onProgress, wasmOptions);
             if (wasmCanvas) {
                 console.log(`[Worker] WASM resize completed successfully`);
                 return wasmCanvas;
@@ -336,6 +350,9 @@ async function loadWasm(url) {
         if (typeof instance.exports.resize_rgba_lanczos === 'function') {
             WASM.hasLanczos = true;
         }
+        if (typeof instance.exports.resize_rgba_gamma_bilinear === 'function') {
+            WASM.hasGammaCorrect = true;
+        }
         
         if (!instance.exports.memory) {
             throw new Error('WASM missing required export: memory');
@@ -356,6 +373,7 @@ async function loadWasm(url) {
             `memory=${!!WASM.exports.memory}, ` +
             `resize_rgba_nearest=${!!WASM.exports.resize_rgba_nearest}, ` +
             `resize_rgba_lanczos=${!!WASM.exports.resize_rgba_lanczos}, ` +
+            `resize_rgba_gamma_bilinear=${!!WASM.exports.resize_rgba_gamma_bilinear}, ` +
             `get_last_error=${!!WASM.exports.get_last_error}`
         );
     } catch (err) {
@@ -394,10 +412,35 @@ function wasmAlloc(size) {
  * Process image data via WASM (expects export resize_rgba)
  * resize_rgba(srcPtr, srcW, srcH, dstPtr, dstW, dstH) -> error_code
  * Returns 0 on success, non-zero on error
+ * 
+ * @param {ImageData} imageData - Source image data
+ * @param {number} targetWidth - Target width
+ * @param {number} targetHeight - Target height
+ * @param {Function} onProgress - Progress callback
+ * @param {Object} options - Processing options
+ * @param {boolean} options.gammaCorrect - Use gamma-correct resampling (default: false)
+ * @param {string} options.algorithm - Resize algorithm: 'auto', 'nearest', 'bilinear', 'lanczos' (default: 'auto')
  */
-async function processImageDataWithWasm(imageData, targetWidth, targetHeight, onProgress) {
+async function processImageDataWithWasm(imageData, targetWidth, targetHeight, onProgress, options = {}) {
     const exports = WASM.exports;
-    if (!exports || typeof exports.resize_rgba !== 'function' || !exports.memory) {
+    if (!exports || !exports.memory) {
+        return null;
+    }
+
+    // Determine which resize function to use
+    const { gammaCorrect = false, algorithm = 'auto' } = options;
+    let resizeFunc = null;
+    
+    if (gammaCorrect && WASM.hasGammaCorrect && typeof exports.resize_rgba_gamma_bilinear === 'function') {
+        resizeFunc = exports.resize_rgba_gamma_bilinear;
+    } else if (algorithm === 'nearest' && WASM.hasNearest && typeof exports.resize_rgba_nearest === 'function') {
+        resizeFunc = exports.resize_rgba_nearest;
+    } else if (algorithm === 'lanczos' && WASM.hasLanczos && typeof exports.resize_rgba_lanczos === 'function') {
+        resizeFunc = exports.resize_rgba_lanczos;
+    } else if (typeof exports.resize_rgba === 'function') {
+        resizeFunc = exports.resize_rgba;
+    } else {
+        console.warn('[Worker] No suitable WASM resize function available');
         return null;
     }
 
@@ -426,7 +469,7 @@ async function processImageDataWithWasm(imageData, targetWidth, targetHeight, on
         memoryU8.set(imageData.data, srcPtr);
 
         // Call resize function and check return code
-        const errorCode = exports.resize_rgba(
+        const errorCode = resizeFunc(
             srcPtr, 
             imageData.width, 
             imageData.height, 
@@ -590,6 +633,12 @@ ctx.onmessage = async function(e) {
                         ctx2d.drawImage(imageBitmap, 0, 0, targetWidth, targetHeight);
                         imageBitmap.close();
                     } else {
+                        // Extract processing options from data
+                        const processOptions = {
+                            gammaCorrect: data.gammaCorrect || false,
+                            algorithm: data.algorithm || 'auto'
+                        };
+                        
                         canvas = await processImageData(
                             imageData,
                             targetWidth,
@@ -599,7 +648,8 @@ ctx.onmessage = async function(e) {
                                 if (progress === 35 || progress === 70 || progress === 90) {
                                     ctx.postMessage({ type: 'progress', progress, id });
                                 }
-                            }
+                            },
+                            processOptions
                         );
                     }
                 }

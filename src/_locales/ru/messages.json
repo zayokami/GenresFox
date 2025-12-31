@@ -229,5 +229,32 @@
     },
     "snowEffectToggle": {
         "message": "Эффект снега"
+    },
+    "exportConfigTitle": {
+        "message": "Экспорт конфигурации"
+    },
+    "exportConfigDescription": {
+        "message": "Экспортируйте все ваши настройки, ярлыки и кастомизации в JSON-файл для резервного копирования или обмена."
+    },
+    "exportConfigButton": {
+        "message": "Экспортировать конфигурацию"
+    },
+    "exportConfigSuccess": {
+        "message": "Конфигурация успешно экспортирована!"
+    },
+    "exportConfigError": {
+        "message": "Не удалось экспортировать конфигурацию."
+    },
+    "importConfigButton": {
+        "message": "Импортировать конфигурацию"
+    },
+    "importConfigConfirm": {
+        "message": "Это заменит все ваши текущие настройки. Продолжить?"
+    },
+    "importConfigSuccess": {
+        "message": "Конфигурация успешно импортирована!"
+    },
+    "importConfigError": {
+        "message": "Не удалось импортировать конфигурацию: "
     }
 }

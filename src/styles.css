@@ -1706,3 +1706,20 @@ input[type="text"]:focus {
         padding: 14px 16px;
     }
 }
+
+/* ==================== Chrome Footer Hider ==================== */
+/* Hide Chrome's native footer that contains "Customize Chrome" button */
+/* JavaScript will handle text-based matching, CSS handles structural selectors */
+
+footer,
+[role="contentinfo"],
+[data-testid*="footer"],
+[id*="footer"],
+[class*="footer"] {
+    display: none !important;
+}
+
+/* Hide elements marked by JavaScript */
+[data-genresfox-hidden="true"] {
+    display: none !important;
+}

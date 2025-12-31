@@ -318,7 +318,8 @@ const defaultShortcuts = [
     { name: "YouTube", url: "https://youtube.com", icon: "https://www.youtube.com/favicon.ico" },
     // Use site's own favicon first; fallback to icon services if needed
     { name: "Bilibili", url: "https://bilibili.com", icon: "https://bilibili.com/favicon.ico" },
-    { name: "Gmail", url: "https://mail.google.com", icon: "https://mail.google.com/favicon.ico" }
+    // Gmail: Use DuckDuckGo icon service as mail.google.com has SameSite cookie restrictions
+    { name: "Gmail", url: "https://mail.google.com", icon: "https://icons.duckduckgo.com/ip3/mail.google.com.ico" }
 ];
 
 // State - with safe JSON parsing to handle corrupted data
@@ -358,13 +359,19 @@ if (!shortcuts || !Array.isArray(shortcuts) || shortcuts.length === 0) {
     shortcuts = defaultShortcuts;
     localStorage.setItem("shortcuts", JSON.stringify(shortcuts));
 } else {
-    // Lightweight migration: fix known problematic Bilibili icon for existing users
+    // Lightweight migration: fix known problematic icons for existing users
     let migrated = false;
     shortcuts.forEach((s) => {
         if (!s || typeof s.url !== 'string') return;
+        // Fix Bilibili icon
         if (s.url.includes('bilibili.com') && typeof s.icon === 'string' && s.icon.includes('www.bilibili.com')) {
-            // Use site's own favicon instead of icon service to avoid CORS issues
             s.icon = "https://bilibili.com/favicon.ico";
+            migrated = true;
+        }
+        // Fix Gmail icon - mail.google.com has SameSite cookie restrictions
+        // Use DuckDuckGo service which works reliably
+        if (s.url.includes('mail.google.com') && typeof s.icon === 'string' && s.icon.includes('mail.google.com/favicon.ico')) {
+            s.icon = "https://icons.duckduckgo.com/ip3/mail.google.com.ico";
             migrated = true;
         }
     });
@@ -414,6 +421,40 @@ function getFavicon(url) {
     }
 }
 
+// Cache for resource existence checks (to avoid repeated HEAD requests)
+const _resourceExistsCache = new Map();
+
+async function _checkResourceExists(url) {
+    // Check cache first
+    if (_resourceExistsCache.has(url)) {
+        return _resourceExistsCache.get(url);
+    }
+    
+    // For non-CORS services, skip HEAD check and assume it exists
+    if (_isNonCorsService(url)) {
+        _resourceExistsCache.set(url, true);
+        return true;
+    }
+    
+    try {
+        // Use HEAD request to check if resource exists
+        const response = await fetch(url, {
+            method: 'HEAD',
+            mode: 'cors',
+            credentials: 'omit',
+            cache: 'no-cache'
+        });
+        const exists = response.ok;
+        _resourceExistsCache.set(url, exists);
+        return exists;
+    } catch (e) {
+        // If HEAD fails, assume it might exist and let Image loading handle it
+        // This avoids blocking on CORS issues
+        _resourceExistsCache.set(url, true);
+        return true;
+    }
+}
+
 function _buildIconCandidates(rawIconUrl, pageUrl) {
     const candidates = [];
     const seen = new Set();
@@ -429,10 +470,28 @@ function _buildIconCandidates(rawIconUrl, pageUrl) {
             const urlObj = new URL(basisUrl);
             const origin = urlObj.origin;
             const domain = urlObj.hostname;
+            
+            // Special handling for Gmail - use known working icon URLs
+            if (domain === 'mail.google.com' || domain.includes('mail.google.com')) {
+                // Gmail has SameSite cookie restrictions, so we use alternative sources
+                // Try DuckDuckGo first (most reliable for Gmail)
+                add('https://icons.duckduckgo.com/ip3/mail.google.com.ico');
+                // Then try Google's Gmail icon directly (if available)
+                add('https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico');
+                // Finally try the site's own favicon (may fail due to SameSite, but worth trying)
+                add(`${origin}/favicon.ico`);
+                return candidates.length > 0 ? candidates : ['icon.png'];
+            }
+            
             // Prioritize site's own favicon first (most reliable, no CORS issues)
             add(`${origin}/favicon.ico`);
-            add(`${origin}/apple-touch-icon.png`);
-            add(`${origin}/apple-touch-icon-precomposed.png`);
+            // Skip apple-touch-icon for known domains that don't have it
+            // This reduces 404 errors in console
+            const skipAppleTouchDomains = ['www.google.com', 'google.com', 'mail.google.com'];
+            if (!skipAppleTouchDomains.some(d => domain === d || domain.endsWith('.' + d))) {
+                add(`${origin}/apple-touch-icon.png`);
+                add(`${origin}/apple-touch-icon-precomposed.png`);
+            }
         } catch (e) {
             // Ignore parse errors
         }
@@ -442,14 +501,21 @@ function _buildIconCandidates(rawIconUrl, pageUrl) {
     if (rawIconUrl) add(rawIconUrl);
 
     // Finally, add icon services as fallbacks (may have CORS issues)
+    // Skip Google s2 for known problematic domains
     if (basisUrl) {
         try {
             const urlObj = new URL(basisUrl);
             const domain = urlObj.hostname;
-            // Google s2 (more reliable than DuckDuckGo for some domains)
-            add(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`);
-            // DuckDuckGo icon service (may have CORS issues, use as last resort)
-            add(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
+            // Skip Google s2 for mail.google.com as it returns 404
+            const skipGoogleS2Domains = ['mail.google.com'];
+            if (!skipGoogleS2Domains.some(d => domain === d || domain.endsWith('.' + d))) {
+                add(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`);
+            }
+            // DuckDuckGo icon service (may have CORS issues, but we handle it)
+            // For Gmail, we already added it above, so skip here to avoid duplicate
+            if (domain !== 'mail.google.com' && !domain.includes('mail.google.com')) {
+                add(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
+            }
         } catch (e) {
             // Ignore parse errors
         }
@@ -548,8 +614,52 @@ function _isNonCorsService(url) {
     if (!url) return false;
     try {
         const urlObj = new URL(url);
-        // DuckDuckGo icon service doesn't support CORS
-        return urlObj.hostname === 'icons.duckduckgo.com';
+        const hostname = urlObj.hostname;
+        const path = urlObj.pathname.toLowerCase();
+        
+        // Services that don't support CORS
+        const nonCorsServices = [
+            'icons.duckduckgo.com',
+            't0.gstatic.com',
+            't1.gstatic.com',
+            't2.gstatic.com',
+            't3.gstatic.com',
+            't4.gstatic.com',
+            't5.gstatic.com'
+        ];
+        
+        // Check for gstatic.com (including subdomains)
+        if (hostname.endsWith('.gstatic.com') || nonCorsServices.includes(hostname)) {
+            return true;
+        }
+        
+        // Google s2 favicon service redirects to gstatic.com, which doesn't support CORS
+        if (hostname === 'www.google.com' && path.includes('/s2/favicons')) {
+            return true;
+        }
+        
+        // Common websites that don't allow CORS for favicon
+        // These sites typically block CORS for favicon.ico and apple-touch-icon
+        const nonCorsDomains = [
+            'youtube.com',
+            'www.youtube.com',
+            'bilibili.com',
+            'www.bilibili.com',
+            'mail.google.com',
+            'github.com',
+            'www.github.com'
+        ];
+        
+        // Check if it's a favicon or icon request to these domains
+        const isIconRequest = path.includes('favicon') || 
+                             path.includes('apple-touch-icon') ||
+                             path.includes('icon');
+        
+        if (isIconRequest && nonCorsDomains.some(domain => hostname === domain || hostname.endsWith('.' + domain))) {
+            return true;
+        }
+        
+        return false;
     } catch (e) {
         return false;
     }
@@ -565,9 +675,16 @@ async function _fetchIconAsDataUrl(url) {
         // Try with CORS first (for services that support it)
         const response = await fetch(url, { 
             mode: 'cors',
-            credentials: 'omit' // Don't send credentials
+            credentials: 'omit', // Don't send credentials
+            redirect: 'follow' // Follow redirects, but note that redirected URLs may have CORS issues
         });
-        if (!response.ok) throw new Error('Network response was not ok');
+        
+        // Check if response is ok (not 404, etc.)
+        if (!response.ok) {
+            // Silently handle 404 and other HTTP errors
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
         const blob = await response.blob();
         return await new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -576,13 +693,16 @@ async function _fetchIconAsDataUrl(url) {
             reader.readAsDataURL(blob);
         });
     } catch (fetchErr) {
-        // If CORS fails, throw to trigger Image fallback
-        throw fetchErr;
+        // Silently handle all fetch errors (CORS, 404, network errors, etc.)
+        // These are expected for some services and don't need to be logged
+        throw new Error('Fetch failed, use Image fallback');
     }
 }
 
 async function _loadIconViaImage(url) {
     return new Promise((resolve, reject) => {
+        // Suppress browser console errors for this image load
+        // We'll handle errors ourselves
         const img = new Image();
         
         // Only set crossOrigin for services that support CORS
@@ -592,7 +712,20 @@ async function _loadIconViaImage(url) {
             img.crossOrigin = 'anonymous';
         }
         
+        // Set timeout to avoid hanging on slow/broken resources
+        const timeout = setTimeout(() => {
+            img.onload = null;
+            img.onerror = null;
+            img.src = ''; // Clear src to stop loading
+            reject(new Error('Image load timeout'));
+        }, 5000); // Reduced to 5 seconds for faster failure
+        
+        let resolved = false;
+        
         img.onload = () => {
+            if (resolved) return;
+            resolved = true;
+            clearTimeout(timeout);
             try {
                 // For non-CORS images, we can't use canvas.toDataURL due to tainted canvas
                 // Instead, return the original URL as data URL is not possible
@@ -617,7 +750,17 @@ async function _loadIconViaImage(url) {
                 }
             }
         };
-        img.onerror = () => reject(new Error('Image load failed'));
+        
+        img.onerror = () => {
+            if (resolved) return;
+            resolved = true;
+            clearTimeout(timeout);
+            img.src = ''; // Clear src to stop any further attempts
+            // Silently reject - errors are expected for missing resources (404, CORS, etc.)
+            reject(new Error('Image load failed'));
+        };
+        
+        // Set src last to start loading
         img.src = url;
     });
 }
@@ -629,6 +772,20 @@ async function cacheIcon(key, rawIconUrl, pageUrl) {
         const candidates = _buildIconCandidates(rawIconUrl, pageUrl);
         for (const candidate of candidates) {
             try {
+                // For known non-CORS services, skip fetch and use Image directly
+                if (_isNonCorsService(candidate)) {
+                    const result = await _loadIconViaImage(candidate);
+                    // result might be a data URL or the original URL (for non-CORS services)
+                    _iconCacheInMemory.set(key, { data: result, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
+                    // Only store in DB if it's a data URL (not a regular URL)
+                    if (result.startsWith('data:')) {
+                        await _putIconToDB(key, result);
+                        localStorage.setItem(`icon_cache_${key}`, result);
+                    }
+                    _updateImagesForKey(key, result);
+                    return;
+                }
+                
                 // Try fetch first (for CORS-enabled services)
                 const dataUrl = await _fetchIconAsDataUrl(candidate);
                 _iconCacheInMemory.set(key, { data: dataUrl, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
@@ -647,23 +804,17 @@ async function cacheIcon(key, rawIconUrl, pageUrl) {
                     if (result.startsWith('data:')) {
                         await _putIconToDB(key, result);
                         localStorage.setItem(`icon_cache_${key}`, result);
-                    } else {
-                        // For non-CORS URLs, store the URL itself but mark as 'url' type
-                        // Don't store in DB/localStorage as it's not a data URL
                     }
                     _updateImagesForKey(key, result);
                     return;
                 } catch (imgErr) {
                     // Silently continue to next candidate
-                    // Don't log CORS errors as they're expected for some services
-                    if (!imgErr.message.includes('CORS') && !imgErr.message.includes('tainted')) {
-                        // Only log non-CORS errors
-                    }
+                    // All errors are expected and handled gracefully
+                    continue;
                 }
             }
         }
-        // Only warn if all candidates failed (including non-CORS fallbacks)
-        console.warn(`Failed to cache icon: ${key}`);
+        // Silently mark as failed - don't warn as this is expected for some icons
         // Mark this key as failed so future getIconSrc() calls won't keep retrying
         const failedEntry = {
             key,
@@ -1060,7 +1211,11 @@ window.deleteShortcut = (index, options = {}) => {
 // --- Event Listeners ---
 
 // Settings Modal
-settingsBtn.addEventListener("click", () => settingsModal.classList.add("active"));
+settingsBtn.addEventListener("click", () => {
+    settingsModal.classList.add("active");
+    // Sync snow effect toggle state when opening settings
+    _updateSnowToggleVisibility();
+});
 closeSettings.addEventListener("click", () => settingsModal.classList.remove("active"));
 settingsModal.addEventListener("click", (e) => {
     if (e.target === settingsModal) settingsModal.classList.remove("active");
@@ -1087,6 +1242,314 @@ if (resetShortcutsBtn) {
             saveShortcuts();
         }
     });
+}
+
+// ==================== Export Configuration ====================
+/**
+ * Collect all user configuration data
+ * @returns {Object} Configuration data object
+ */
+function _collectConfigurationData() {
+    const configData = {
+        settings: {}
+    };
+
+    // Search engines
+    configData.settings.engines = engines;
+    configData.settings.preferredEngine = currentEngine;
+
+    // Shortcuts
+    configData.settings.shortcuts = shortcuts;
+    const showNames = localStorage.getItem('showShortcutNames');
+    if (showNames !== null) {
+        configData.settings.showShortcutNames = showNames === 'true';
+    }
+    const shortcutTarget = localStorage.getItem(SHORTCUT_TARGET_KEY);
+    if (shortcutTarget) {
+        configData.settings.shortcutOpenTarget = shortcutTarget;
+    }
+
+    // Wallpaper settings
+    const wallpaperSettings = localStorage.getItem('wallpaperSettings');
+    if (wallpaperSettings) {
+        try {
+            configData.settings.wallpaperSettings = JSON.parse(wallpaperSettings);
+        } catch (e) {
+            console.warn('Failed to parse wallpaperSettings:', e);
+        }
+    }
+    const wallpaperSource = localStorage.getItem('wallpaperSource');
+    if (wallpaperSource) {
+        configData.settings.wallpaperSource = wallpaperSource;
+    }
+    const bingMarket = localStorage.getItem('bingMarket');
+    if (bingMarket) {
+        configData.settings.bingMarket = bingMarket;
+    }
+
+    // Search box settings
+    const searchBoxSettings = localStorage.getItem('searchBoxSettings');
+    if (searchBoxSettings) {
+        try {
+            configData.settings.searchBoxSettings = JSON.parse(searchBoxSettings);
+        } catch (e) {
+            console.warn('Failed to parse searchBoxSettings:', e);
+        }
+    }
+
+    // Theme settings
+    const themeSettings = localStorage.getItem('themeSettings');
+    if (themeSettings) {
+        try {
+            configData.settings.themeSettings = JSON.parse(themeSettings);
+        } catch (e) {
+            console.warn('Failed to parse themeSettings:', e);
+        }
+    }
+
+    // Accessibility settings
+    const accessibilitySettings = localStorage.getItem('accessibilitySettings');
+    if (accessibilitySettings) {
+        try {
+            configData.settings.accessibilitySettings = JSON.parse(accessibilitySettings);
+        } catch (e) {
+            console.warn('Failed to parse accessibilitySettings:', e);
+        }
+    }
+
+    // Language preference
+    const preferredLanguage = localStorage.getItem('preferredLanguage');
+    if (preferredLanguage) {
+        configData.settings.preferredLanguage = preferredLanguage;
+    }
+
+    // Snow effect
+    const snowEffectEnabled = localStorage.getItem('snowEffectEnabled');
+    if (snowEffectEnabled !== null) {
+        configData.settings.snowEffectEnabled = snowEffectEnabled === 'true';
+    }
+    const snowEffectTriggered = localStorage.getItem('snowEffectTriggered');
+    if (snowEffectTriggered !== null) {
+        configData.settings.snowEffectTriggered = snowEffectTriggered === 'true';
+    }
+
+    return configData;
+}
+
+/**
+ * Export all user configuration to a JSON file with integrity verification
+ */
+async function exportConfiguration() {
+    try {
+        if (typeof ConfigManager === 'undefined' || !ConfigManager.exportToFile) {
+            throw new Error('ConfigManager not available');
+        }
+
+        const configData = _collectConfigurationData();
+        await ConfigManager.exportToFile(configData);
+
+        // Show success message
+        const message = I18n && I18n.t ? I18n.t('exportConfigSuccess', 'Configuration exported successfully!') : 'Configuration exported successfully!';
+        alert(message);
+    } catch (e) {
+        console.error('Failed to export configuration:', e);
+        const errorMessage = I18n && I18n.t ? I18n.t('exportConfigError', 'Failed to export configuration.') : 'Failed to export configuration.';
+        alert(errorMessage);
+    }
+}
+
+// Export Configuration Button
+const exportConfigBtn = document.getElementById('exportConfigBtn');
+if (exportConfigBtn) {
+    exportConfigBtn.addEventListener('click', exportConfiguration);
+}
+
+// ==================== Import Configuration ====================
+/**
+ * Apply imported configuration to the system
+ * @param {Object} config - Verified configuration object
+ */
+function _applyImportedConfiguration(config) {
+    if (!config || !config.settings) {
+        throw new Error('Invalid configuration structure');
+    }
+
+    const settings = config.settings;
+
+    // Apply search engines
+    if (settings.engines && typeof settings.engines === 'object') {
+        engines = settings.engines;
+        localStorage.setItem('engines', JSON.stringify(engines));
+        renderEnginesList();
+        renderEngineDropdown();
+    }
+
+    if (settings.preferredEngine && typeof settings.preferredEngine === 'string') {
+        currentEngine = settings.preferredEngine;
+        localStorage.setItem('preferredEngine', currentEngine);
+        setEngine(currentEngine);
+    }
+
+    // Apply shortcuts
+    if (Array.isArray(settings.shortcuts)) {
+        shortcuts = settings.shortcuts;
+        localStorage.setItem('shortcuts', JSON.stringify(shortcuts));
+        renderShortcutsList();
+        renderShortcutsGrid();
+    }
+
+    if (settings.showShortcutNames !== undefined) {
+        localStorage.setItem('showShortcutNames', settings.showShortcutNames ? 'true' : 'false');
+        const showShortcutNamesCheckbox = document.getElementById('showShortcutNames');
+        if (showShortcutNamesCheckbox) {
+            showShortcutNamesCheckbox.checked = settings.showShortcutNames;
+            shortcutsGrid.classList.toggle('hide-names', !settings.showShortcutNames);
+        }
+    }
+
+    if (settings.shortcutOpenTarget) {
+        localStorage.setItem(SHORTCUT_TARGET_KEY, settings.shortcutOpenTarget);
+        _syncShortcutTargetUI();
+        renderShortcutsGrid();
+    }
+
+    // Apply wallpaper settings
+    if (settings.wallpaperSettings && typeof settings.wallpaperSettings === 'object') {
+        localStorage.setItem('wallpaperSettings', JSON.stringify(settings.wallpaperSettings));
+    }
+
+    if (settings.wallpaperSource) {
+        localStorage.setItem('wallpaperSource', settings.wallpaperSource);
+    }
+
+    if (settings.bingMarket) {
+        localStorage.setItem('bingMarket', settings.bingMarket);
+    }
+
+    // Apply search box settings
+    if (settings.searchBoxSettings && typeof settings.searchBoxSettings === 'object') {
+        localStorage.setItem('searchBoxSettings', JSON.stringify(settings.searchBoxSettings));
+    }
+
+    // Apply theme settings
+    if (settings.themeSettings && typeof settings.themeSettings === 'object') {
+        localStorage.setItem('themeSettings', JSON.stringify(settings.themeSettings));
+    }
+
+    // Apply accessibility settings
+    if (settings.accessibilitySettings && typeof settings.accessibilitySettings === 'object') {
+        localStorage.setItem('accessibilitySettings', JSON.stringify(settings.accessibilitySettings));
+    }
+
+    // Apply language preference
+    if (settings.preferredLanguage) {
+        localStorage.setItem('preferredLanguage', settings.preferredLanguage);
+        if (typeof I18n !== 'undefined' && I18n.localize) {
+            I18n.localize(settings.preferredLanguage);
+        }
+    }
+
+    // Apply snow effect
+    if (settings.snowEffectEnabled !== undefined) {
+        localStorage.setItem('snowEffectEnabled', settings.snowEffectEnabled ? 'true' : 'false');
+        if (typeof SnowEffect !== 'undefined' && SnowEffect.setEnabled) {
+            SnowEffect.setEnabled(settings.snowEffectEnabled);
+        }
+    }
+
+    if (settings.snowEffectTriggered !== undefined) {
+        localStorage.setItem('snowEffectTriggered', settings.snowEffectTriggered ? 'true' : 'false');
+    }
+}
+
+/**
+ * Import configuration from file
+ */
+async function importConfiguration() {
+    try {
+        if (typeof ConfigManager === 'undefined' || !ConfigManager.importFromFile) {
+            throw new Error('ConfigManager not available');
+        }
+
+        const fileInput = document.getElementById('importConfigFile');
+        if (!fileInput) {
+            throw new Error('File input not found');
+        }
+
+        // Trigger file picker
+        fileInput.click();
+
+        // Wait for file selection
+        await new Promise((resolve, reject) => {
+            fileInput.onchange = async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) {
+                    resolve(null);
+                    return;
+                }
+
+                try {
+                    // Show confirmation dialog
+                    const confirmMessage = I18n && I18n.t ? 
+                        I18n.t('importConfigConfirm', 'This will replace all your current settings. Continue?') : 
+                        'This will replace all your current settings. Continue?';
+                    
+                    if (!confirm(confirmMessage)) {
+                        fileInput.value = '';
+                        resolve(null);
+                        return;
+                    }
+
+                    // Import and verify configuration
+                    const result = await ConfigManager.importFromFile(file);
+                    
+                    if (!result.success) {
+                        const errorMessage = I18n && I18n.t ? 
+                            I18n.t('importConfigError', 'Failed to import configuration: ') + result.error : 
+                            'Failed to import configuration: ' + result.error;
+                        alert(errorMessage);
+                        fileInput.value = '';
+                        resolve(null);
+                        return;
+                    }
+
+                    // Apply configuration
+                    _applyImportedConfiguration(result.config);
+
+                    // Show success message
+                    const successMessage = I18n && I18n.t ? 
+                        I18n.t('importConfigSuccess', 'Configuration imported successfully!') : 
+                        'Configuration imported successfully!';
+                    alert(successMessage);
+
+                    // Reload page to ensure all settings are applied
+                    window.location.reload();
+                } catch (error) {
+                    console.error('Failed to import configuration:', error);
+                    const errorMessage = I18n && I18n.t ? 
+                        I18n.t('importConfigError', 'Failed to import configuration: ') + error.message : 
+                        'Failed to import configuration: ' + error.message;
+                    alert(errorMessage);
+                    reject(error);
+                } finally {
+                    fileInput.value = '';
+                    resolve(null);
+                }
+            };
+        });
+    } catch (e) {
+        console.error('Failed to import configuration:', e);
+        const errorMessage = I18n && I18n.t ? 
+            I18n.t('importConfigError', 'Failed to import configuration: ') + e.message : 
+            'Failed to import configuration: ' + e.message;
+        alert(errorMessage);
+    }
+}
+
+// Import Configuration Button
+const importConfigBtn = document.getElementById('importConfigBtn');
+if (importConfigBtn) {
+    importConfigBtn.addEventListener('click', importConfiguration);
 }
 
 // Security: Allow only http/https and reject control chars / blank
@@ -1573,6 +2036,162 @@ function handleListDrop(e) {
 }
 
 // Init
+// ==================== Chrome Customize Button Remover ====================
+
+/**
+ * Remove Chrome's footer (which contains "Customize Chrome" button)
+ * Chrome adds a footer to the new tab page, and we need to hide the entire footer
+ * Uses MutationObserver to catch dynamically added elements
+ */
+function _removeChromeCustomizeButton() {
+    function hideChromeFooter() {
+        // Common selectors for Chrome's footer container
+        const footerSelectors = [
+            'footer',
+            '[role="contentinfo"]',
+            '[data-testid*="footer"]',
+            '[id*="footer"]',
+            '[class*="footer"]',
+            // Chrome-specific selectors
+            'div[style*="position: fixed"][style*="bottom"]',
+            'div[style*="position:fixed"][style*="bottom"]'
+        ];
+
+        // Try to find footer containers first
+        for (const selector of footerSelectors) {
+            try {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(el => {
+                    if (el.hasAttribute('data-genresfox-hidden')) return;
+                    
+                    // Check if this footer contains customize-related content
+                    const text = el.textContent || el.getAttribute('aria-label') || '';
+                    const hasCustomize = /自定义|Customize|カスタマイズ/i.test(text);
+                    
+                    // Also check if it's positioned at the bottom (likely Chrome footer)
+                    const style = window.getComputedStyle(el);
+                    const isBottomFixed = style.position === 'fixed' && 
+                                         (style.bottom === '0px' || style.bottom === '0');
+                    
+                    if (hasCustomize || isBottomFixed) {
+                        el.style.display = 'none';
+                        el.setAttribute('data-genresfox-hidden', 'true');
+                    }
+                });
+            } catch (e) {
+                // Invalid selector, skip
+            }
+        }
+
+        // Search for elements containing "自定义 Chrome" or "Customize Chrome" text
+        // and hide their parent container (likely the footer)
+        const customizeSelectors = [
+            '[data-testid="customize-chrome-button"]',
+            '[aria-label*="自定义 Chrome"]',
+            '[aria-label*="Customize Chrome"]',
+            '[aria-label*="カスタマイズ"]',
+            'button[data-customize-chrome]',
+            'a[href*="chrome://new-tab-page"]'
+        ];
+
+        for (const selector of customizeSelectors) {
+            try {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(el => {
+                    if (el.hasAttribute('data-genresfox-hidden')) return;
+                    
+                    // Hide the element itself
+                    el.style.display = 'none';
+                    el.setAttribute('data-genresfox-hidden', 'true');
+                    
+                    // Also try to find and hide parent footer container
+                    let parent = el.parentElement;
+                    let depth = 0;
+                    while (parent && depth < 5) {
+                        const parentText = parent.textContent || '';
+                        const parentStyle = window.getComputedStyle(parent);
+                        
+                        // Check if parent looks like a footer
+                        if (parentStyle.position === 'fixed' && 
+                            (parentStyle.bottom === '0px' || parentStyle.bottom === '0') ||
+                            /自定义|Customize|カスタマイズ/i.test(parentText)) {
+                            parent.style.display = 'none';
+                            parent.setAttribute('data-genresfox-hidden', 'true');
+                            break;
+                        }
+                        parent = parent.parentElement;
+                        depth++;
+                    }
+                });
+            } catch (e) {
+                // Invalid selector, skip
+            }
+        }
+
+        // Fallback: search all elements for customize text and hide their containers
+        const allElements = document.querySelectorAll('*');
+        allElements.forEach(el => {
+            if (el.hasAttribute('data-genresfox-hidden')) return;
+            
+            const text = (el.textContent || el.getAttribute('aria-label') || '').trim();
+            const isCustomize = /自定义\s*Chrome|Customize\s*Chrome|カスタマイズ/i.test(text);
+            
+            if (isCustomize) {
+                // Hide the element
+                el.style.display = 'none';
+                el.setAttribute('data-genresfox-hidden', 'true');
+                
+                // Also try to hide parent container if it looks like a footer
+                let parent = el.parentElement;
+                if (parent) {
+                    const parentStyle = window.getComputedStyle(parent);
+                    if (parentStyle.position === 'fixed' && 
+                        (parentStyle.bottom === '0px' || parentStyle.bottom === '0')) {
+                        parent.style.display = 'none';
+                        parent.setAttribute('data-genresfox-hidden', 'true');
+                    }
+                }
+            }
+        });
+    }
+
+    // Initial attempt
+    hideChromeFooter();
+
+    // Use MutationObserver to catch dynamically added elements
+    const observer = new MutationObserver(() => {
+        hideChromeFooter();
+    });
+
+    // Observe body for new elements
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class', 'id']
+    });
+
+    // Also observe document for elements added to root
+    if (document.documentElement) {
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['style', 'class', 'id']
+        });
+    }
+
+    // Periodic check as fallback (in case MutationObserver misses something)
+    const intervalId = setInterval(() => {
+        hideChromeFooter();
+    }, 500);
+
+    // Stop checking after 15 seconds (Chrome usually adds it quickly)
+    setTimeout(() => {
+        clearInterval(intervalId);
+    }, 15000);
+}
+
 // ==================== Snow Effect Easter Egg ====================
 
 /**
@@ -1755,6 +2374,8 @@ async function init() {
                 if (typeof SnowEffect !== 'undefined') {
                     SnowEffect.init();
                     _setupSnowEasterEgg();
+                    // Sync toggle state after SnowEffect is initialized
+                    _updateSnowToggleVisibility();
                 }
             });
         }, { timeout: 3000 });
@@ -1764,6 +2385,8 @@ async function init() {
                 if (typeof SnowEffect !== 'undefined') {
                     SnowEffect.init();
                     _setupSnowEasterEgg();
+                    // Sync toggle state after SnowEffect is initialized
+                    _updateSnowToggleVisibility();
                 }
             });
         }, 2000);
@@ -1819,17 +2442,41 @@ async function init() {
         initSettingsListDragDrop();
     }, { timeout: 100 });
 
-    // Ensure focus (autofocus attribute handles initial, this is backup)
-    searchInput.focus();
+    // Remove Chrome's customize button (non-blocking, can run anytime)
+    requestIdleCallback(() => {
+        _removeChromeCustomizeButton();
+    }, { timeout: 500 });
+
+    // Set focus only if no other element is focused (avoid autofocus warning)
+    if (document.activeElement === document.body || document.activeElement === null) {
+        try {
+            searchInput.focus();
+        } catch (e) {
+            // Ignore focus errors (may be blocked by browser)
+        }
+    }
 }
 
 // Focus immediately after DOM is ready (but not blocking)
+// Only focus if no other element is already focused (avoid autofocus warning)
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        if (searchInput) searchInput.focus();
+        if (searchInput && (document.activeElement === document.body || document.activeElement === null)) {
+            try {
+                searchInput.focus();
+            } catch (e) {
+                // Ignore focus errors
+            }
+        }
     });
 } else {
-    if (searchInput) searchInput.focus();
+    if (searchInput && (document.activeElement === document.body || document.activeElement === null)) {
+        try {
+            searchInput.focus();
+        } catch (e) {
+            // Ignore focus errors
+        }
+    }
 }
 
 // ==================== Ripple Effect ====================

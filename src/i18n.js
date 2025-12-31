@@ -85,7 +85,16 @@ const I18n = (function () {
             "searchErrorNoEngine": "没有可用的搜索引擎。",
             "themeSectionTitle": "主题",
             "themeUseWallpaperAccent": "使用壁纸主色作为主题色",
-            "snowEffectToggle": "雪花效果"
+            "snowEffectToggle": "雪花效果",
+            "exportConfigTitle": "导出配置",
+            "exportConfigDescription": "将所有设置、快捷方式和自定义项导出为 JSON 文件，用于备份或分享。",
+            "exportConfigButton": "导出配置",
+            "exportConfigSuccess": "配置导出成功！",
+            "exportConfigError": "配置导出失败。",
+            "importConfigButton": "导入配置",
+            "importConfigConfirm": "这将替换您当前的所有设置。是否继续？",
+            "importConfigSuccess": "配置导入成功！",
+            "importConfigError": "配置导入失败："
         },
         "en": {
             "appTitle": "GenresFox",
@@ -164,7 +173,16 @@ const I18n = (function () {
             "searchErrorNoEngine": "No available search engine.",
             "themeSectionTitle": "Theme",
             "themeUseWallpaperAccent": "Use wallpaper colors as accent",
-            "snowEffectToggle": "Snow Effect"
+            "snowEffectToggle": "Snow Effect",
+            "exportConfigTitle": "Export Configuration",
+            "exportConfigDescription": "Export all your settings, shortcuts, and customizations to a JSON file for backup or sharing.",
+            "exportConfigButton": "Export Configuration",
+            "exportConfigSuccess": "Configuration exported successfully!",
+            "exportConfigError": "Failed to export configuration.",
+            "importConfigButton": "Import Configuration",
+            "importConfigConfirm": "This will replace all your current settings. Continue?",
+            "importConfigSuccess": "Configuration imported successfully!",
+            "importConfigError": "Failed to import configuration: "
         },
         "zh_TW": {
             "appTitle": "GenresFox",
@@ -243,7 +261,16 @@ const I18n = (function () {
             "searchErrorNoEngine": "沒有可用的搜尋引擎。",
             "themeSectionTitle": "主題",
             "themeUseWallpaperAccent": "使用桌布主色作為主題色",
-            "snowEffectToggle": "雪花效果"
+            "snowEffectToggle": "雪花效果",
+            "exportConfigTitle": "匯出設定",
+            "exportConfigDescription": "將所有設定、捷徑和自訂項目匯出為 JSON 檔案，用於備份或分享。",
+            "exportConfigButton": "匯出設定",
+            "exportConfigSuccess": "設定匯出成功！",
+            "exportConfigError": "設定匯出失敗。",
+            "importConfigButton": "匯入設定",
+            "importConfigConfirm": "這將替換您目前的所有設定。是否繼續？",
+            "importConfigSuccess": "設定匯入成功！",
+            "importConfigError": "設定匯入失敗："
         },
         "ja": {
             "appTitle": "GenresFox",
@@ -322,7 +349,16 @@ const I18n = (function () {
             "searchErrorNoEngine": "利用できる検索エンジンがありません。",
             "themeSectionTitle": "テーマ",
             "themeUseWallpaperAccent": "壁紙の主色をアクセントに使う",
-            "snowEffectToggle": "雪のエフェクト"
+            "snowEffectToggle": "雪のエフェクト",
+            "exportConfigTitle": "設定のエクスポート",
+            "exportConfigDescription": "すべての設定、ショートカット、カスタマイズを JSON ファイルにエクスポートして、バックアップまたは共有できます。",
+            "exportConfigButton": "設定をエクスポート",
+            "exportConfigSuccess": "設定のエクスポートに成功しました！",
+            "exportConfigError": "設定のエクスポートに失敗しました。",
+            "importConfigButton": "設定をインポート",
+            "importConfigConfirm": "これにより現在のすべての設定が置き換えられます。続行しますか？",
+            "importConfigSuccess": "設定のインポートに成功しました！",
+            "importConfigError": "設定のインポートに失敗しました："
         },
         "es": {
             "appTitle": "GenresFox",
@@ -401,7 +437,16 @@ const I18n = (function () {
             "searchErrorNoEngine": "No hay motor de búsqueda disponible.",
             "themeSectionTitle": "Tema",
             "themeUseWallpaperAccent": "Usar colores del fondo como acento",
-            "snowEffectToggle": "Efecto de nieve"
+            "snowEffectToggle": "Efecto de nieve",
+            "exportConfigTitle": "Exportar configuración",
+            "exportConfigDescription": "Exporta todas tus configuraciones, accesos directos y personalizaciones a un archivo JSON para respaldo o compartir.",
+            "exportConfigButton": "Exportar configuración",
+            "exportConfigSuccess": "¡Configuración exportada exitosamente!",
+            "exportConfigError": "Error al exportar la configuración.",
+            "importConfigButton": "Importar configuración",
+            "importConfigConfirm": "Esto reemplazará todas tus configuraciones actuales. ¿Continuar?",
+            "importConfigSuccess": "¡Configuración importada exitosamente!",
+            "importConfigError": "Error al importar la configuración: "
         },
         "fr": {
             "appTitle": "GenresFox",
@@ -480,7 +525,16 @@ const I18n = (function () {
             "searchErrorNoEngine": "Aucun moteur de recherche disponible.",
             "themeSectionTitle": "Thème",
             "themeUseWallpaperAccent": "Utiliser les couleurs du fond comme accent",
-            "snowEffectToggle": "Effet de neige"
+            "snowEffectToggle": "Effet de neige",
+            "exportConfigTitle": "Exporter la configuration",
+            "exportConfigDescription": "Exportez tous vos paramètres, raccourcis et personnalisations dans un fichier JSON pour sauvegarde ou partage.",
+            "exportConfigButton": "Exporter la configuration",
+            "exportConfigSuccess": "Configuration exportée avec succès !",
+            "exportConfigError": "Échec de l'exportation de la configuration.",
+            "importConfigButton": "Importer la configuration",
+            "importConfigConfirm": "Cela remplacera tous vos paramètres actuels. Continuer ?",
+            "importConfigSuccess": "Configuration importée avec succès !",
+            "importConfigError": "Échec de l'importation de la configuration : "
         },
         "de": {
             "appTitle": "GenresFox",
@@ -559,7 +613,16 @@ const I18n = (function () {
             "searchErrorNoEngine": "Keine Suchmaschinen verfügbar.",
             "themeSectionTitle": "Thema",
             "themeUseWallpaperAccent": "Hintergrundfarben als Akzent verwenden",
-            "snowEffectToggle": "Schneeeffekt"
+            "snowEffectToggle": "Schneeeffekt",
+            "exportConfigTitle": "Konfiguration exportieren",
+            "exportConfigDescription": "Exportieren Sie alle Ihre Einstellungen, Verknüpfungen und Anpassungen in eine JSON-Datei für Backup oder zum Teilen.",
+            "exportConfigButton": "Konfiguration exportieren",
+            "exportConfigSuccess": "Konfiguration erfolgreich exportiert!",
+            "exportConfigError": "Export der Konfiguration fehlgeschlagen.",
+            "importConfigButton": "Konfiguration importieren",
+            "importConfigConfirm": "Dies ersetzt alle Ihre aktuellen Einstellungen. Fortfahren?",
+            "importConfigSuccess": "Konfiguration erfolgreich importiert!",
+            "importConfigError": "Import der Konfiguration fehlgeschlagen: "
         },
         "ru": {
             "appTitle": "GenresFox",
@@ -638,7 +701,16 @@ const I18n = (function () {
             "searchErrorNoEngine": "Нет доступных поисковых систем.",
             "themeSectionTitle": "Тема",
             "themeUseWallpaperAccent": "Использовать основные цвета обоев как акцент",
-            "snowEffectToggle": "Эффект снега"
+            "snowEffectToggle": "Эффект снега",
+            "exportConfigTitle": "Экспорт конфигурации",
+            "exportConfigDescription": "Экспортируйте все ваши настройки, ярлыки и кастомизации в JSON-файл для резервного копирования или обмена.",
+            "exportConfigButton": "Экспортировать конфигурацию",
+            "exportConfigSuccess": "Конфигурация успешно экспортирована!",
+            "exportConfigError": "Не удалось экспортировать конфигурацию.",
+            "importConfigButton": "Импортировать конфигурацию",
+            "importConfigConfirm": "Это заменит все ваши текущие настройки. Продолжить?",
+            "importConfigSuccess": "Конфигурация успешно импортирована!",
+            "importConfigError": "Не удалось импортировать конфигурацию: "
         }
     };
 

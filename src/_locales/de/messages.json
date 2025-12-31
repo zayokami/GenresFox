@@ -229,5 +229,32 @@
     },
     "snowEffectToggle": {
         "message": "Schneeeffekt"
+    },
+    "exportConfigTitle": {
+        "message": "Konfiguration exportieren"
+    },
+    "exportConfigDescription": {
+        "message": "Exportieren Sie alle Ihre Einstellungen, Verknüpfungen und Anpassungen in eine JSON-Datei für Backup oder zum Teilen."
+    },
+    "exportConfigButton": {
+        "message": "Konfiguration exportieren"
+    },
+    "exportConfigSuccess": {
+        "message": "Konfiguration erfolgreich exportiert!"
+    },
+    "exportConfigError": {
+        "message": "Export der Konfiguration fehlgeschlagen."
+    },
+    "importConfigButton": {
+        "message": "Konfiguration importieren"
+    },
+    "importConfigConfirm": {
+        "message": "Dies ersetzt alle Ihre aktuellen Einstellungen. Fortfahren?"
+    },
+    "importConfigSuccess": {
+        "message": "Konfiguration erfolgreich importiert!"
+    },
+    "importConfigError": {
+        "message": "Import der Konfiguration fehlgeschlagen: "
     }
 }
