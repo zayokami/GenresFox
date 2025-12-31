@@ -75,6 +75,15 @@
     "searchErrorNoEngine": { "message": "No hay motor de búsqueda disponible." },
     "themeSectionTitle": { "message": "Tema" },
     "themeUseWallpaperAccent": { "message": "Usar colores del fondo como acento" },
-    "snowEffectToggle": { "message": "Efecto de nieve" }
+    "snowEffectToggle": { "message": "Efecto de nieve" },
+    "exportConfigTitle": { "message": "Exportar configuración" },
+    "exportConfigDescription": { "message": "Exporta todas tus configuraciones, accesos directos y personalizaciones a un archivo JSON para respaldo o compartir." },
+    "exportConfigButton": { "message": "Exportar configuración" },
+    "exportConfigSuccess": { "message": "¡Configuración exportada exitosamente!" },
+    "exportConfigError": { "message": "Error al exportar la configuración." },
+    "importConfigButton": { "message": "Importar configuración" },
+    "importConfigConfirm": { "message": "Esto reemplazará todas tus configuraciones actuales. ¿Continuar?" },
+    "importConfigSuccess": { "message": "¡Configuración importada exitosamente!" },
+    "importConfigError": { "message": "Error al importar la configuración: " }
 }
 

@@ -446,17 +446,46 @@ const WallpaperManager = (function () {
     /**
      * Set wallpaper URL
      * @param {string} url - Wallpaper URL (can be blob URL or data URL)
+     * @param {boolean} skipPreload - If true, skip preloading (used when image is already preloaded)
      */
-    function _setWallpaper(url) {
-        // Revoke old blob URL to prevent memory leaks
-        if (_state.currentWallpaperUrl &&
-            _state.currentWallpaperUrl.startsWith('blob:') &&
-            _state.currentWallpaperUrl !== url) {
-            URL.revokeObjectURL(_state.currentWallpaperUrl);
-        }
-
+    function _setWallpaper(url, skipPreload = false) {
+        const oldUrl = _state.currentWallpaperUrl;
         _state.currentWallpaperUrl = url;
         _setCSSVar(CONFIG.CSS_VARS.WALLPAPER_IMAGE, url === 'none' ? 'none' : `url(${url})`);
+        
+        // Delay revoking old blob URL to prevent flickering
+        // Wait for new image to load before revoking old one
+        if (oldUrl &&
+            oldUrl.startsWith('blob:') &&
+            oldUrl !== url &&
+            url !== 'none' &&
+            url.startsWith('blob:')) {
+            if (skipPreload) {
+                // Image already preloaded, revoke old URL after a short delay
+                setTimeout(() => {
+                    URL.revokeObjectURL(oldUrl);
+                }, 100);
+            } else {
+                // Preload new image, then revoke old URL
+                const img = new Image();
+                img.onload = () => {
+                    // New image loaded, safe to revoke old URL
+                    URL.revokeObjectURL(oldUrl);
+                };
+                img.onerror = () => {
+                    // Even if load fails, revoke after a delay to prevent memory leak
+                    setTimeout(() => {
+                        URL.revokeObjectURL(oldUrl);
+                    }, 1000);
+                };
+                img.src = url;
+            }
+        } else if (oldUrl &&
+                   oldUrl.startsWith('blob:') &&
+                   oldUrl !== url) {
+            // For non-blob URLs or 'none', revoke immediately
+            URL.revokeObjectURL(oldUrl);
+        }
     }
 
     /**
@@ -1247,7 +1276,23 @@ const WallpaperManager = (function () {
             
             // Create object URL from cached blob
             const imageUrl = URL.createObjectURL(blob);
-            _setWallpaper(imageUrl);
+            
+            // Preload image to prevent flickering
+            await new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Image is fully loaded, safe to set wallpaper
+                    _setWallpaper(imageUrl, true); // skipPreload = true since we already preloaded
+                    resolve();
+                };
+                img.onerror = () => {
+                    // Even if preload fails, set wallpaper anyway
+                    _setWallpaper(imageUrl, true);
+                    resolve();
+                };
+                img.src = imageUrl;
+            });
+            
             // Save low-res preview for instant first paint on future tabs
             _saveWallpaperPreviewSmall(blob, CONFIG.WALLPAPER_SOURCES.BING);
             

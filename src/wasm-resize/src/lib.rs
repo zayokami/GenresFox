@@ -10,6 +10,21 @@ compile_error!("This crate only supports wasm32 target");
 use std::alloc::{alloc, dealloc, Layout};
 use std::cell::{Cell, RefCell};
 
+// Gamma-correct SIMD module
+#[cfg(target_arch = "wasm32")]
+mod gamma_simd;
+
+// SIMD optimization helpers for regular resampling
+#[cfg(target_arch = "wasm32")]
+mod simd_helpers;
+
+#[cfg(target_arch = "wasm32")]
+use simd_helpers::{copy_4_pixels_simd, bilinear_interp_4_pixels};
+
+// Export gamma-correct resize function for JavaScript
+#[cfg(target_arch = "wasm32")]
+pub use gamma_simd::resize_rgba_gamma_bilinear;
+
 // Error codes returned by resize functions
 // 0 = success, non-zero = error
 pub const RESIZE_OK: i32 = 0;
@@ -476,10 +491,29 @@ pub unsafe extern "C" fn resize_rgba_nearest(
                 if src_idx.saturating_add(3) < src.len() && dst_idx.saturating_add(3) < dst.len() {
                     // Additional safety check: ensure indices are within valid range
                     if src_idx < src.len() && dst_idx < dst.len() {
-                        dst[dst_idx] = src[src_idx];
-                        dst[dst_idx + 1] = src[src_idx + 1];
-                        dst[dst_idx + 2] = src[src_idx + 2];
-                        dst[dst_idx + 3] = src[src_idx + 3];
+                        // Use SIMD-optimized copy for aligned memory (4 pixels = 16 bytes)
+                        // Check if both pointers are 16-byte aligned for optimal SIMD performance
+                        #[cfg(target_feature = "simd128")]
+                        {
+                            if (src.as_ptr().add(src_idx) as usize) % 16 == 0
+                                && (dst.as_mut_ptr().add(dst_idx) as usize) % 16 == 0
+                            {
+                                copy_4_pixels_simd(src.as_ptr().add(src_idx), dst.as_mut_ptr().add(dst_idx));
+                            } else {
+                                // Unaligned: use scalar copy
+                                dst[dst_idx] = src[src_idx];
+                                dst[dst_idx + 1] = src[src_idx + 1];
+                                dst[dst_idx + 2] = src[src_idx + 2];
+                                dst[dst_idx + 3] = src[src_idx + 3];
+                            }
+                        }
+                        #[cfg(not(target_feature = "simd128"))]
+                        {
+                            dst[dst_idx] = src[src_idx];
+                            dst[dst_idx + 1] = src[src_idx + 1];
+                            dst[dst_idx + 2] = src[src_idx + 2];
+                            dst[dst_idx + 3] = src[src_idx + 3];
+                        }
                     }
                 }
             }
@@ -606,7 +640,7 @@ pub unsafe extern "C" fn resize_rgba(
                 
                 // Optimized bilinear interpolation with bounds checking
                 for y in 0..dst_h {
-                    let src_y = (y as f32 + 0.5) * scale_y - 0.5;
+            let src_y = (y as f32 + 0.5) * scale_y - 0.5;
             let y0 = src_y.floor() as i32;
             let y1 = (y0 + 1).min(src_h as i32 - 1);
                     let fy = (src_y - y0 as f32).max(0.0).min(1.0);
@@ -706,35 +740,10 @@ pub unsafe extern "C" fn resize_rgba(
                         let p01 = get_pixel_safe(y1_offset, x0_clamped);
                         let p11 = get_pixel_safe(y1_offset, x1_clamped);
                         
-                        // Optimized bilinear interpolation
-                        // Use f32 arithmetic for better precision, then clamp to u8
-            let lerp = |a: u8, b: u8, t: f32| -> u8 {
-                            let result = a as f32 * (1.0 - t) + b as f32 * t;
-                            result.max(0.0).min(255.0) as u8
-            };
-
-                        // Horizontal interpolation
-            let c0 = [
-                lerp(p00[0], p10[0], fx),
-                lerp(p00[1], p10[1], fx),
-                lerp(p00[2], p10[2], fx),
-                lerp(p00[3], p10[3], fx),
-            ];
-
-            let c1 = [
-                lerp(p01[0], p11[0], fx),
-                lerp(p01[1], p11[1], fx),
-                lerp(p01[2], p11[2], fx),
-                lerp(p01[3], p11[3], fx),
-            ];
-
-                        // Vertical interpolation
-            let result = [
-                lerp(c0[0], c1[0], fy),
-                lerp(c0[1], c1[1], fy),
-                lerp(c0[2], c1[2], fy),
-                lerp(c0[3], c1[3], fy),
-                        ];
+                        // Use SIMD-optimized bilinear interpolation
+                        // This function uses optimized scalar code with SIMD-ready structure
+                        // Future: Full SIMD implementation for 4x speedup
+                        let result = bilinear_interp_4_pixels(p00, p10, p01, p11, fx, fy);
                         
                         // Write to destination with enhanced bounds checking
                         // Check for integer overflow in destination index calculation
@@ -1062,7 +1071,7 @@ pub unsafe extern "C" fn resize_rgba_lanczos(
                                 a_sum = anti_ringing_clamp(a_sum, a_min, a_max);
                                 
                                 // Clamp to valid u8 range
-                                let result = [
+            let result = [
                                     r_sum.max(0.0).min(255.0) as u8,
                                     g_sum.max(0.0).min(255.0) as u8,
                                     b_sum.max(0.0).min(255.0) as u8,

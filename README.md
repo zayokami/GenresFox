@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-0.4.2-blue.svg)
+![Version](https://img.shields.io/badge/version-0.4.5-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Chrome](https://img.shields.io/badge/chrome-manifest%20v3-orange.svg)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/zayokami/GenresFox)
@@ -33,6 +33,7 @@
 - **Keyboard Shortcuts**: Quick engine switching (Alt+↑↓), focus search (/), open settings (Alt+,)
 - **Smart Caching**: Icon caching, wallpaper caching, and processing result caching for faster loading
 - **Clean & Minimal**: Distraction-free interface focused on what matters
+- **Debug Console**: Built-in debugging tools for performance testing and quality metrics
 
 
 ### Installation
@@ -119,6 +120,11 @@ GenresFox/
 │   ├── accessibility.js    # Accessibility features module
 │   ├── image-processor.js  # High-performance image processing module
 │   ├── image-worker.js     # Web Worker for background image processing
+│   ├── config-manager.js   # Configuration export/import with integrity verification
+│   ├── debug-console.js    # Debug console for performance and quality metrics
+│   ├── snow-effect.js      # Seasonal snow effect easter egg
+│   ├── load-css-async.js   # Async CSS loading utility
+│   ├── request-idle-callback-polyfill.js  # Polyfill for requestIdleCallback
 │   ├── resize.wasm         # Pre-compiled WASM module for image resizing
 │   ├── wasm-resize/        # WASM source code (Rust) - only for developers
 │   ├── styles.css          # Main styles
@@ -137,6 +143,47 @@ GenresFox/
 - **IndexedDB**: For storing large wallpaper files and cache
 - **LocalStorage**: For persistent settings and metadata caching
 - **Chrome Extension APIs**: For internationalization and browser integration
+
+#### Debug Console
+
+GenresFox includes a powerful debug console for developers and power users. Open the browser console (F12) and use the following commands:
+
+**System Information:**
+- `GenresFox.debug.help()` - Show all available commands
+- `GenresFox.debug.status()` - Display system status (WASM availability, modules loaded, etc.)
+- `GenresFox.debug.cache()` - Show cache information (icon cache, wallpaper cache, etc.)
+- `GenresFox.debug.memory()` - Display memory usage statistics
+
+**Performance & Quality Testing:**
+- `GenresFox.debug.benchmark()` - Run comprehensive performance and quality benchmarks
+  - Tests image processing at 1080p, 4K, and 8K resolutions
+  - Measures processing time, throughput (MP/s), and memory usage
+  - Calculates quality metrics (SSIM, PSNR) for resized images
+- `GenresFox.debug.performance()` - Run performance benchmarks only
+- `GenresFox.debug.quality()` - Run quality metrics (SSIM/PSNR) only
+- `GenresFox.debug.testImage(width, height)` - Test image processing with custom dimensions
+
+**Utilities:**
+- `GenresFox.debug.clear()` - Clear console output
+- `GenresFox.debug.debugMode()` - Activate debug mode (enables easter eggs)
+
+**Examples:**
+```javascript
+// Quick system check
+GenresFox.debug.status()
+
+// Run full benchmark suite
+GenresFox.debug.benchmark()
+
+// Test custom image size
+GenresFox.debug.testImage(3840, 2160)
+
+// Check cache status
+GenresFox.debug.cache()
+```
+
+**Shortcuts:**
+- `$debug` - Alias for `GenresFox.debug` (shorter to type)
 
 #### Adding New Languages
 1. Create a new folder in `src/_locales/` with the language code (e.g., `fr` for French)
@@ -213,6 +260,7 @@ The WASM module (`resize.wasm`) is **100% open source and auditable**:
 - **键盘快捷键**: 快速切换搜索引擎 (Alt+↑↓)、聚焦搜索框 (/)、打开设置 (Alt+,)
 - **智能缓存**: 图标缓存、壁纸缓存、处理结果缓存，加快加载速度
 - **简洁极简**: 无干扰界面，专注于重要内容
+- **调试控制台**: 内置调试工具，用于性能测试和质量指标
 
 
 ### 安装
@@ -299,6 +347,11 @@ GenresFox/
 │   ├── accessibility.js    # 无障碍功能模块
 │   ├── image-processor.js  # 高性能图片处理模块
 │   ├── image-worker.js     # Web Worker 后台图片处理
+│   ├── config-manager.js   # 配置导出/导入模块（带完整性验证）
+│   ├── debug-console.js    # 调试控制台（性能和质量指标）
+│   ├── snow-effect.js      # 季节性雪花效果彩蛋
+│   ├── load-css-async.js   # 异步 CSS 加载工具
+│   ├── request-idle-callback-polyfill.js  # requestIdleCallback 兼容性补丁
 │   ├── resize.wasm         # 预编译的 WASM 图片缩放模块
 │   ├── wasm-resize/        # WASM 源代码（Rust）- 仅开发者需要
 │   ├── styles.css          # 主样式文件
@@ -317,6 +370,47 @@ GenresFox/
 - **IndexedDB**: 用于存储大型壁纸文件和缓存
 - **LocalStorage**: 用于持久化设置和元数据缓存
 - **Chrome 扩展 API**: 用于国际化和浏览器集成
+
+#### 调试控制台
+
+GenresFox 为开发者和高级用户提供了强大的调试控制台。打开浏览器控制台（F12）并使用以下命令：
+
+**系统信息：**
+- `GenresFox.debug.help()` - 显示所有可用命令
+- `GenresFox.debug.status()` - 显示系统状态（WASM 可用性、已加载模块等）
+- `GenresFox.debug.cache()` - 显示缓存信息（图标缓存、壁纸缓存等）
+- `GenresFox.debug.memory()` - 显示内存使用统计
+
+**性能与质量测试：**
+- `GenresFox.debug.benchmark()` - 运行综合性能和质量基准测试
+  - 测试 1080p、4K 和 8K 分辨率的图片处理
+  - 测量处理时间、吞吐量（MP/s）和内存使用
+  - 计算缩放图片的质量指标（SSIM、PSNR）
+- `GenresFox.debug.performance()` - 仅运行性能基准测试
+- `GenresFox.debug.quality()` - 仅运行质量指标测试（SSIM/PSNR）
+- `GenresFox.debug.testImage(width, height)` - 使用自定义尺寸测试图片处理
+
+**实用工具：**
+- `GenresFox.debug.clear()` - 清空控制台输出
+- `GenresFox.debug.debugMode()` - 激活调试模式（启用彩蛋功能）
+
+**示例：**
+```javascript
+// 快速系统检查
+GenresFox.debug.status()
+
+// 运行完整基准测试套件
+GenresFox.debug.benchmark()
+
+// 测试自定义图片尺寸
+GenresFox.debug.testImage(3840, 2160)
+
+// 检查缓存状态
+GenresFox.debug.cache()
+```
+
+**快捷方式：**
+- `$debug` - `GenresFox.debug` 的别名（输入更短）
 
 #### 多语言贡献
 1. 在 `src/_locales/` 中创建新文件夹，使用语言代码命名（如 `fr` 表示法语）

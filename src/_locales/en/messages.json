@@ -229,5 +229,32 @@
     },
     "snowEffectToggle": {
         "message": "Snow Effect"
+    },
+    "exportConfigTitle": {
+        "message": "Export Configuration"
+    },
+    "exportConfigDescription": {
+        "message": "Export all your settings, shortcuts, and customizations to a JSON file for backup or sharing."
+    },
+    "exportConfigButton": {
+        "message": "Export Configuration"
+    },
+    "exportConfigSuccess": {
+        "message": "Configuration exported successfully!"
+    },
+    "exportConfigError": {
+        "message": "Failed to export configuration."
+    },
+    "importConfigButton": {
+        "message": "Import Configuration"
+    },
+    "importConfigConfirm": {
+        "message": "This will replace all your current settings. Continue?"
+    },
+    "importConfigSuccess": {
+        "message": "Configuration imported successfully!"
+    },
+    "importConfigError": {
+        "message": "Failed to import configuration: "
     }
 }

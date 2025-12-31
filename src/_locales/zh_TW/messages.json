@@ -229,6 +229,33 @@
     },
     "snowEffectToggle": {
         "message": "雪花效果"
+    },
+    "exportConfigTitle": {
+        "message": "匯出設定"
+    },
+    "exportConfigDescription": {
+        "message": "將所有設定、捷徑和自訂項目匯出為 JSON 檔案，用於備份或分享。"
+    },
+    "exportConfigButton": {
+        "message": "匯出設定"
+    },
+    "exportConfigSuccess": {
+        "message": "設定匯出成功！"
+    },
+    "exportConfigError": {
+        "message": "設定匯出失敗。"
+    },
+    "importConfigButton": {
+        "message": "匯入設定"
+    },
+    "importConfigConfirm": {
+        "message": "這將替換您目前的所有設定。是否繼續？"
+    },
+    "importConfigSuccess": {
+        "message": "設定匯入成功！"
+    },
+    "importConfigError": {
+        "message": "設定匯入失敗："
     }
 }
 

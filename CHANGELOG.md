@@ -6,6 +6,33 @@ The dates recorded in this document are based on CST (UTC+8).
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2025-12-31
+
+### Added
+- **Configuration Export/Import**: Complete configuration backup and restore system
+  - Export all settings, shortcuts, and customizations to JSON file
+  - Import configuration with integrity verification
+  - HMAC-SHA256 signature for tamper detection
+  - Timestamp validation (prevents expired configs)
+  - Version compatibility checking
+  - Full internationalization support (8 languages)
+- **ConfigManager Module**: New dedicated module for configuration management
+  - Lightweight, no external dependencies
+  - Web Crypto API for secure signature generation/verification
+  - Comprehensive validation (structure, version, timestamp, signature)
+
+### Fixed
+- **Bing Wallpaper Flickering**: Fixed blur and black flash when loading Bing daily wallpaper
+  - Preload images before setting wallpaper to prevent blank display
+  - Delay revoking old blob URLs until new image is loaded
+  - Smooth transition between wallpapers
+
+### Changed
+- **Configuration Security**: All exported configurations now include cryptographic signatures
+  - Prevents tampering with configuration files
+  - Ensures only valid, unmodified configs can be imported
+  - Config files expire after 1 year for security
+
 ## [0.4.1] - 2025-12-24
 
 ### Performance Optimizations

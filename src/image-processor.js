@@ -1128,7 +1128,9 @@ const ImageProcessor = (function() {
             maxWidth = CONFIG.MAX_WIDTH,
             maxHeight = CONFIG.MAX_HEIGHT,
             useCache = true,
-            useWorker = true
+            useWorker = true,
+            gammaCorrect = false,  // Use gamma-correct resampling
+            algorithm = 'auto'      // Resize algorithm: 'auto', 'nearest', 'bilinear', 'lanczos'
         } = options;
 
         try {
@@ -1286,7 +1288,9 @@ const ImageProcessor = (function() {
                             format: await _getOutputFormat(),
                             alreadyScaled: false, // Worker will scale using WASM
                             originalWidth,
-                            originalHeight
+                            originalHeight,
+                            gammaCorrect,  // Pass gamma correction option
+                            algorithm      // Pass algorithm option
                         };
                     } else {
                         // Path B: WASM not available - use browser's native high-quality scaling
@@ -1308,7 +1312,9 @@ const ImageProcessor = (function() {
                             format: await _getOutputFormat(),
                             alreadyScaled: true, // Already scaled by browser
                             originalWidth,
-                            originalHeight
+                            originalHeight,
+                            gammaCorrect,  // Pass gamma correction option
+                            algorithm      // Pass algorithm option
                         };
                     }
                     
@@ -1521,6 +1527,40 @@ const ImageProcessor = (function() {
             entries: _cache.entries.size,
             totalSize: _cache.totalSize
         }),
+        getCacheInfo: () => {
+            const stats = {
+                entries: _cache.entries.size,
+                totalSize: _cache.totalSize,
+                maxEntries: CONFIG.CACHE_MAX_ENTRIES,
+                maxSize: CONFIG.CACHE_MAX_SIZE,
+                entriesList: []
+            };
+            
+            // Format size for display
+            const formatBytes = (bytes) => {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+            };
+            
+            stats.totalSizeFormatted = formatBytes(stats.totalSize);
+            stats.maxSizeFormatted = formatBytes(stats.maxSize);
+            
+            // Get entry details (limit to first 5 for performance)
+            let count = 0;
+            for (const [key, entry] of _cache.entries) {
+                if (count++ >= 5) break;
+                stats.entriesList.push({
+                    key: key.substring(0, 16) + '...',
+                    size: formatBytes(entry.size),
+                    timestamp: new Date(entry.timestamp).toISOString()
+                });
+            }
+            
+            return stats;
+        },
         
         // Utilities
         calculateDimensions: _calculateDimensions,
@@ -1538,14 +1578,19 @@ const ImageProcessor = (function() {
         isWorkerAvailable: () => _state.workerReadyCount > 0,
         
         // WASM status
-        getWasmStatus: () => ({
-            available: CONFIG.WASM_URL !== null,
-            enabled: CONFIG.WASM_ENABLED,
-            status: _state.wasmState.status, // 'unloaded' | 'loading' | 'loaded' | 'failed'
-            threshold: CONFIG.WASM_AUTO_ENABLE_THRESHOLD,
-            workersLoaded: _state.workers.filter(w => w?.__wasmLoaded).length,
-            totalWorkers: _state.workers.length
-        }),
+        getWasmStatus: () => {
+            const status = _state.wasmState.status; // 'unloaded' | 'loading' | 'loaded' | 'failed'
+            return {
+                available: CONFIG.WASM_URL !== null,
+                enabled: CONFIG.WASM_ENABLED,
+                status: status,
+                loaded: status === 'loaded', // For compatibility with debug console
+                url: CONFIG.WASM_URL,
+                threshold: CONFIG.WASM_AUTO_ENABLE_THRESHOLD,
+                workersLoaded: _state.workers.filter(w => w?.__wasmLoaded).length,
+                totalWorkers: _state.workers.length
+            };
+        },
         
         // Manual init
         init

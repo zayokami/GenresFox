@@ -14,6 +14,8 @@
     <link rel="stylesheet" href="styles.css">
     <!-- Critical inline script moved to external file to comply with CSP -->
     <script src="inline-init.js"></script>
+    <!-- Console security warning (load early to catch console opening) -->
+    <script src="console-warning.js"></script>
     <!-- Polyfill for requestIdleCallback (load early, before main scripts) -->
     <script src="request-idle-callback-polyfill.js"></script>
     <!-- Non-critical CSS loaded asynchronously (after critical scripts) -->
@@ -38,7 +40,7 @@
                     </div>
                 </div>
                 <input id="search" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="Search..."
-                    autocomplete="off" autofocus />
+                    autocomplete="off" />
                     <button id="searchActionBtn" class="search-action-btn" type="button" aria-label="Search" data-i18n-aria-label="searchActionLabel">
                         <span class="search-action-icon">
                             <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -322,7 +324,7 @@
                 <div class="tab-content" id="tab-about">
                     <div class="about-info">
                         <h3>GenresFox</h3>
-                        <p>Version 0.4.2</p>
+                        <p>Version 0.4.5</p>
                         <p data-i18n="aboutDescription">A completely open-source, high-performance, and extremely minimalist browser new tab page extension.</p>
                         <p>&copy; 2025 zayoka. All rights reserved.</p>
                         <p>Created and designed by zayoka.</p>
@@ -342,6 +344,16 @@
                         <p data-i18n="creditsBingWallpaper">Default wallpaper powered by Bing Daily Wallpaper.</p>
                     </div>
 
+                    <div class="about-export" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                        <h4 data-i18n="exportConfigTitle">Export Configuration</h4>
+                        <p data-i18n="exportConfigDescription" style="color: rgba(255, 255, 255, 0.6); font-size: 0.9rem; margin-bottom: 12px;">Export all your settings, shortcuts, and customizations to a JSON file for backup or sharing.</p>
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                            <button id="exportConfigBtn" class="btn-primary" data-i18n="exportConfigButton">Export Configuration</button>
+                            <button id="importConfigBtn" class="btn-secondary" data-i18n="importConfigButton">Import Configuration</button>
+                        </div>
+                        <input type="file" id="importConfigFile" accept=".json" style="display: none;">
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -353,7 +365,10 @@
     <script src="accessibility.js"></script>
     <script src="search.js"></script>
     <script src="snow-effect.js"></script>
+    <script src="config-manager.js"></script>
     <script src="script.js"></script>
+    <!-- Debug console (development tool) -->
+    <script src="debug-console.js"></script>
 </body>
 </html>
 
