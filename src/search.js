@@ -84,10 +84,36 @@ const SearchBar = (function () {
 
     function _updateButtonWidth(actionBtn, actionLabel) {
         if (!actionBtn || !actionLabel) return;
-        const labelWidth = actionLabel.scrollWidth;
-        const base = 44; // collapsed width
-        const padding = 32; // padding and gap
-        const expanded = Math.max(base + padding + labelWidth, 112);
+        
+        // Temporarily show label to measure its actual width
+        const originalMaxWidth = actionLabel.style.maxWidth;
+        const originalOpacity = actionLabel.style.opacity;
+        const originalVisibility = actionLabel.style.visibility;
+        
+        // Make label visible for measurement
+        actionLabel.style.maxWidth = 'none';
+        actionLabel.style.opacity = '1';
+        actionLabel.style.visibility = 'hidden'; // Hidden but still measurable
+        actionLabel.style.position = 'absolute';
+        actionLabel.style.whiteSpace = 'nowrap';
+        
+        // Measure the actual width
+        const labelWidth = actionLabel.scrollWidth || actionLabel.offsetWidth;
+        
+        // Restore original styles
+        actionLabel.style.maxWidth = originalMaxWidth;
+        actionLabel.style.opacity = originalOpacity;
+        actionLabel.style.visibility = originalVisibility;
+        actionLabel.style.position = '';
+        
+        // Calculate expanded width: icon (16px) + gap (8px) + label + padding (32px total)
+        // Expanded = icon(16) + gap(8) + labelWidth + padding(32) = 56 + labelWidth
+        const iconWidth = 16;
+        const gap = 8;
+        const paddingTotal = 32; // 16px left + 16px right
+        const minExpanded = 120; // Minimum expanded width for short texts
+        const expanded = Math.max(iconWidth + gap + labelWidth + paddingTotal, minExpanded);
+        
         actionBtn.style.setProperty('--search-action-expand', `${expanded}px`);
     }
 

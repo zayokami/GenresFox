@@ -895,10 +895,36 @@ function getIconSrc(key, url, pageUrl) {
 // --- UI Rendering ---
 function _updateSearchActionWidth() {
     if (!searchActionBtn || !searchActionLabel) return;
-    const labelWidth = searchActionLabel.scrollWidth;
-    const base = 44; // collapsed width
-    const padding = 32; // padding and gap
-    const expanded = Math.max(base + padding + labelWidth, 112);
+    
+    // Temporarily show label to measure its actual width
+    const originalMaxWidth = searchActionLabel.style.maxWidth;
+    const originalOpacity = searchActionLabel.style.opacity;
+    const originalVisibility = searchActionLabel.style.visibility;
+    
+    // Make label visible for measurement
+    searchActionLabel.style.maxWidth = 'none';
+    searchActionLabel.style.opacity = '1';
+    searchActionLabel.style.visibility = 'hidden'; // Hidden but still measurable
+    searchActionLabel.style.position = 'absolute';
+    searchActionLabel.style.whiteSpace = 'nowrap';
+    
+    // Measure the actual width
+    const labelWidth = searchActionLabel.scrollWidth || searchActionLabel.offsetWidth;
+    
+    // Restore original styles
+    searchActionLabel.style.maxWidth = originalMaxWidth;
+    searchActionLabel.style.opacity = originalOpacity;
+    searchActionLabel.style.visibility = originalVisibility;
+    searchActionLabel.style.position = '';
+    
+        // Calculate expanded width: icon (16px) + gap (8px) + label + padding (32px total)
+        // Expanded = icon(16) + gap(8) + labelWidth + padding(32) = 56 + labelWidth
+        const iconWidth = 16;
+        const gap = 8;
+        const paddingTotal = 32; // 16px left + 16px right
+        const minExpanded = 120; // Minimum expanded width for short texts
+        const expanded = Math.max(iconWidth + gap + labelWidth + paddingTotal, minExpanded);
+    
     searchActionBtn.style.setProperty('--search-action-expand', `${expanded}px`);
 }
 
@@ -1446,6 +1472,10 @@ function _applyImportedConfiguration(config) {
         localStorage.setItem('preferredLanguage', settings.preferredLanguage);
         if (typeof I18n !== 'undefined' && I18n.localize) {
             I18n.localize(settings.preferredLanguage);
+            // Update search button width after language change
+            requestAnimationFrame(() => {
+                _updateSearchActionWidth();
+            });
         }
     }
 
@@ -2401,6 +2431,14 @@ async function init() {
     // Apply translations
     if (typeof I18n !== 'undefined') {
         I18n.localize();
+    }
+    
+    // Update search button width after i18n is applied
+    if (typeof searchActionBtn !== 'undefined' && typeof searchActionLabel !== 'undefined') {
+        // Use requestAnimationFrame to ensure DOM is updated
+        requestAnimationFrame(() => {
+            _updateSearchActionWidth();
+        });
     }
     
     // Initialize custom selects after i18n is applied
