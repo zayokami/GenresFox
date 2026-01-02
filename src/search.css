@@ -102,6 +102,6 @@
 .search-action-btn:hover .search-action-label,
 .search-action-btn:focus-visible .search-action-label {
     opacity: 1;
-    max-width: calc(var(--search-action-expand) - 72px);
+    max-width: calc(var(--search-action-expand) - 56px);
 }
 

@@ -762,15 +762,24 @@ const I18n = (function () {
      * @returns {string} Translated message or empty string
      */
     function getMessage(key) {
+        // Ensure _currentLanguage is initialized
+        if (!_currentLanguage) {
+            _currentLanguage = _detectLanguage();
+        }
+
         // Try Chrome i18n API first
         if (typeof chrome !== 'undefined' && chrome.i18n) {
             const msg = chrome.i18n.getMessage(key);
-            if (msg) return msg;
+            // If Chrome API returns a non-empty string, use it
+            if (msg && msg.trim().length > 0) {
+                return msg;
+            }
+            // If Chrome API returns empty string, fall through to fallback
         }
 
         // Fallback to local messages
         const messages = _fallbackMessages[_currentLanguage] || _fallbackMessages['en'];
-        return messages[key] || '';
+        return messages[key] || key;
     }
 
     /**
@@ -778,40 +787,101 @@ const I18n = (function () {
      * @param {string} [lang] - Optional language code to switch to
      */
     function localize(lang = null) {
-        if (lang && _supportedLanguages.includes(lang)) {
-            _currentLanguage = lang;
-            localStorage.setItem('preferredLanguage', lang);
+        try {
+            // Initialize _currentLanguage if not set
+            if (!_currentLanguage) {
+                _currentLanguage = _detectLanguage();
+            }
+
+            if (lang && _supportedLanguages.includes(lang)) {
+                _currentLanguage = lang;
+                localStorage.setItem('preferredLanguage', lang);
+            }
+
+            // Ensure _currentLanguage is valid
+            if (!_currentLanguage || !_fallbackMessages[_currentLanguage]) {
+                console.warn(`[I18n] Invalid language "${_currentLanguage}", falling back to English`);
+                _currentLanguage = 'en';
+            }
+            
+            // Double-check fallback exists
+            if (!_fallbackMessages[_currentLanguage]) {
+                console.error('[I18n] Critical: English fallback missing, this should never happen');
+                _currentLanguage = 'en';
+            }
+        } catch (e) {
+            console.error('[I18n] Error in localize initialization:', e);
+            _currentLanguage = 'en';
         }
 
         const fallback = _fallbackMessages[_currentLanguage] || _fallbackMessages['en'];
+        const hasManualPreference = localStorage.getItem('preferredLanguage');
+        
+        // Test Chrome i18n API reliability by checking a known key
+        let chromeI18nReliable = false;
+        if (typeof chrome !== 'undefined' && chrome.i18n && !hasManualPreference) {
+            const testMsg = chrome.i18n.getMessage('searchPlaceholder');
+            // Chrome i18n is reliable only if it returns a non-empty string
+            chromeI18nReliable = testMsg && testMsg.trim().length > 0;
+        }
 
-        if (typeof chrome !== 'undefined' && chrome.i18n && !localStorage.getItem('preferredLanguage')) {
-            // Use Chrome's i18n only if user hasn't manually set a language
-            document.querySelectorAll('[data-i18n]').forEach(elem => {
-                let msg = chrome.i18n.getMessage(elem.dataset.i18n);
-                if (!msg && fallback && fallback[elem.dataset.i18n]) {
-                    msg = fallback[elem.dataset.i18n];
-                }
-                if (msg) elem.textContent = msg;
-            });
-            document.querySelectorAll('[data-i18n-placeholder]').forEach(elem => {
-                let msg = chrome.i18n.getMessage(elem.dataset.i18nPlaceholder);
-                if (!msg && fallback && fallback[elem.dataset.i18nPlaceholder]) {
-                    msg = fallback[elem.dataset.i18nPlaceholder];
-                }
-                if (msg) elem.placeholder = msg;
-            });
-        } else {
-            // Use fallback messages with selected language
-            const messages = _fallbackMessages[_currentLanguage] || _fallbackMessages['en'];
+        if (chromeI18nReliable) {
+            // Use Chrome's i18n only if it's reliable
             document.querySelectorAll('[data-i18n]').forEach(elem => {
                 const key = elem.dataset.i18n;
-                if (messages[key]) elem.textContent = messages[key];
+                let msg = chrome.i18n.getMessage(key);
+                // If Chrome API returns empty string or null, use fallback
+                if (!msg || msg.trim().length === 0) {
+                    msg = fallback && fallback[key] ? fallback[key] : key;
+                }
+                elem.textContent = msg;
             });
             document.querySelectorAll('[data-i18n-placeholder]').forEach(elem => {
                 const key = elem.dataset.i18nPlaceholder;
-                if (messages[key]) elem.placeholder = messages[key];
+                let msg = chrome.i18n.getMessage(key);
+                // If Chrome API returns empty string or null, use fallback
+                if (!msg || msg.trim().length === 0) {
+                    msg = fallback && fallback[key] ? fallback[key] : key;
+                }
+                elem.placeholder = msg;
             });
+        } else {
+            // Use fallback messages with selected language (more reliable)
+            const messages = _fallbackMessages[_currentLanguage] || _fallbackMessages['en'];
+            
+            try {
+                document.querySelectorAll('[data-i18n]').forEach(elem => {
+                    try {
+                        const key = elem.dataset.i18n;
+                        if (key && messages[key]) {
+                            elem.textContent = messages[key];
+                        } else if (key) {
+                            elem.textContent = key; // Fallback to key name
+                        }
+                    } catch (e) {
+                        console.warn('[I18n] Error localizing element:', e);
+                    }
+                });
+            } catch (e) {
+                console.error('[I18n] Error in data-i18n localization:', e);
+            }
+            
+            try {
+                document.querySelectorAll('[data-i18n-placeholder]').forEach(elem => {
+                    try {
+                        const key = elem.dataset.i18nPlaceholder;
+                        if (key && messages[key]) {
+                            elem.placeholder = messages[key];
+                        } else if (key) {
+                            elem.placeholder = key; // Fallback to key name
+                        }
+                    } catch (e) {
+                        console.warn('[I18n] Error localizing placeholder:', e);
+                    }
+                });
+            } catch (e) {
+                console.error('[I18n] Error in data-i18n-placeholder localization:', e);
+            }
         }
 
         // Update HTML lang attribute
@@ -843,10 +913,61 @@ const I18n = (function () {
     }
 
     /**
+     * Health check: Verify i18n system is working correctly
+     * @returns {boolean} True if system is healthy
+     */
+    function healthCheck() {
+        try {
+            // Check if _currentLanguage is set
+            if (!_currentLanguage) {
+                _currentLanguage = _detectLanguage();
+            }
+            
+            // Check if fallback messages exist for current language
+            if (!_fallbackMessages[_currentLanguage]) {
+                console.warn(`[I18n] Fallback messages missing for language: ${_currentLanguage}, falling back to English`);
+                _currentLanguage = 'en';
+            }
+            
+            // Test Chrome i18n API if available
+            if (typeof chrome !== 'undefined' && chrome.i18n) {
+                const testKey = 'searchPlaceholder';
+                const testMsg = chrome.i18n.getMessage(testKey);
+                if (!testMsg || testMsg.trim().length === 0) {
+                    console.warn('[I18n] Chrome i18n API returned empty string, using fallback messages');
+                }
+            }
+            
+            // Test fallback message retrieval
+            const testFallback = _fallbackMessages[_currentLanguage] || _fallbackMessages['en'];
+            if (!testFallback || !testFallback['searchPlaceholder']) {
+                console.error('[I18n] Critical: Fallback messages are corrupted');
+                return false;
+            }
+            
+            return true;
+        } catch (e) {
+            console.error('[I18n] Health check failed:', e);
+            return false;
+        }
+    }
+
+    /**
      * Initialize the i18n module
      */
     function init() {
-        _currentLanguage = _detectLanguage();
+        try {
+            _currentLanguage = _detectLanguage();
+            
+            // Run health check after initialization
+            if (!healthCheck()) {
+                console.error('[I18n] Initialization health check failed, forcing English fallback');
+                _currentLanguage = 'en';
+            }
+        } catch (e) {
+            console.error('[I18n] Initialization failed:', e);
+            _currentLanguage = 'en';
+        }
     }
 
     // Public API
@@ -855,7 +976,8 @@ const I18n = (function () {
         localize,
         getMessage,
         getCurrentLanguage,
-        getSupportedLanguages
+        getSupportedLanguages,
+        healthCheck
     };
 })();
 
