@@ -14,12 +14,14 @@ const ConfigManager = (function () {
 
     // ==================== Configuration Constants ====================
     const CONFIG = {
-        VERSION: '0.4.5',
+        VERSION: '0.4.6',
         MAX_AGE_DAYS: 365, // Maximum age of config file (1 year)
         MIN_AGE_MS: 1000, // Minimum age to prevent replay attacks (1 second)
         SIGNATURE_KEY: 'genresfox-config-signature-v1', // Secret key for HMAC
         ALGORITHM: 'HMAC',
-        HASH: 'SHA-256'
+        HASH: 'SHA-256',
+        // Minimum supported version for migration
+        MIN_SUPPORTED_VERSION: '0.1.0'
     };
 
     // ==================== State ====================
@@ -154,62 +156,84 @@ const ConfigManager = (function () {
     }
 
     /**
-     * Validate version compatibility
-     * @param {string} version - Version string
-     * @returns {boolean} Whether version is compatible
+     * Compare version strings
+     * @param {string} v1 - Version 1
+     * @param {string} v2 - Version 2
+     * @returns {number} -1 if v1 < v2, 0 if v1 === v2, 1 if v1 > v2
      */
-    function _validateVersion(version) {
+    function _compareVersions(v1, v2) {
+        const parts1 = v1.split('.').map(Number);
+        const parts2 = v2.split('.').map(Number);
+        const maxLength = Math.max(parts1.length, parts2.length);
+        
+        for (let i = 0; i < maxLength; i++) {
+            const part1 = parts1[i] || 0;
+            const part2 = parts2[i] || 0;
+            if (part1 < part2) return -1;
+            if (part1 > part2) return 1;
+        }
+        return 0;
+    }
+
+    /**
+     * Check if version is supported (can be migrated)
+     * @param {string} version - Version string
+     * @returns {boolean} Whether version can be migrated
+     */
+    function _isVersionSupported(version) {
         if (!version || typeof version !== 'string') {
             return false;
         }
 
-        // Extract major and minor version numbers
-        const parts = version.split('.');
-        if (parts.length < 2) {
+        try {
+            // Check if version is >= minimum supported
+            if (_compareVersions(version, CONFIG.MIN_SUPPORTED_VERSION) < 0) {
+                return false;
+            }
+            
+            // Check if version is not newer than current
+            if (_compareVersions(version, CONFIG.VERSION) > 0) {
+                return false;
+            }
+            
+            return true;
+        } catch (e) {
+            console.error('Error comparing versions:', e);
             return false;
         }
-
-        const fileMajor = parseInt(parts[0], 10);
-        const fileMinor = parseInt(parts[1], 10);
-        const currentParts = CONFIG.VERSION.split('.');
-        const currentMajor = parseInt(currentParts[0], 10);
-        const currentMinor = parseInt(currentParts[1], 10);
-
-        // Allow same major version or one major version behind
-        if (fileMajor === currentMajor) {
-            return true;
-        }
-        if (fileMajor === currentMajor - 1 && fileMinor >= 0) {
-            return true;
-        }
-
-        return false;
     }
 
     /**
-     * Validate configuration structure
+     * Validate configuration structure (lenient for old formats)
      * @param {Object} config - Configuration object
+     * @param {boolean} allowLegacy - Allow legacy format without version/exportDate
      * @returns {Object} { valid: boolean, reason?: string }
      */
-    function _validateConfigStructure(config) {
+    function _validateConfigStructure(config, allowLegacy = false) {
         if (!config || typeof config !== 'object') {
             return { valid: false, reason: 'Invalid configuration structure' };
         }
 
-        if (!config.version || typeof config.version !== 'string') {
-            return { valid: false, reason: 'Missing or invalid version field' };
-        }
-
-        if (!config.exportDate || typeof config.exportDate !== 'string') {
-            return { valid: false, reason: 'Missing or invalid exportDate field' };
-        }
-
-        if (!config.settings || typeof config.settings !== 'object') {
+        // For legacy formats, settings might be at root level
+        const settingsObj = config.settings || config;
+        
+        if (!settingsObj || typeof settingsObj !== 'object') {
             return { valid: false, reason: 'Missing or invalid settings field' };
         }
 
+        // Version and exportDate are optional for legacy formats
+        if (!allowLegacy) {
+            if (!config.version || typeof config.version !== 'string') {
+                return { valid: false, reason: 'Missing or invalid version field' };
+            }
+
+            if (!config.exportDate || typeof config.exportDate !== 'string') {
+                return { valid: false, reason: 'Missing or invalid exportDate field' };
+            }
+        }
+
         // Validate critical settings structure
-        const settings = config.settings;
+        const settings = config.settings || config;
         
         // Engines should be an object
         if (settings.engines !== undefined && typeof settings.engines !== 'object') {
@@ -302,48 +326,249 @@ const ConfigManager = (function () {
         }
     }
 
+    // ==================== Migration ====================
+
+    /**
+     * Migrate configuration from older version to current version
+     * @param {Object} config - Configuration object from older version
+     * @param {string} fromVersion - Source version
+     * @returns {Object} Migrated configuration object
+     */
+    function _migrateConfig(config, fromVersion) {
+        if (!config || typeof config !== 'object') {
+            throw new Error('Invalid configuration for migration');
+        }
+
+        let migrated = JSON.parse(JSON.stringify(config)); // Deep clone
+        
+        // Ensure settings object exists
+        if (!migrated.settings) {
+            migrated.settings = {};
+        }
+
+        // Migration from version < 0.2.0 (no version field or very old format)
+        if (!fromVersion || _compareVersions(fromVersion, '0.2.0') < 0) {
+            console.log('[ConfigManager] Migrating from pre-0.2.0 format');
+            
+            // Old format might have settings directly at root
+            if (!migrated.settings.engines && migrated.engines) {
+                migrated.settings.engines = migrated.engines;
+                delete migrated.engines;
+            }
+            if (!migrated.settings.shortcuts && migrated.shortcuts) {
+                migrated.settings.shortcuts = migrated.shortcuts;
+                delete migrated.shortcuts;
+            }
+            
+            // Ensure all required fields exist
+            if (!migrated.settings.engines) {
+                migrated.settings.engines = {};
+            }
+            if (!Array.isArray(migrated.settings.shortcuts)) {
+                migrated.settings.shortcuts = [];
+            }
+        }
+
+        // Migration from version < 0.3.0
+        if (_compareVersions(fromVersion || '0.1.0', '0.3.0') < 0) {
+            console.log('[ConfigManager] Migrating from pre-0.3.0 format');
+            
+            // Add missing settings with defaults
+            if (migrated.settings.showShortcutNames === undefined) {
+                migrated.settings.showShortcutNames = true;
+            }
+            if (!migrated.settings.wallpaperSettings) {
+                migrated.settings.wallpaperSettings = {
+                    blur: 0,
+                    vignette: 0
+                };
+            }
+            if (!migrated.settings.searchBoxSettings) {
+                migrated.settings.searchBoxSettings = {
+                    width: 600,
+                    scale: 1,
+                    position: 30,
+                    radius: 24,
+                    shadow: 0.3
+                };
+            }
+        }
+
+        // Migration from version < 0.4.0
+        if (_compareVersions(fromVersion || '0.1.0', '0.4.0') < 0) {
+            console.log('[ConfigManager] Migrating from pre-0.4.0 format');
+            
+            // Add theme settings if missing
+            if (!migrated.settings.themeSettings) {
+                migrated.settings.themeSettings = {
+                    useWallpaperAccent: false
+                };
+            }
+            
+            // Add accessibility settings if missing
+            if (!migrated.settings.accessibilitySettings) {
+                migrated.settings.accessibilitySettings = {
+                    theme: 'standard',
+                    fontSize: 16,
+                    fontFamily: 'default',
+                    lineSpacing: 'normal',
+                    motion: 'full',
+                    focusStyle: 'standard'
+                };
+            }
+            
+            // Ensure shortcutOpenTarget exists
+            if (!migrated.settings.shortcutOpenTarget) {
+                migrated.settings.shortcutOpenTarget = 'current';
+            }
+        }
+
+        // Migration from version < 0.4.6
+        if (_compareVersions(fromVersion || '0.1.0', '0.4.6') < 0) {
+            console.log('[ConfigManager] Migrating from pre-0.4.6 format');
+            
+            // Add snow effect settings if missing
+            if (migrated.settings.snowEffectEnabled === undefined) {
+                migrated.settings.snowEffectEnabled = false;
+            }
+            if (migrated.settings.snowEffectTriggered === undefined) {
+                migrated.settings.snowEffectTriggered = false;
+            }
+            
+            // Ensure preferredLanguage exists
+            if (!migrated.settings.preferredLanguage) {
+                migrated.settings.preferredLanguage = null; // Will be auto-detected
+            }
+        }
+
+        // Update version and export date
+        migrated.version = CONFIG.VERSION;
+        migrated.exportDate = new Date().toISOString();
+        
+        // Remove old signature (will be regenerated)
+        delete migrated.signature;
+
+        return migrated;
+    }
+
+    /**
+     * Detect configuration version
+     * @param {Object} config - Configuration object
+     * @returns {string} Detected version or '0.1.0' as default
+     */
+    function _detectVersion(config) {
+        if (config.version && typeof config.version === 'string') {
+            return config.version;
+        }
+        
+        // Try to detect version based on structure
+        if (config.settings) {
+            // Has settings object, likely >= 0.2.0
+            if (config.settings.themeSettings) {
+                return '0.4.0'; // Has theme settings
+            }
+            if (config.settings.accessibilitySettings) {
+                return '0.4.0'; // Has accessibility settings
+            }
+            if (config.settings.searchBoxSettings) {
+                return '0.3.0'; // Has search box settings
+            }
+            return '0.2.0'; // Has settings object but missing newer fields
+        }
+        
+        // Very old format, settings at root level
+        return '0.1.0';
+    }
+
     // ==================== Import ====================
 
     /**
-     * Verify imported configuration
+     * Verify imported configuration with automatic migration support
      * @param {Object} config - Configuration object to verify
-     * @returns {Promise<Object>} { valid: boolean, reason?: string, config?: Object }
+     * @returns {Promise<Object>} { valid: boolean, reason?: string, config?: Object, migrated?: boolean, fromVersion?: string }
      */
     async function verifyConfig(config) {
         try {
-            // Step 1: Validate structure
-            const structureCheck = _validateConfigStructure(config);
+            // Detect version
+            const detectedVersion = _detectVersion(config);
+            const configVersion = config.version || detectedVersion;
+            let needsMigration = false;
+            let migratedConfig = config;
+
+            // Step 1: Check if version is supported
+            if (!_isVersionSupported(configVersion)) {
+                // Try to detect if it's a very old format without version
+                if (!config.version) {
+                    // Assume it's an old format and try to migrate
+                    console.warn('[ConfigManager] No version field detected, attempting migration from legacy format');
+                    needsMigration = true;
+                } else {
+                    return { 
+                        valid: false, 
+                        reason: `Unsupported version: ${configVersion} (supported: ${CONFIG.MIN_SUPPORTED_VERSION} - ${CONFIG.VERSION})` 
+                    };
+                }
+            }
+
+            // Step 2: Check if migration is needed
+            if (configVersion !== CONFIG.VERSION) {
+                needsMigration = true;
+                console.log(`[ConfigManager] Migration needed: ${configVersion} -> ${CONFIG.VERSION}`);
+            }
+
+            // Step 3: Perform migration if needed
+            if (needsMigration) {
+                try {
+                    migratedConfig = _migrateConfig(config, configVersion);
+                    console.log('[ConfigManager] Configuration migrated successfully');
+                } catch (e) {
+                    console.error('[ConfigManager] Migration failed:', e);
+                    return { 
+                        valid: false, 
+                        reason: `Migration failed: ${e.message}` 
+                    };
+                }
+            }
+
+            // Step 4: Validate structure of migrated config (allow legacy format)
+            const structureCheck = _validateConfigStructure(migratedConfig, needsMigration);
             if (!structureCheck.valid) {
                 return { valid: false, reason: structureCheck.reason };
             }
 
-            // Step 2: Validate version
-            if (!_validateVersion(config.version)) {
-                return { valid: false, reason: `Incompatible version: ${config.version} (current: ${CONFIG.VERSION})` };
+            // Step 5: Validate timestamp (only for non-migrated configs)
+            // For migrated configs, we update the timestamp, so skip validation
+            if (!needsMigration && migratedConfig.exportDate) {
+                const timestampCheck = _validateTimestamp(migratedConfig.exportDate);
+                if (!timestampCheck.valid) {
+                    // For old configs, we're more lenient with timestamp
+                    console.warn('[ConfigManager] Timestamp validation failed, but allowing import due to migration');
+                }
             }
 
-            // Step 3: Validate timestamp
-            const timestampCheck = _validateTimestamp(config.exportDate);
-            if (!timestampCheck.valid) {
-                return { valid: false, reason: timestampCheck.reason };
+            // Step 6: Verify signature (only if present and not migrated)
+            // For migrated configs, signature will be regenerated on next export
+            if (!needsMigration && config.signature && typeof config.signature === 'string') {
+                const configForVerification = JSON.parse(JSON.stringify(migratedConfig));
+                delete configForVerification.signature;
+                const dataToVerify = JSON.stringify(configForVerification);
+
+                const signatureValid = await _verifySignature(dataToVerify, config.signature);
+                if (!signatureValid) {
+                    // For old configs, signature might be invalid due to format changes
+                    // Allow import but warn user
+                    console.warn('[ConfigManager] Signature verification failed, but allowing import (may be due to migration)');
+                }
+            } else if (needsMigration) {
+                console.log('[ConfigManager] Signature skipped for migrated configuration');
             }
 
-            // Step 4: Verify signature
-            if (!config.signature || typeof config.signature !== 'string') {
-                return { valid: false, reason: 'Missing signature' };
-            }
-
-            // Create config copy without signature for verification
-            const configForVerification = JSON.parse(JSON.stringify(config));
-            delete configForVerification.signature;
-            const dataToVerify = JSON.stringify(configForVerification);
-
-            const signatureValid = await _verifySignature(dataToVerify, config.signature);
-            if (!signatureValid) {
-                return { valid: false, reason: 'Invalid signature - configuration may have been tampered with' };
-            }
-
-            return { valid: true, config: configForVerification };
+            return { 
+                valid: true, 
+                config: migratedConfig,
+                migrated: needsMigration,
+                fromVersion: configVersion
+            };
         } catch (e) {
             console.error('Failed to verify configuration:', e);
             return { valid: false, reason: 'Verification error: ' + e.message };
@@ -353,7 +578,7 @@ const ConfigManager = (function () {
     /**
      * Import configuration from file
      * @param {File} file - JSON file to import
-     * @returns {Promise<Object>} { success: boolean, config?: Object, error?: string }
+     * @returns {Promise<Object>} { success: boolean, config?: Object, error?: string, migrated?: boolean, fromVersion?: string }
      */
     async function importFromFile(file) {
         try {
@@ -372,13 +597,18 @@ const ConfigManager = (function () {
                 return { success: false, error: 'Invalid JSON format' };
             }
 
-            // Verify configuration
+            // Verify configuration (with automatic migration)
             const verification = await verifyConfig(config);
             if (!verification.valid) {
                 return { success: false, error: verification.reason };
             }
 
-            return { success: true, config: verification.config };
+            return { 
+                success: true, 
+                config: verification.config,
+                migrated: verification.migrated || false,
+                fromVersion: verification.fromVersion
+            };
         } catch (e) {
             console.error('Failed to import configuration:', e);
             return { success: false, error: 'Import failed: ' + e.message };

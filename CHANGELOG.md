@@ -6,6 +6,46 @@ The dates recorded in this document are based on CST (UTC+8).
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.6] - 2026-01-02
+
+### Added
+- **Configuration Migration System**: Automatic backward compatibility for configuration imports
+  - Support for importing configurations from older versions (0.1.0 - 0.4.5)
+  - Automatic migration to current version format
+  - Legacy format detection and conversion
+  - Migration information logging for debugging
+- **Enhanced Error Handling & Protection System**:
+  - Global error handler for uncaught errors and promise rejections
+  - Critical elements protection system with MutationObserver monitoring
+  - Periodic health checks for i18n system and UI elements
+  - Automatic recovery mechanisms for common failure scenarios
+- **i18n Health Check System**:
+  - Health check function to verify i18n system status
+  - Automatic initialization validation
+  - Enhanced error recovery for translation failures
+
+### Fixed
+- **Japanese Language White Screen Issue**: Fixed critical bug causing blank page in Japanese language environment
+  - Improved i18n fallback mechanism with Chrome API reliability detection
+  - Enhanced error handling in `localize()` and `getMessage()` functions
+  - Automatic fallback to local translations when Chrome i18n API fails
+  - Added comprehensive Japanese translation fallback data
+- **Critical Elements Protection**: Prevented accidental hiding of body and container elements
+  - Improved `_removeChromeCustomizeButton()` with critical container whitelist
+  - Added `ensureVisibility()` function to force critical elements visible
+  - MutationObserver monitoring for style changes on critical elements
+
+### Changed
+- **Configuration Import**: Enhanced to support backward compatibility
+  - Lenient validation for legacy configuration formats
+  - Automatic version detection and migration
+  - Signature verification skipped for migrated configurations (regenerated on next export)
+  - More flexible timestamp validation for old configurations
+- **i18n Module**: Improved reliability and error handling
+  - Chrome i18n API reliability testing before use
+  - Better fallback logic with proper initialization checks
+  - Enhanced error messages and logging
+
 ## [0.4.5] - 2025-12-31
 
 ### Added

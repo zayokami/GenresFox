@@ -1,5 +1,72 @@
 // script.js
 
+// ==================== Global Error Handling & Protection ====================
+(function() {
+    'use strict';
+    
+    // Global error handler for uncaught errors
+    window.addEventListener('error', (event) => {
+        // Log error but don't break the page
+        console.error('[Global Error Handler]', event.error || event.message, event);
+        
+        // If error is related to i18n, attempt recovery
+        if (event.message && (
+            event.message.includes('i18n') || 
+            event.message.includes('I18n') ||
+            event.message.includes('localize') ||
+            event.message.includes('getMessage')
+        )) {
+            console.warn('[Global Error Handler] I18n-related error detected, attempting recovery');
+            try {
+                if (typeof I18n !== 'undefined' && I18n.localize) {
+                    setTimeout(() => I18n.localize(), 100);
+                }
+            } catch (e) {
+                console.error('[Global Error Handler] Recovery failed:', e);
+            }
+        }
+        
+        // Prevent default error handling from breaking the page
+        // Don't return false to allow normal error logging
+    });
+    
+    // Handle unhandled promise rejections
+    window.addEventListener('unhandledrejection', (event) => {
+        console.error('[Global Error Handler] Unhandled promise rejection:', event.reason);
+        // Prevent default handling
+        event.preventDefault();
+    });
+    
+    // Monitor for critical element removal
+    if (document.body) {
+        const bodyObserver = new MutationObserver((mutations) => {
+            mutations.forEach(mutation => {
+                mutation.removedNodes.forEach(node => {
+                    if (node.nodeType === 1) { // Element node
+                        const isCritical = node.matches && (
+                            node.matches('body') ||
+                            node.matches('.container') ||
+                            node.matches('.search-container')
+                        );
+                        if (isCritical) {
+                            console.error('[Global Error Handler] Critical element was removed from DOM!', node);
+                            // Attempt to restore if it's body
+                            if (node.matches('body') && !document.body) {
+                                document.documentElement.appendChild(node);
+                            }
+                        }
+                    }
+                });
+            });
+        });
+        
+        bodyObserver.observe(document.documentElement, {
+            childList: true,
+            subtree: true
+        });
+    }
+})();
+
 // ==================== Custom Select Module ====================
 const CustomSelect = (function() {
     'use strict';
@@ -1543,6 +1610,20 @@ async function importConfiguration() {
                         return;
                     }
 
+                    // Show migration notice if configuration was migrated
+                    if (result.config && result.migrated) {
+                        const migrationMessage = I18n && I18n.getMessage ? 
+                            `Configuration was automatically upgraded from version ${result.fromVersion || 'legacy'} to ${ConfigManager.getVersion()}.` :
+                            `Configuration was automatically upgraded from version ${result.fromVersion || 'legacy'} to ${ConfigManager.getVersion()}.`;
+                        console.log('[Import] ' + migrationMessage);
+                        // Optionally show a brief notice (non-blocking)
+                        if (window.requestIdleCallback) {
+                            requestIdleCallback(() => {
+                                console.info(migrationMessage);
+                            });
+                        }
+                    }
+
                     // Apply configuration
                     _applyImportedConfiguration(result.config);
 
@@ -2159,12 +2240,43 @@ function _removeChromeCustomizeButton() {
         }
 
         // Fallback: search all elements for customize text and hide their containers
+        // BUT: Exclude critical app containers to prevent false positives
+        const criticalContainers = [
+            '.container',
+            '.search-container',
+            '.search-box',
+            '.shortcuts-grid',
+            '.modal',
+            '.modal-overlay',
+            '#settingsModal',
+            'body',
+            'html'
+        ];
+        
         const allElements = document.querySelectorAll('*');
         allElements.forEach(el => {
             if (el.hasAttribute('data-genresfox-hidden')) return;
             
+            // Skip critical app containers
+            let isCritical = false;
+            for (const selector of criticalContainers) {
+                if (el.matches && el.matches(selector)) {
+                    isCritical = true;
+                    break;
+                }
+                // Also check if element is inside a critical container
+                if (el.closest && el.closest(selector)) {
+                    isCritical = true;
+                    break;
+                }
+            }
+            if (isCritical) return;
+            
             const text = (el.textContent || el.getAttribute('aria-label') || '').trim();
-            const isCustomize = /自定义\s*Chrome|Customize\s*Chrome|カスタマイズ/i.test(text);
+            // More specific regex: must contain "Chrome" or be a button/link
+            const isCustomize = /(自定义\s*Chrome|Customize\s*Chrome|カスタマイズ\s*Chrome)/i.test(text) ||
+                               ((el.tagName === 'BUTTON' || el.tagName === 'A') && 
+                                /(自定义|Customize|カスタマイズ)/i.test(text));
             
             if (isCustomize) {
                 // Hide the element
@@ -2174,6 +2286,10 @@ function _removeChromeCustomizeButton() {
                 // Also try to hide parent container if it looks like a footer
                 let parent = el.parentElement;
                 if (parent) {
+                    // Don't hide body or html
+                    if (parent === document.body || parent === document.documentElement) {
+                        return;
+                    }
                     const parentStyle = window.getComputedStyle(parent);
                     if (parentStyle.position === 'fixed' && 
                         (parentStyle.bottom === '0px' || parentStyle.bottom === '0')) {
@@ -2480,10 +2596,173 @@ async function init() {
         initSettingsListDragDrop();
     }, { timeout: 100 });
 
+    // Enhanced visibility protection system
+    const CriticalElementsProtector = (function() {
+        'use strict';
+        
+        const CRITICAL_SELECTORS = [
+            'body',
+            '.container',
+            '.search-container',
+            '.search-box',
+            '#search',
+            '#searchActionBtn'
+        ];
+        
+        let observer = null;
+        let checkInterval = null;
+        
+        /**
+         * Ensure critical elements are visible
+         */
+        function ensureVisibility() {
+            try {
+                // Check body
+                if (document.body) {
+                    const bodyStyle = window.getComputedStyle(document.body);
+                    if (bodyStyle.display === 'none' || bodyStyle.visibility === 'hidden') {
+                        console.warn('[Protector] Body was hidden, restoring visibility');
+                        document.body.style.setProperty('display', 'flex', 'important');
+                        document.body.style.setProperty('visibility', 'visible', 'important');
+                        document.body.style.setProperty('opacity', '1', 'important');
+                    }
+                }
+                
+                // Check critical containers
+                CRITICAL_SELECTORS.forEach(selector => {
+                    if (selector === 'body') return; // Already checked
+                    
+                    const element = document.querySelector(selector);
+                    if (element) {
+                        const style = window.getComputedStyle(element);
+                        if (style.display === 'none' || style.visibility === 'hidden') {
+                            console.warn(`[Protector] Critical element ${selector} was hidden, restoring visibility`);
+                            element.style.setProperty('display', element.tagName === 'BODY' ? 'flex' : 'block', 'important');
+                            element.style.setProperty('visibility', 'visible', 'important');
+                            element.style.setProperty('opacity', '1', 'important');
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('[Protector] Error in ensureVisibility:', e);
+            }
+        }
+        
+        /**
+         * Monitor DOM changes for critical elements
+         */
+        function startMonitoring() {
+            if (observer) return; // Already monitoring
+            
+            observer = new MutationObserver((mutations) => {
+                let shouldCheck = false;
+                
+                mutations.forEach(mutation => {
+                    // Check if any critical element's style was modified
+                    if (mutation.type === 'attributes' && 
+                        (mutation.attributeName === 'style' || mutation.attributeName === 'class')) {
+                        const target = mutation.target;
+                        if (target.matches && CRITICAL_SELECTORS.some(sel => target.matches(sel))) {
+                            shouldCheck = true;
+                        }
+                        // Also check if target is inside a critical container
+                        if (target.closest && CRITICAL_SELECTORS.some(sel => target.closest(sel))) {
+                            shouldCheck = true;
+                        }
+                    }
+                    
+                    // Check if critical elements were removed
+                    if (mutation.type === 'childList') {
+                        mutation.removedNodes.forEach(node => {
+                            if (node.nodeType === 1 && // Element node
+                                node.matches && CRITICAL_SELECTORS.some(sel => node.matches(sel))) {
+                                shouldCheck = true;
+                            }
+                        });
+                    }
+                });
+                
+                if (shouldCheck) {
+                    // Debounce checks
+                    clearTimeout(checkInterval);
+                    checkInterval = setTimeout(ensureVisibility, 50);
+                }
+            });
+            
+            // Observe document for changes
+            if (document.body) {
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ['style', 'class']
+                });
+            }
+            
+            if (document.documentElement) {
+                observer.observe(document.documentElement, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ['style', 'class']
+                });
+            }
+        }
+        
+        /**
+         * Stop monitoring
+         */
+        function stopMonitoring() {
+            if (observer) {
+                observer.disconnect();
+                observer = null;
+            }
+            if (checkInterval) {
+                clearTimeout(checkInterval);
+                checkInterval = null;
+            }
+        }
+        
+        return {
+            ensureVisibility,
+            startMonitoring,
+            stopMonitoring
+        };
+    })();
+    
+    // Initialize protection system
+    CriticalElementsProtector.ensureVisibility();
+    setTimeout(() => {
+        CriticalElementsProtector.ensureVisibility();
+        CriticalElementsProtector.startMonitoring();
+    }, 100);
+    
     // Remove Chrome's customize button (non-blocking, can run anytime)
     requestIdleCallback(() => {
         _removeChromeCustomizeButton();
+        // Re-check visibility after removing Chrome button
+        CriticalElementsProtector.ensureVisibility();
     }, { timeout: 500 });
+    
+    // Periodic health checks
+    setInterval(() => {
+        // Check i18n health
+        if (typeof I18n !== 'undefined' && I18n.healthCheck) {
+            if (!I18n.healthCheck()) {
+                console.warn('[Init] I18n health check failed, attempting recovery');
+                try {
+                    if (I18n.localize) {
+                        I18n.localize(); // Re-localize to recover
+                    }
+                } catch (e) {
+                    console.error('[Init] I18n recovery failed:', e);
+                }
+            }
+        }
+        
+        // Check critical elements visibility
+        CriticalElementsProtector.ensureVisibility();
+    }, 5000); // Check every 5 seconds
 
     // Set focus only if no other element is focused (avoid autofocus warning)
     if (document.activeElement === document.body || document.activeElement === null) {

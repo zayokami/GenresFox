@@ -5,7 +5,7 @@
 
 set -e
 
-OUTPUT_NAME="${1:-GenresFox-v0.4.5.crx}"
+OUTPUT_NAME="${1:-}"
 CHROME_PATH="${2:-}"
 
 echo "GenresFox Extension Packager"
@@ -35,6 +35,11 @@ elif command -v python3 &> /dev/null; then
 else
     echo "Warning: Could not read version from manifest.json (jq or python3 not found)"
     VERSION="unknown"
+fi
+
+# Set default output name if not provided
+if [ -z "$OUTPUT_NAME" ]; then
+    OUTPUT_NAME="GenresFox-v${VERSION}.crx"
 fi
 
 # Auto-detect Chrome/Chromium path if not provided
@@ -108,15 +113,27 @@ fi
 # Create zip using zip command (if available)
 if command -v zip &> /dev/null; then
     cd src
-    zip -r "../$ZIP_NAME" . -q
-    cd ..
-    echo "Created: $ZIP_NAME"
+    if zip -r "../$ZIP_NAME" . -q; then
+        cd ..
+        FILE_SIZE=$(du -h "../$ZIP_NAME" | cut -f1)
+        echo "Created: $ZIP_NAME ($FILE_SIZE)"
+    else
+        cd ..
+        echo "Error: Failed to create ZIP file!" >&2
+        exit 1
+    fi
 elif command -v 7z &> /dev/null; then
-    7z a "$ZIP_NAME" src/* -r -q
-    echo "Created: $ZIP_NAME"
+    if 7z a "$ZIP_NAME" src/* -r -q; then
+        FILE_SIZE=$(du -h "$ZIP_NAME" | cut -f1)
+        echo "Created: $ZIP_NAME ($FILE_SIZE)"
+    else
+        echo "Error: Failed to create ZIP file!" >&2
+        exit 1
+    fi
 else
-    echo "Warning: zip or 7z not found, skipping ZIP creation"
-    echo "Install zip: sudo apt-get install zip (Ubuntu/Debian) or brew install zip (macOS)"
+    echo "Warning: zip or 7z not found, skipping ZIP creation" >&2
+    echo "Install zip: sudo apt-get install zip (Ubuntu/Debian) or brew install zip (macOS)" >&2
+    exit 1
 fi
 
 echo ""
