@@ -1,4 +1,4 @@
-### The Origin Story of the GenreFox
+### The Origin Story of the GenresFox
 
 ![Home - Dark](assets/Screenshots/2026-01-02_11-41-08.png)
 
@@ -28,20 +28,20 @@ And I really detest this sort of thing that's always collecting users' private c
 
 
 
-**And thus, GenreFox was born.**
+**And thus, GenresFox was born.**
 
 
 
 
-Regarding how the name GenreFox came about:
+Regarding how the name GenresFox came about:
 
-It was actually a name I typed out randomly, but later found it to be quite "unique," so I kept it (if you Google "GenreFox," the first result will definitely be this project). 
+It was actually a name I typed out randomly, but later found it to be quite "unique," so I kept it (if you Google "GenresFox," the first result will definitely be this project). 
 
 Plus, I really like foxes; they are my favourite animal, bar none.
 
 
 
-Actually, GenreFox has no relation to Firefox whatsoever. Many people think it's a project for the Firefox platform, but it's not. However, I am currently developing a version for Firefox, expected to be released in version 0.5.0.
+Actually, GenresFox has no relation to Firefox whatsoever. Many people think it's a project for the Firefox platform, but it's not. However, I am currently developing a version for Firefox, expected to be released in version 0.5.0.
 
 
 
