@@ -1119,6 +1119,24 @@ input[type="text"]:focus {
     overflow: hidden;
 }
 
+/* Icon color background mode */
+.shortcut-icon.icon-color-background {
+    backdrop-filter: none;
+    opacity: 0.85;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.shortcut-icon.icon-color-background:hover {
+    opacity: 1;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.shortcut-icon.icon-color-background-fallback {
+    /* Fallback style if color extraction fails */
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.28);
+}
+
 .shortcut-item:hover .shortcut-icon {
     background: rgba(255, 255, 255, 0.24);
     border-color: rgba(255, 255, 255, 0.36);

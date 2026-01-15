@@ -902,7 +902,22 @@ const WallpaperManager = (function () {
         const controller = 'AbortController' in window ? new AbortController() : null;
         const timer = setTimeout(() => controller?.abort(), timeoutMs);
         try {
-            return await fetch(url, { ...options, signal: controller?.signal });
+            // Note: HTTP response header warnings (x-content-type-options, set-cookie, P3P, etc.)
+            // are from external servers (e.g., Bing API) and cannot be controlled by the extension.
+            // These warnings are informational and do not affect functionality.
+            const defaultHeaders = {
+                'Accept': '*/*',
+                'User-Agent': navigator.userAgent
+            };
+            const mergedOptions = {
+                ...options,
+                signal: controller?.signal,
+                headers: {
+                    ...defaultHeaders,
+                    ...(options.headers || {})
+                }
+            };
+            return await fetch(url, mergedOptions);
         } finally {
             clearTimeout(timer);
         }
