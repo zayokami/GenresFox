@@ -441,6 +441,14 @@ if (!shortcuts || !Array.isArray(shortcuts) || shortcuts.length === 0) {
             s.icon = "https://icons.duckduckgo.com/ip3/mail.google.com.ico";
             migrated = true;
         }
+        // Fix Proton Mail icon - mail.proton.me has CORS restrictions
+        // Use DuckDuckGo service which works reliably
+        if (s.url.includes('mail.proton.me') || s.url.includes('proton.me')) {
+            if (typeof s.icon === 'string' && (s.icon.includes('mail.proton.me') || s.icon.includes('proton.me'))) {
+                s.icon = "https://icons.duckduckgo.com/ip3/mail.proton.me.ico";
+                migrated = true;
+            }
+        }
     });
     if (migrated) {
         localStorage.setItem("shortcuts", JSON.stringify(shortcuts));
@@ -545,16 +553,38 @@ function _buildIconCandidates(rawIconUrl, pageUrl) {
                 add('https://icons.duckduckgo.com/ip3/mail.google.com.ico');
                 // Then try Google's Gmail icon directly (if available)
                 add('https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico');
+                // Additional icon services for better availability
+                add('https://api.faviconkit.com/mail.google.com/144');
+                add('https://icon.horse/icon/mail.google.com');
+                add('https://favicon.yandex.net/favicon/mail.google.com');
+                add('https://logo.clearbit.com/mail.google.com');
                 // Finally try the site's own favicon (may fail due to SameSite, but worth trying)
+                add(`${origin}/favicon.ico`);
+                return candidates.length > 0 ? candidates : ['icon.png'];
+            }
+            
+            // Special handling for Proton Mail - use known working icon URLs
+            if (domain === 'mail.proton.me' || domain.includes('mail.proton.me') || domain === 'proton.me' || domain.includes('proton.me')) {
+                // Proton Mail has CORS restrictions, so we use alternative sources
+                // Try DuckDuckGo first (most reliable for Proton Mail)
+                add('https://icons.duckduckgo.com/ip3/mail.proton.me.ico');
+                // Then try Google s2 favicon service
+                add(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`);
+                // Additional icon services for better availability
+                add('https://api.faviconkit.com/mail.proton.me/144');
+                add('https://icon.horse/icon/mail.proton.me');
+                add('https://favicon.yandex.net/favicon/mail.proton.me');
+                add('https://logo.clearbit.com/mail.proton.me');
+                // Finally try the site's own favicon (may fail due to CORS, but worth trying)
                 add(`${origin}/favicon.ico`);
                 return candidates.length > 0 ? candidates : ['icon.png'];
             }
             
             // Prioritize site's own favicon first (most reliable, no CORS issues)
             add(`${origin}/favicon.ico`);
-            // Skip apple-touch-icon for known domains that don't have it
+            // Skip apple-touch-icon for known domains that don't have it or have CORS issues
             // This reduces 404 errors in console
-            const skipAppleTouchDomains = ['www.google.com', 'google.com', 'mail.google.com'];
+            const skipAppleTouchDomains = ['www.google.com', 'google.com', 'mail.google.com', 'mail.proton.me', 'proton.me'];
             if (!skipAppleTouchDomains.some(d => domain === d || domain.endsWith('.' + d))) {
                 add(`${origin}/apple-touch-icon.png`);
                 add(`${origin}/apple-touch-icon-precomposed.png`);
@@ -568,21 +598,44 @@ function _buildIconCandidates(rawIconUrl, pageUrl) {
     if (rawIconUrl) add(rawIconUrl);
 
     // Finally, add icon services as fallbacks (may have CORS issues)
-    // Skip Google s2 for known problematic domains
+    // Multiple services are added to ensure availability even without VPN
     if (basisUrl) {
         try {
             const urlObj = new URL(basisUrl);
             const domain = urlObj.hostname;
+            
             // Skip Google s2 for mail.google.com as it returns 404
             const skipGoogleS2Domains = ['mail.google.com'];
             if (!skipGoogleS2Domains.some(d => domain === d || domain.endsWith('.' + d))) {
                 add(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`);
             }
+            
             // DuckDuckGo icon service (may have CORS issues, but we handle it)
-            // For Gmail, we already added it above, so skip here to avoid duplicate
-            if (domain !== 'mail.google.com' && !domain.includes('mail.google.com')) {
+            // For Gmail and Proton Mail, we already added it above, so skip here to avoid duplicate
+            if (domain !== 'mail.google.com' && !domain.includes('mail.google.com') &&
+                domain !== 'mail.proton.me' && !domain.includes('mail.proton.me') &&
+                domain !== 'proton.me' && !domain.includes('proton.me')) {
                 add(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
             }
+            
+            // Additional icon services for better availability (especially for users without VPN)
+            // These services are added in order of reliability and accessibility
+            
+            // FaviconKit - reliable and may be accessible in more regions
+            add(`https://api.faviconkit.com/${domain}/144`);
+            
+            // Icon Horse - another alternative service
+            add(`https://icon.horse/icon/${domain}`);
+            
+            // Yandex Favicon service - may be accessible in some regions
+            add(`https://favicon.yandex.net/favicon/${domain}`);
+            
+            // Clearbit Logo API - high quality logos (may have CORS restrictions)
+            add(`https://logo.clearbit.com/${domain}`);
+            
+            // Favicon Grabber alternative
+            add(`https://favicons.githubusercontent.com/${domain}`);
+            
         } catch (e) {
             // Ignore parse errors
         }
@@ -692,7 +745,12 @@ function _isNonCorsService(url) {
             't2.gstatic.com',
             't3.gstatic.com',
             't4.gstatic.com',
-            't5.gstatic.com'
+            't5.gstatic.com',
+            'logo.clearbit.com',  // Clearbit may have CORS restrictions
+            'icon.horse',         // Icon Horse may have CORS restrictions
+            'favicon.yandex.net', // Yandex favicon service
+            'api.faviconkit.com', // FaviconKit API
+            'favicons.githubusercontent.com' // GitHub favicons
         ];
         
         // Check for gstatic.com (including subdomains)
@@ -713,6 +771,8 @@ function _isNonCorsService(url) {
             'bilibili.com',
             'www.bilibili.com',
             'mail.google.com',
+            'mail.proton.me',
+            'proton.me',
             'github.com',
             'www.github.com'
         ];
@@ -2449,8 +2509,8 @@ function _updateSnowToggleVisibility() {
     const toggleContainer = document.getElementById('snowEffectToggleContainer');
     if (!toggleContainer) return;
 
-    // Show toggle only if snow effect has been triggered
-    if (SnowEffect.isTriggered()) {
+    // Show toggle only if snow effect has been triggered AND we're in holiday period
+    if (SnowEffect.isTriggered() && SnowEffect.isHolidayPeriod()) {
         toggleContainer.style.display = 'block';
         
         // Sync checkbox state
@@ -2459,6 +2519,7 @@ function _updateSnowToggleVisibility() {
             snowToggle.checked = SnowEffect.isEnabled();
         }
     } else {
+        // Hide toggle if not in holiday period or not triggered
         toggleContainer.style.display = 'none';
     }
 }
@@ -2473,6 +2534,13 @@ function _setupSnowToggle() {
     if (!snowToggle) return;
 
     snowToggle.addEventListener('change', (e) => {
+        // Only allow toggling if we're in holiday period
+        if (!SnowEffect.isHolidayPeriod()) {
+            // Reset checkbox state if not in holiday period
+            e.target.checked = false;
+            return;
+        }
+
         if (e.target.checked) {
             SnowEffect.enable();
         } else {
@@ -2518,6 +2586,10 @@ async function init() {
         requestIdleCallback(() => {
             safeInit('SnowEffect', () => {
                 if (typeof SnowEffect !== 'undefined') {
+                    // If not in holiday period, ensure effect is disabled
+                    if (!SnowEffect.isHolidayPeriod()) {
+                        SnowEffect.disable();
+                    }
                     SnowEffect.init();
                     _setupSnowEasterEgg();
                     // Sync toggle state after SnowEffect is initialized
@@ -2529,6 +2601,10 @@ async function init() {
         setTimeout(() => {
             safeInit('SnowEffect', () => {
                 if (typeof SnowEffect !== 'undefined') {
+                    // If not in holiday period, ensure effect is disabled
+                    if (!SnowEffect.isHolidayPeriod()) {
+                        SnowEffect.disable();
+                    }
                     SnowEffect.init();
                     _setupSnowEasterEgg();
                     // Sync toggle state after SnowEffect is initialized
