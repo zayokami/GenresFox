@@ -940,22 +940,12 @@ function _applyImportedConfiguration(config) {
     if (settings.shortcutSettings && typeof settings.shortcutSettings === 'object') {
         if (typeof ShortcutManager !== 'undefined' && ShortcutManager.updateShortcutSettings) {
             ShortcutManager.updateShortcutSettings(settings.shortcutSettings);
-            // Update UI - use global variable if available, otherwise get element
-            const checkbox = useIconColorBackgroundCheckbox || document.getElementById('useIconColorBackground');
-            if (checkbox) {
-                checkbox.checked = settings.shortcutSettings.useIconColorBackground || false;
-            }
             // Re-render shortcuts
             if (ShortcutManager.renderGrid) {
                 ShortcutManager.renderGrid(handleShortcutDragStart, handleShortcutDragEnd, handleShortcutDragOver, handleShortcutDrop, handleShortcutDragLeave, openFolderOverlay);
             }
         } else {
             localStorage.setItem('shortcutSettings', JSON.stringify(settings.shortcutSettings));
-            // Also update checkbox if it exists
-            const checkbox = useIconColorBackgroundCheckbox || document.getElementById('useIconColorBackground');
-            if (checkbox) {
-                checkbox.checked = settings.shortcutSettings.useIconColorBackground || false;
-            }
         }
     }
 
@@ -1209,60 +1199,6 @@ if (showShortcutNamesCheckbox) {
     });
 }
 
-// Icon color background toggle - will be initialized after ShortcutManager is ready
-let useIconColorBackgroundCheckbox = null;
-
-/**
- * Initialize icon color background checkbox
- * Must be called after ShortcutManager is initialized
- */
-function _initIconColorBackgroundCheckbox() {
-    useIconColorBackgroundCheckbox = document.getElementById('useIconColorBackground');
-    if (!useIconColorBackgroundCheckbox) return;
-
-    // Load saved preference
-    if (typeof ShortcutManager !== 'undefined' && ShortcutManager.getShortcutSettings) {
-        const settings = ShortcutManager.getShortcutSettings();
-        useIconColorBackgroundCheckbox.checked = settings.useIconColorBackground || false;
-    } else {
-        // Fallback: read directly from localStorage
-        const saved = localStorage.getItem('shortcutSettings');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                useIconColorBackgroundCheckbox.checked = parsed.useIconColorBackground || false;
-            } catch (e) {
-                useIconColorBackgroundCheckbox.checked = false;
-            }
-        } else {
-            useIconColorBackgroundCheckbox.checked = false;
-        }
-    }
-    
-    // Remove existing listeners to avoid duplicates
-    const newCheckbox = useIconColorBackgroundCheckbox.cloneNode(true);
-    useIconColorBackgroundCheckbox.parentNode.replaceChild(newCheckbox, useIconColorBackgroundCheckbox);
-    useIconColorBackgroundCheckbox = newCheckbox;
-    
-    useIconColorBackgroundCheckbox.addEventListener('change', (e) => {
-        const enabled = e.target.checked;
-        if (typeof ShortcutManager !== 'undefined' && ShortcutManager.updateShortcutSettings) {
-            ShortcutManager.updateShortcutSettings({ useIconColorBackground: enabled });
-            // Re-render shortcuts to apply new background style
-            if (ShortcutManager.renderGrid) {
-                ShortcutManager.renderGrid(handleShortcutDragStart, handleShortcutDragEnd, handleShortcutDragOver, handleShortcutDrop, handleShortcutDragLeave, openFolderOverlay);
-            }
-        } else {
-            // Fallback: save to localStorage directly
-            const settings = { useIconColorBackground: enabled };
-            localStorage.setItem('shortcutSettings', JSON.stringify(settings));
-            // Re-render shortcuts
-            if (typeof renderShortcutsGrid === 'function') {
-                renderShortcutsGrid();
-            }
-        }
-    });
-}
 
 // ==================== Shortcut Open Target ====================
 function _syncShortcutTargetUI() {
@@ -2131,8 +2067,6 @@ async function init() {
             // Sync shortcuts variable
             shortcuts = ShortcutManager.getAll();
             
-            // Initialize icon color background checkbox after ShortcutManager is ready
-            _initIconColorBackgroundCheckbox();
         }
     });
 

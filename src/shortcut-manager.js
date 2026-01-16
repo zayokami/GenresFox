@@ -40,191 +40,9 @@ const ShortcutManager = (function() {
     // Shortcut settings
     const SHORTCUT_SETTINGS_KEY = 'shortcutSettings';
     const DEFAULT_SHORTCUT_SETTINGS = {
-        useIconColorBackground: false // Default: glassmorphism background
+        // Settings for shortcuts
     };
     let shortcutSettings = { ...DEFAULT_SHORTCUT_SETTINGS };
-
-    // Icon color cache (cache extracted colors to avoid re-processing)
-    const _iconColorCache = new Map();
-
-    // ==================== Icon Color Extraction ====================
-
-    /**
-     * Extract dominant color from an image
-     * @param {HTMLImageElement|string} image - Image element or image URL
-     * @returns {Promise<string>} RGB color string (e.g., "rgb(255, 128, 64)")
-     */
-    function extractDominantColor(image) {
-        return new Promise((resolve, reject) => {
-            try {
-                let img = image;
-                
-                // If image is a URL string, create an image element
-                if (typeof image === 'string') {
-                    // Check cache first
-                    if (_iconColorCache.has(image)) {
-                        resolve(_iconColorCache.get(image));
-                        return;
-                    }
-
-                    img = new Image();
-                    img.crossOrigin = 'anonymous';
-                    
-                    img.onload = () => {
-                        _processImageColor(img, image).then(resolve).catch(reject);
-                    };
-                    
-                    img.onerror = () => {
-                        reject(new Error('Failed to load image for color extraction'));
-                    };
-                    
-                    img.src = image;
-                    return;
-                }
-
-                // If image is already loaded
-                if (img.complete && img.naturalWidth > 0) {
-                    const cacheKey = img.src || img.dataset.cacheKey;
-                    if (cacheKey && _iconColorCache.has(cacheKey)) {
-                        resolve(_iconColorCache.get(cacheKey));
-                        return;
-                    }
-                    _processImageColor(img, cacheKey).then(resolve).catch(reject);
-                } else {
-                    // Wait for image to load
-                    img.onload = () => {
-                        const cacheKey = img.src || img.dataset.cacheKey;
-                        _processImageColor(img, cacheKey).then(resolve).catch(reject);
-                    };
-                    img.onerror = () => {
-                        reject(new Error('Failed to load image for color extraction'));
-                    };
-                }
-            } catch (e) {
-                reject(e);
-            }
-        });
-    }
-
-    /**
-     * Process image to extract dominant color
-     * @param {HTMLImageElement} img - Image element
-     * @param {string} cacheKey - Cache key for storing result
-     * @returns {Promise<string>} RGB color string
-     */
-    function _processImageColor(img, cacheKey) {
-        return new Promise((resolve, reject) => {
-            try {
-                // Create canvas
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                
-                // Set canvas size (use smaller size for performance)
-                const maxSize = 64;
-                const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
-                canvas.width = img.width * scale;
-                canvas.height = img.height * scale;
-
-                // Draw image to canvas
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                // Get image data
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = imageData.data;
-
-                // Calculate dominant color using weighted average
-                // Skip fully transparent pixels
-                let r = 0, g = 0, b = 0, count = 0;
-                const colorMap = new Map();
-
-                for (let i = 0; i < data.length; i += 4) {
-                    const alpha = data[i + 3];
-                    if (alpha < 128) continue; // Skip transparent/semi-transparent pixels
-
-                    const rVal = data[i];
-                    const gVal = data[i + 1];
-                    const bVal = data[i + 2];
-
-                    // Quantize colors to reduce noise (group similar colors)
-                    const qR = Math.floor(rVal / 16) * 16;
-                    const qG = Math.floor(gVal / 16) * 16;
-                    const qB = Math.floor(bVal / 16) * 16;
-                    const quantizedKey = `${qR},${qG},${qB}`;
-
-                    const weight = alpha / 255; // Weight by alpha
-                    const existing = colorMap.get(quantizedKey) || { r: 0, g: 0, b: 0, weight: 0 };
-                    existing.r += rVal * weight;
-                    existing.g += gVal * weight;
-                    existing.b += bVal * weight;
-                    existing.weight += weight;
-                    colorMap.set(quantizedKey, existing);
-                }
-
-                // Find the color with highest weight
-                let maxWeight = 0;
-                let dominantColor = { r: 0, g: 0, b: 0 };
-
-                colorMap.forEach((color) => {
-                    if (color.weight > maxWeight) {
-                        maxWeight = color.weight;
-                        dominantColor = {
-                            r: Math.round(color.r / color.weight),
-                            g: Math.round(color.g / color.weight),
-                            b: Math.round(color.b / color.weight)
-                        };
-                    }
-                });
-
-                // Fallback: if no dominant color found, use average
-                if (maxWeight === 0) {
-                    for (let i = 0; i < data.length; i += 4) {
-                        const alpha = data[i + 3];
-                        if (alpha < 128) continue;
-                        r += data[i];
-                        g += data[i + 1];
-                        b += data[i + 2];
-                        count++;
-                    }
-                    if (count > 0) {
-                        dominantColor = {
-                            r: Math.round(r / count),
-                            g: Math.round(g / count),
-                            b: Math.round(b / count)
-                        };
-                    } else {
-                        // Ultimate fallback: use a neutral gray
-                        dominantColor = { r: 128, g: 128, b: 128 };
-                    }
-                }
-
-                // Adjust brightness for better visibility (make it slightly lighter)
-                const brightness = 0.85; // 85% of original brightness
-                dominantColor.r = Math.min(255, Math.round(dominantColor.r * brightness));
-                dominantColor.g = Math.min(255, Math.round(dominantColor.g * brightness));
-                dominantColor.b = Math.min(255, Math.round(dominantColor.b * brightness));
-
-                // Ensure minimum brightness for readability
-                const minBrightness = 60;
-                if (dominantColor.r < minBrightness && dominantColor.g < minBrightness && dominantColor.b < minBrightness) {
-                    const scale = minBrightness / Math.max(dominantColor.r, dominantColor.g, dominantColor.b, 1);
-                    dominantColor.r = Math.min(255, Math.round(dominantColor.r * scale));
-                    dominantColor.g = Math.min(255, Math.round(dominantColor.g * scale));
-                    dominantColor.b = Math.min(255, Math.round(dominantColor.b * scale));
-                }
-
-                const colorString = `rgb(${dominantColor.r}, ${dominantColor.g}, ${dominantColor.b})`;
-                
-                // Cache the result
-                if (cacheKey) {
-                    _iconColorCache.set(cacheKey, colorString);
-                }
-
-                resolve(colorString);
-            } catch (e) {
-                reject(e);
-            }
-        });
-    }
 
     // ==================== Settings Management ====================
 
@@ -1034,32 +852,11 @@ const ShortcutManager = (function() {
                 const iconSrc = getIconSrc(cacheKey, shortcut.icon, shortcut.url);
                 img.src = iconSrc;
 
-                // Apply icon color background if enabled
-                if (shortcutSettings.useIconColorBackground) {
-                    extractDominantColor(img).then(color => {
-                        iconDiv.style.backgroundColor = color;
-                        iconDiv.style.borderColor = color;
-                        iconDiv.classList.add('icon-color-background');
-                    }).catch(() => {
-                        // Fallback to default if extraction fails
-                        iconDiv.classList.add('icon-color-background-fallback');
-                    });
-                }
+                // Apply icon color background if enabled (will be applied after image loads)
+                // Note: We wait for image to load to ensure accurate color extraction
 
                 img.onload = () => {
                     iconDiv.classList.remove("loading");
-                    
-                    // Extract color after image loads if enabled
-                    if (shortcutSettings.useIconColorBackground) {
-                        extractDominantColor(img).then(color => {
-                            iconDiv.style.backgroundColor = color;
-                            iconDiv.style.borderColor = color;
-                            iconDiv.classList.add('icon-color-background');
-                        }).catch(() => {
-                            // Fallback to default if extraction fails
-                            iconDiv.classList.add('icon-color-background-fallback');
-                        });
-                    }
                 };
                 img.onerror = () => {
                     iconDiv.classList.remove("loading");
@@ -1226,9 +1023,6 @@ const ShortcutManager = (function() {
         // Settings API
         getShortcutSettings,
         updateShortcutSettings,
-
-        // Color extraction API
-        extractDominantColor,
 
         // Rendering API
         renderShortcutsList,

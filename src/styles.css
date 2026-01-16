@@ -916,7 +916,8 @@ input[type="text"]:focus {
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
 }
 
-.checkbox-label input[type="checkbox"] {
+.checkbox-label input[type="checkbox"],
+.checkbox-label input[type="radio"] {
     width: 18px;
     height: 18px;
     accent-color: var(--accent-color);
@@ -1120,22 +1121,6 @@ input[type="text"]:focus {
 }
 
 /* Icon color background mode */
-.shortcut-icon.icon-color-background {
-    backdrop-filter: none;
-    opacity: 0.85;
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-.shortcut-icon.icon-color-background:hover {
-    opacity: 1;
-    border-color: rgba(255, 255, 255, 0.3);
-}
-
-.shortcut-icon.icon-color-background-fallback {
-    /* Fallback style if color extraction fails */
-    background: rgba(255, 255, 255, 0.16);
-    border-color: rgba(255, 255, 255, 0.28);
-}
 
 .shortcut-item:hover .shortcut-icon {
     background: rgba(255, 255, 255, 0.24);
@@ -1269,6 +1254,17 @@ input[type="text"]:focus {
 
 .github-btn svg {
     flex-shrink: 0;
+}
+
+.email-link {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.email-link:hover {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: underline;
 }
 
 /* ==================== Ripple Effect ==================== */
