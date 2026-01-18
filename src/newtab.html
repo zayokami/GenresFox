@@ -64,6 +64,19 @@
         </svg>
     </div>
 
+    <!-- Keyboard Shortcuts Modal -->
+    <div class="modal-overlay" id="shortcutsModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 data-i18n="a11yKeyboardShortcuts">Keyboard Shortcuts</h2>
+                <button class="close-btn" id="closeShortcuts">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="shortcutsListContent" class="shortcuts-help-list"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div class="modal-overlay" id="settingsModal">
         <div class="modal">
@@ -281,6 +294,28 @@
                                 <option value="very-relaxed" data-i18n="a11ySpacingVeryRelaxed">Very Relaxed</option>
                             </select>
                         </div>
+
+                        <div class="a11y-control">
+                            <label>
+                                <span data-i18n="a11yLetterSpacing">Letter Spacing</span>
+                            </label>
+                            <select id="a11yLetterSpacing">
+                                <option value="normal" data-i18n="a11ySpacingNormal">Normal</option>
+                                <option value="wide" data-i18n="a11ySpacingWide">Wide</option>
+                                <option value="wider" data-i18n="a11ySpacingWider">Wider</option>
+                            </select>
+                        </div>
+
+                        <div class="a11y-control">
+                            <label>
+                                <span data-i18n="a11yWordSpacing">Word Spacing</span>
+                            </label>
+                            <select id="a11yWordSpacing">
+                                <option value="normal" data-i18n="a11ySpacingNormal">Normal</option>
+                                <option value="wide" data-i18n="a11ySpacingWide">Wide</option>
+                                <option value="wider" data-i18n="a11ySpacingWider">Wider</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Motion Section -->
@@ -315,6 +350,12 @@
                         </div>
                     </div>
 
+                    <!-- Keyboard Shortcuts Section -->
+                    <div class="a11y-section">
+                        <h4 data-i18n="a11yKeyboardShortcuts">Keyboard Shortcuts</h4>
+                        <button id="a11yShowShortcuts" class="btn-secondary" data-i18n="a11yShowShortcuts">Show Keyboard Shortcuts</button>
+                    </div>
+
                     <!-- Reset Section -->
                     <div class="a11y-section">
                         <button id="a11yReset" class="btn-secondary" data-i18n="a11yReset">Reset to Defaults</button>
@@ -324,7 +365,7 @@
                 <div class="tab-content" id="tab-about">
                     <div class="about-info">
                         <h3>GenresFox</h3>
-                        <p>Version 0.4.6.0</p>
+                        <p id="version-display">Version <span id="version-number">-</span></p>
                         <p data-i18n="aboutDescription">A completely open-source, high-performance, and extremely minimalist browser new tab page extension.</p>
                         <br>
                         <p>&copy; 2026 zayoka. All rights reserved.</p>

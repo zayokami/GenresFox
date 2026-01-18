@@ -340,7 +340,7 @@ const shortcutsList = document.getElementById("shortcutsList");
 const shortcutsGrid = document.getElementById("shortcuts");
 const settingsBtn = document.querySelector(".settings-btn");
 const settingsModal = document.getElementById("settingsModal");
-const closeSettings = document.querySelector(".close-btn");
+const closeSettings = document.getElementById("closeSettings");
 const tabBtns = document.querySelectorAll(".tab-btn");
 const tabContents = document.querySelectorAll(".tab-content");
 const addEngineBtn = document.getElementById("addEngineBtn");
@@ -2037,6 +2037,21 @@ async function init() {
             console.warn(`Failed to initialize ${label}:`, e);
         }
     };
+
+    // Update version number from manifest
+    await safeInit('Version Display', () => {
+        try {
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest) {
+                const manifest = chrome.runtime.getManifest();
+                const versionElement = document.getElementById('version-number');
+                if (versionElement && manifest && manifest.version) {
+                    versionElement.textContent = manifest.version;
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to update version display:', e);
+        }
+    });
 
     // Initialize i18n module first
     await safeInit('i18n', () => {
