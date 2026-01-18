@@ -1,0 +1,146 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}
+          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Tag: $TAG_NAME"
+          echo "Version: $VERSION"
+
+      - name: Verify version matches manifest
+        run: |
+          MANIFEST_VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('src/manifest.json', 'utf8')).version)")
+          if [ "$MANIFEST_VERSION" != "${{ steps.version.outputs.version }}" ]; then
+            echo "Error: Tag version (${{ steps.version.outputs.version }}) does not match manifest.json version ($MANIFEST_VERSION)"
+            exit 1
+          fi
+          echo "✓ Version matches manifest.json"
+
+      - name: Package extension
+        run: |
+          echo "Packaging extension for release..."
+          cd src
+          zip -r "../GenresFox-v${{ steps.version.outputs.version }}.zip" . \
+            -x "*.git*" \
+            -x "*node_modules*" \
+            -x "*target*" \
+            -x "*.cargo*" \
+            -x "*.rs" \
+            -x "*.toml" \
+            -x "*.lock" \
+            -x "*.sh" \
+            -x "*.bat" \
+            -x "*.md"
+          cd ..
+          
+          FILE_SIZE=$(du -h "GenresFox-v${{ steps.version.outputs.version }}.zip" | cut -f1)
+          echo "✓ Package created: GenresFox-v${{ steps.version.outputs.version }}.zip ($FILE_SIZE)"
+
+      - name: Calculate checksums
+        run: |
+          echo "Calculating checksums..."
+          sha256sum "GenresFox-v${{ steps.version.outputs.version }}.zip" > "GenresFox-v${{ steps.version.outputs.version }}.zip.sha256"
+          sha512sum "GenresFox-v${{ steps.version.outputs.version }}.zip" > "GenresFox-v${{ steps.version.outputs.version }}.zip.sha512"
+          
+          echo "SHA256:"
+          cat "GenresFox-v${{ steps.version.outputs.version }}.zip.sha256"
+          echo ""
+          echo "SHA512:"
+          cat "GenresFox-v${{ steps.version.outputs.version }}.zip.sha512"
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          echo "Generating release notes..."
+          
+          # Extract changelog for this version
+          VERSION="${{ steps.version.outputs.version }}"
+          # Normalize version (remove trailing .0 if present, e.g., 0.4.6.0 -> 0.4.6)
+          NORMALIZED_VERSION="${VERSION%.0}"
+          if [ "$NORMALIZED_VERSION" = "$VERSION" ]; then
+            NORMALIZED_VERSION="$VERSION"
+          fi
+          
+          # Try to extract changelog section
+          CHANGELOG=$(awk -v version="$NORMALIZED_VERSION" '
+            /^## \[/ {
+              if ($0 ~ "\\[" version "\\]") {
+                found=1
+                next
+              }
+              if (found && /^## \[/) {
+                exit
+              }
+            }
+            found { print }
+          ' CHANGELOG.md)
+          
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="## Release ${VERSION}"
+          fi
+          
+          # Create release notes
+          cat > release_notes.md << EOF
+          ${CHANGELOG}
+          
+          ## Installation
+          
+          1. Download \`GenresFox-v${VERSION}.zip\`
+          2. Extract the ZIP file
+          3. Open Chrome/Edge and navigate to \`chrome://extensions/\`
+          4. Enable "Developer mode"
+          5. Click "Load unpacked" and select the extracted folder
+          
+          ## Verification
+          
+          Verify the package integrity using the provided checksums:
+          
+          \`\`\`bash
+          # SHA256
+          sha256sum -c GenresFox-v${VERSION}.zip.sha256
+          
+          # SHA512
+          sha512sum -c GenresFox-v${VERSION}.zip.sha512
+          \`\`\`
+          EOF
+          
+          cat release_notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            GenresFox-v${{ steps.version.outputs.version }}.zip
+            GenresFox-v${{ steps.version.outputs.version }}.zip.sha256
+            GenresFox-v${{ steps.version.outputs.version }}.zip.sha512
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

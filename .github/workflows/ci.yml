@@ -1,0 +1,186 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  validate:
+    name: Validate Extension
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate manifest.json
+        run: |
+          echo "Validating manifest.json..."
+          node -e "
+            const fs = require('fs');
+            const manifest = JSON.parse(fs.readFileSync('src/manifest.json', 'utf8'));
+            
+            // Check required fields
+            const required = ['manifest_version', 'name', 'version', 'description'];
+            for (const field of required) {
+              if (!manifest[field]) {
+                throw new Error(\`Missing required field: \${field}\`);
+              }
+            }
+            
+            // Validate version format (semver)
+            const versionRegex = /^\d+\.\d+\.\d+(\.\d+)?$/;
+            if (!versionRegex.test(manifest.version)) {
+              throw new Error(\`Invalid version format: \${manifest.version}\`);
+            }
+            
+            // Check manifest version
+            if (manifest.manifest_version !== 3) {
+              throw new Error('manifest_version must be 3');
+            }
+            
+            console.log('✓ manifest.json is valid');
+            console.log(\`  Name: \${manifest.name}\`);
+            console.log(\`  Version: \${manifest.version}\`);
+            console.log(\`  Manifest Version: \${manifest.manifest_version}\`);
+          "
+
+      - name: Check file integrity
+        run: |
+          echo "Checking file integrity..."
+          
+          # Check if required files exist
+          required_files=(
+            "src/manifest.json"
+            "src/newtab.html"
+            "src/script.js"
+            "src/styles.css"
+            "src/i18n.js"
+            "src/wallpaper.js"
+            "src/search.js"
+            "src/shortcut-manager.js"
+            "src/resize.wasm"
+          )
+          
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "Error: Required file missing: $file"
+              exit 1
+            fi
+          done
+          
+          echo "✓ All required files exist"
+
+      - name: Validate localization files
+        run: |
+          echo "Validating localization files..."
+          
+          # Get base messages from English
+          base_messages=$(node -e "console.log(JSON.stringify(Object.keys(JSON.parse(require('fs').readFileSync('src/_locales/en/messages.json', 'utf8')))))")
+          
+          # Check all locale directories
+          for locale_dir in src/_locales/*/; do
+            locale=$(basename "$locale_dir")
+            messages_file="$locale_dir/messages.json"
+            
+            if [ ! -f "$messages_file" ]; then
+              echo "Error: Missing messages.json in $locale_dir"
+              exit 1
+            fi
+            
+            # Validate JSON
+            if ! node -e "JSON.parse(require('fs').readFileSync('$messages_file', 'utf8'))" 2>/dev/null; then
+              echo "Error: Invalid JSON in $messages_file"
+              exit 1
+            fi
+            
+            echo "✓ $locale/messages.json is valid"
+          done
+          
+          echo "✓ All localization files are valid"
+
+      - name: Check for common issues
+        run: |
+          echo "Checking for common issues..."
+          
+          # Check for console.log in production code (optional, can be removed if too strict)
+          if grep -r "console\.log" src/*.js --exclude-dir=node_modules 2>/dev/null | grep -v "debug-console.js" | grep -v "console-warning.js"; then
+            echo "Warning: Found console.log statements (excluding debug files)"
+          fi
+          
+          # Check for TODO/FIXME comments
+          if grep -r "TODO\|FIXME" src/ --exclude-dir=node_modules 2>/dev/null; then
+            echo "Info: Found TODO/FIXME comments"
+          fi
+          
+          echo "✓ Common checks completed"
+
+  package:
+    name: Package Extension
+    runs-on: ubuntu-latest
+    needs: validate
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Read version from manifest
+        id: version
+        run: |
+          VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('src/manifest.json', 'utf8')).version)")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extension version: $VERSION"
+
+      - name: Package extension
+        run: |
+          echo "Packaging extension..."
+          cd src
+          zip -r "../GenresFox-v${{ steps.version.outputs.version }}.zip" . \
+            -x "*.git*" \
+            -x "*node_modules*" \
+            -x "*target*" \
+            -x "*.cargo*" \
+            -x "*.rs" \
+            -x "*.toml" \
+            -x "*.lock" \
+            -x "*.sh" \
+            -x "*.bat" \
+            -x "*.md"
+          cd ..
+          
+          # Check if zip was created
+          if [ ! -f "GenresFox-v${{ steps.version.outputs.version }}.zip" ]; then
+            echo "Error: Failed to create package"
+            exit 1
+          fi
+          
+          # Get file size
+          FILE_SIZE=$(du -h "GenresFox-v${{ steps.version.outputs.version }}.zip" | cut -f1)
+          echo "✓ Package created: GenresFox-v${{ steps.version.outputs.version }}.zip ($FILE_SIZE)"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-package
+          path: GenresFox-v${{ steps.version.outputs.version }}.zip
+          retention-days: 7
+
+      - name: Calculate checksum
+        run: |
+          echo "Calculating checksums..."
+          sha256sum "GenresFox-v${{ steps.version.outputs.version }}.zip" > "GenresFox-v${{ steps.version.outputs.version }}.zip.sha256"
+          cat "GenresFox-v${{ steps.version.outputs.version }}.zip.sha256"
+
+      - name: Upload checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-checksum
+          path: GenresFox-v${{ steps.version.outputs.version }}.zip.sha256
+          retention-days: 7
