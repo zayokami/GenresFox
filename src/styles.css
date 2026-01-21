@@ -69,6 +69,11 @@
     scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
+/* Utility: hidden state controlled by JS instead of inline styles */
+.is-hidden {
+    display: none;
+}
+
 body {
     background: var(--bg-color);
     color: var(--text-color);

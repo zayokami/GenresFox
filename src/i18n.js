@@ -9,6 +9,8 @@ const I18n = (function () {
     // Fallback messages for when Chrome i18n API is unavailable
     const _fallbackMessages = {
         "zh_CN": {
+            "languageLabel": "界面语言",
+            "languageFollowBrowser": "跟随浏览器设置",
             "appTitle": "GenresFox",
             "searchPlaceholder": "搜索...",
             "searchActionLabel": "搜索",
@@ -117,6 +119,8 @@ const I18n = (function () {
             "importConfigError": "配置导入失败："
         },
         "en": {
+            "languageLabel": "Interface Language",
+            "languageFollowBrowser": "Follow browser language",
             "appTitle": "GenresFox",
             "searchPlaceholder": "Search...",
             "searchActionLabel": "Search",
@@ -159,9 +163,13 @@ const I18n = (function () {
             "a11yFontSerif": "Serif",
             "a11yFontDyslexic": "OpenDyslexic",
             "a11yLineSpacing": "Line Spacing",
+            "a11yLetterSpacing": "Letter Spacing",
+            "a11yWordSpacing": "Word Spacing",
             "a11ySpacingNormal": "Normal",
             "a11ySpacingRelaxed": "Relaxed",
             "a11ySpacingVeryRelaxed": "Very Relaxed",
+            "a11ySpacingWide": "Wide",
+            "a11ySpacingWider": "Wider",
             "a11yMotion": "Motion",
             "a11yAnimations": "Animations",
             "a11yMotionFull": "Full",
@@ -172,6 +180,8 @@ const I18n = (function () {
             "a11yFocusStandard": "Standard",
             "a11yFocusEnhanced": "Enhanced",
             "a11yFocusLarge": "Large",
+            "a11yKeyboardShortcuts": "Keyboard Shortcuts",
+            "a11yShowShortcuts": "Show Keyboard Shortcuts",
             "a11yReset": "Reset to Defaults",
             "aboutDescription": "A completely open-source, high-performance, and extremely minimalist browser new tab page extension.",
             "aboutOpenSource": "GenresFox is an open-source project. You can find the source code on GitHub!",
@@ -212,6 +222,8 @@ const I18n = (function () {
             "importConfigError": "Failed to import configuration: "
         },
         "zh_TW": {
+            "languageLabel": "介面語言",
+            "languageFollowBrowser": "跟隨瀏覽器設定",
             "appTitle": "GenresFox",
             "searchPlaceholder": "搜尋...",
             "searchActionLabel": "搜尋",
@@ -320,6 +332,8 @@ const I18n = (function () {
             "importConfigError": "設定匯入失敗："
         },
         "ja": {
+            "languageLabel": "インターフェース言語",
+            "languageFollowBrowser": "ブラウザーの言語に合わせる",
             "appTitle": "GenresFox",
             "searchPlaceholder": "検索...",
             "searchActionLabel": "検索",
@@ -428,6 +442,8 @@ const I18n = (function () {
             "importConfigError": "設定のインポートに失敗しました："
         },
         "es": {
+            "languageLabel": "Idioma de la interfaz",
+            "languageFollowBrowser": "Seguir el idioma del navegador",
             "appTitle": "GenresFox",
             "searchPlaceholder": "Buscar...",
             "searchActionLabel": "Buscar",
@@ -536,6 +552,8 @@ const I18n = (function () {
             "importConfigError": "Error al importar la configuración: "
         },
         "fr": {
+            "languageLabel": "Langue de l’interface",
+            "languageFollowBrowser": "Suivre la langue du navigateur",
             "appTitle": "GenresFox",
             "searchPlaceholder": "Rechercher...",
             "searchActionLabel": "Rechercher",
@@ -644,6 +662,8 @@ const I18n = (function () {
             "importConfigError": "Échec de l'importation de la configuration : "
         },
         "de": {
+            "languageLabel": "Oberflächensprache",
+            "languageFollowBrowser": "Browsersprache verwenden",
             "appTitle": "GenresFox",
             "searchPlaceholder": "Suchen...",
             "searchActionLabel": "Suchen",
@@ -752,6 +772,8 @@ const I18n = (function () {
             "importConfigError": "Import der Konfiguration fehlgeschlagen: "
         },
         "ru": {
+            "languageLabel": "Язык интерфейса",
+            "languageFollowBrowser": "Следовать языку браузера",
             "appTitle": "GenresFox",
             "searchPlaceholder": "Поиск...",
             "searchActionLabel": "Поиск",
@@ -973,24 +995,66 @@ const I18n = (function () {
         }
 
         if (chromeI18nReliable) {
-            // Use Chrome's i18n only if it's reliable
+            // Use Chrome's i18n only if it's reliable, and only when it returns
+            // a real translation (not just echoing the key name).
             document.querySelectorAll('[data-i18n]').forEach(elem => {
                 const key = elem.dataset.i18n;
+
+                // Accessibility keys have known-good fallbacks and some builds
+                // ship with uppercase placeholders in Chrome messages, so always
+                // prefer our own translations for them.
+                if (key && key.startsWith('a11y')) {
+                    const fallbackMsg = fallback && fallback[key] ? fallback[key] : key;
+                    elem.textContent = fallbackMsg;
+                    return;
+                }
+
                 let msg = chrome.i18n.getMessage(key);
-                // If Chrome API returns empty string or null, use fallback
-                if (!msg || msg.trim().length === 0) {
+                // If Chrome API returns empty string / null / or just the key itself, use fallback
+                if (!msg ||
+                    msg.trim().length === 0 ||
+                    msg === key ||
+                    msg.toUpperCase() === key.toUpperCase()) {
                     msg = fallback && fallback[key] ? fallback[key] : key;
                 }
                 elem.textContent = msg;
             });
             document.querySelectorAll('[data-i18n-placeholder]').forEach(elem => {
                 const key = elem.dataset.i18nPlaceholder;
+
+                if (key && key.startsWith('a11y')) {
+                    const fallbackMsg = fallback && fallback[key] ? fallback[key] : key;
+                    elem.placeholder = fallbackMsg;
+                    return;
+                }
+
                 let msg = chrome.i18n.getMessage(key);
-                // If Chrome API returns empty string or null, use fallback
-                if (!msg || msg.trim().length === 0) {
+                // If Chrome API returns empty string / null / or just the key itself, use fallback
+                if (!msg ||
+                    msg.trim().length === 0 ||
+                    msg === key ||
+                    msg.toUpperCase() === key.toUpperCase()) {
                     msg = fallback && fallback[key] ? fallback[key] : key;
                 }
                 elem.placeholder = msg;
+            });
+            document.querySelectorAll('[data-i18n-aria-label]').forEach(elem => {
+                const key = elem.dataset.i18nAriaLabel;
+
+                if (key && key.startsWith('a11y')) {
+                    const fallbackMsg = fallback && fallback[key] ? fallback[key] : key;
+                    elem.setAttribute('aria-label', fallbackMsg);
+                    return;
+                }
+
+                let msg = chrome.i18n.getMessage(key);
+                if (!msg ||
+                    msg.trim().length === 0 ||
+                    msg === key ||
+                    msg.toUpperCase() === key.toUpperCase()) {
+                    msg = fallback && fallback[key] ? fallback[key] : key;
+                }
+                elem.setAttribute('aria-label', msg);
             });
         } else {
             // Use fallback messages with selected language (more reliable)
@@ -1028,6 +1092,23 @@ const I18n = (function () {
                 });
             } catch (e) {
                 console.error('[I18n] Error in data-i18n-placeholder localization:', e);
+            }
+
+            try {
+                document.querySelectorAll('[data-i18n-aria-label]').forEach(elem => {
+                    try {
+                        const key = elem.dataset.i18nAriaLabel;
+                        if (key && messages[key]) {
+                            elem.setAttribute('aria-label', messages[key]);
+                        } else if (key) {
+                            elem.setAttribute('aria-label', key);
+                        }
+                    } catch (e) {
+                        console.warn('[I18n] Error localizing aria-label:', e);
+                    }
+                });
+            } catch (e) {
+                console.error('[I18n] Error in data-i18n-aria-label localization:', e);
             }
         }
 

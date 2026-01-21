@@ -987,6 +987,21 @@ function _applyImportedConfiguration(config) {
                 _updateSearchActionWidth();
             });
         }
+        if (typeof languageSelect !== 'undefined' && languageSelect) {
+            languageSelect.value = settings.preferredLanguage;
+        }
+    } else if (settings.preferredLanguage === null) {
+        // Explicitly follow browser settings
+        localStorage.removeItem('preferredLanguage');
+        if (typeof I18n !== 'undefined' && I18n.localize) {
+            I18n.localize();
+            requestAnimationFrame(() => {
+                _updateSearchActionWidth();
+            });
+        }
+        if (typeof languageSelect !== 'undefined' && languageSelect) {
+            languageSelect.value = LANGUAGE_AUTO;
+        }
     }
 
     // Apply snow effect
@@ -1223,6 +1238,74 @@ if (shortcutOpenNewTab) {
         if (e.target.checked) {
             localStorage.setItem(SHORTCUT_TARGET_KEY, 'newtab');
             renderShortcutsGrid();
+        }
+    });
+}
+
+// ==================== Language Selector ====================
+const LANGUAGE_AUTO = 'auto';
+const languageSelect = document.getElementById('languageSelect');
+if (languageSelect && typeof I18n !== 'undefined') {
+    const supported = typeof I18n.getSupportedLanguages === 'function'
+        ? I18n.getSupportedLanguages()
+        : ['zh_CN', 'zh_TW', 'ja', 'en', 'es', 'fr', 'de', 'ru'];
+
+    // Ensure I18n has detected a language before we read it
+    if (typeof I18n.getCurrentLanguage === 'function' &&
+        !I18n.getCurrentLanguage() &&
+        typeof I18n.localize === 'function') {
+        // This will initialize _currentLanguage based on browser / saved prefs
+        I18n.localize();
+    }
+
+    const hasManualPreference = !!localStorage.getItem('preferredLanguage');
+    let initialLang = localStorage.getItem('preferredLanguage');
+    if (!hasManualPreference) {
+        // Follow browser: keep localStorage clean and show "auto"
+        languageSelect.value = LANGUAGE_AUTO;
+    } else {
+        if (!initialLang && typeof I18n.getCurrentLanguage === 'function') {
+            initialLang = I18n.getCurrentLanguage();
+        }
+        if (!initialLang || !supported.includes(initialLang)) {
+            initialLang = 'en';
+        }
+        languageSelect.value = initialLang;
+    }
+
+    languageSelect.addEventListener('change', (e) => {
+        const lang = e.target.value;
+
+        if (lang === LANGUAGE_AUTO) {
+            // Remove manual preference and re-detect based on browser
+            localStorage.removeItem('preferredLanguage');
+            if (typeof I18n.localize === 'function') {
+                I18n.localize();
+                if (typeof requestAnimationFrame === 'function') {
+                    requestAnimationFrame(() => {
+                        _updateSearchActionWidth();
+                    });
+                } else {
+                    _updateSearchActionWidth();
+                }
+            }
+            return;
+        }
+
+        if (!supported.includes(lang)) {
+            return;
+        }
+        localStorage.setItem('preferredLanguage', lang);
+        if (typeof I18n.localize === 'function') {
+            I18n.localize(lang);
+            // Recompute search button width after label changes
+            if (typeof requestAnimationFrame === 'function') {
+                requestAnimationFrame(() => {
+                    _updateSearchActionWidth();
+                });
+            } else {
+                _updateSearchActionWidth();
+            }
         }
     });
 }
