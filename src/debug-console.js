@@ -24,6 +24,26 @@ const DebugConsole = (function() {
         QUALITY_TEST_ITERATIONS: 3
     };
 
+    // Common console log styles (centralized for easier maintenance)
+    const LOG_STYLES = {
+        title: 'color: #4CAF50; font-size: 16px; font-weight: bold',
+        subtitle: 'color: #2196F3; font-size: 12px',
+        sectionInfo: 'color: #4CAF50; font-weight: bold',
+        sectionModules: 'color: #2196F3',
+        sectionPerformance: 'color: #FF9800; font-weight: bold',
+        sectionQuality: 'color: #9C27B0; font-weight: bold',
+        sectionPerfGroup: 'color: #F44336',
+        sectionCache: 'color: #4CAF50; font-weight: bold',
+        sectionLocalStorage: 'color: #2196F3',
+        sectionImageProcessorCache: 'color: #FF9800',
+        sectionMemory: 'color: #9C27B0',
+        debugReady: 'color: #4CAF50; font-size: 14px; font-weight: bold',
+        helpTitle: 'color: #4CAF50; font-size: 16px; font-weight: bold',
+        helpSubtitle: 'color: #2196F3; font-weight: bold',
+        helpCategory: 'color: #FF9800',
+        helpExamples: 'color: #9C27B0'
+    };
+
     // ==================== State ====================
     let _state = {
         benchmarks: [],
@@ -53,11 +73,22 @@ const DebugConsole = (function() {
         return (ms / 1000).toFixed(2) + ' s';
     }
 
+    // ==================== Reusable Resources ====================
+    // Reuse internal canvases to avoid frequent DOM allocations during benchmarks
+    let _imageDataCanvas = null;
+    let _resizeCanvas = null;
+
     /**
      * Create a test image with specified dimensions
      */
     function _createTestImage(width, height) {
-        const canvas = document.createElement('canvas');
+        const canvas = typeof document !== 'undefined'
+            ? document.createElement('canvas')
+            : null;
+        
+        if (!canvas) {
+            throw new Error('Canvas is not available in this environment');
+        }
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
@@ -83,9 +114,24 @@ const DebugConsole = (function() {
         }
         ctx.putImageData(imageData, 0, 0);
         
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             canvas.toBlob((blob) => {
-                resolve(new File([blob], 'test-image.png', { type: 'image/png' }));
+                if (!blob) {
+                    reject(new Error('Failed to create test image blob'));
+                    return;
+                }
+                
+                try {
+                    if (typeof File !== 'undefined') {
+                        resolve(new File([blob], 'test-image.png', { type: 'image/png' }));
+                    } else {
+                        // Older environments may not support File; fall back to Blob
+                        resolve(blob);
+                    }
+                } catch (e) {
+                    // In case File constructor is present but unusable, fall back to Blob
+                    resolve(blob);
+                }
             }, 'image/png');
         });
     }
@@ -94,12 +140,16 @@ const DebugConsole = (function() {
      * Get memory usage (if available)
      */
     function _getMemoryInfo() {
-        if (performance.memory) {
-            return {
-                used: _formatBytes(performance.memory.usedJSHeapSize),
-                total: _formatBytes(performance.memory.totalJSHeapSize),
-                limit: _formatBytes(performance.memory.jsHeapSizeLimit)
-            };
+        try {
+            if (typeof performance !== 'undefined' && performance && performance.memory) {
+                return {
+                    used: _formatBytes(performance.memory.usedJSHeapSize),
+                    total: _formatBytes(performance.memory.totalJSHeapSize),
+                    limit: _formatBytes(performance.memory.jsHeapSizeLimit)
+                };
+            }
+        } catch (e) {
+            // Some environments may expose performance but not allow memory access
         }
         return { available: false };
     }
@@ -199,13 +249,20 @@ const DebugConsole = (function() {
      * Get ImageData from canvas or image
      */
     async function _getImageData(source) {
-        if (source instanceof ImageData) {
+        if (typeof ImageData !== 'undefined' && source instanceof ImageData) {
             return source;
         }
         
-        const canvas = document.createElement('canvas');
+        if (!_imageDataCanvas) {
+            if (typeof document === 'undefined') {
+                throw new Error('Canvas is not available in this environment');
+            }
+            _imageDataCanvas = document.createElement('canvas');
+        }
+        const canvas = _imageDataCanvas;
         try {
-            if (source instanceof HTMLImageElement || source instanceof HTMLCanvasElement) {
+            if ((typeof HTMLImageElement !== 'undefined' && source instanceof HTMLImageElement) ||
+                (typeof HTMLCanvasElement !== 'undefined' && source instanceof HTMLCanvasElement)) {
                 canvas.width = source.width;
                 canvas.height = source.height;
                 const ctx = canvas.getContext('2d');
@@ -217,7 +274,7 @@ const DebugConsole = (function() {
                 return imageData;
             }
             
-            if (source instanceof OffscreenCanvas) {
+            if (typeof OffscreenCanvas !== 'undefined' && source instanceof OffscreenCanvas) {
                 const ctx = source.getContext('2d');
                 return ctx.getImageData(0, 0, source.width, source.height);
             }
@@ -235,7 +292,13 @@ const DebugConsole = (function() {
      * Resize image using Canvas API (for comparison)
      */
     function _resizeWithCanvas(img, targetWidth, targetHeight) {
-        const canvas = document.createElement('canvas');
+        if (!_resizeCanvas) {
+            if (typeof document === 'undefined') {
+                throw new Error('Canvas is not available in this environment');
+            }
+            _resizeCanvas = document.createElement('canvas');
+        }
+        const canvas = _resizeCanvas;
         canvas.width = targetWidth;
         canvas.height = targetHeight;
         const ctx = canvas.getContext('2d');
@@ -261,7 +324,7 @@ const DebugConsole = (function() {
             try {
                 // Create test image
                 const testFile = await _createTestImage(size.w, size.h);
-                const fileSize = testFile.size;
+                const fileSize = testFile.size || (testFile instanceof Blob ? testFile.size : 0);
                 const pixels = size.w * size.h;
                 
                 console.log(`  Image size: ${_formatBytes(fileSize)}, Pixels: ${(pixels / 1000000).toFixed(2)}MP`);
@@ -370,14 +433,24 @@ const DebugConsole = (function() {
         }
         
         // Performance metrics
-        if (performance.timing) {
-            const timing = performance.timing;
-            status.performance = {
-                pageLoad: timing.loadEventEnd - timing.navigationStart,
-                domContentLoaded: timing.domContentLoadedEventEnd - timing.navigationStart,
-                firstPaint: performance.getEntriesByType('paint').find(e => e.name === 'first-paint')?.startTime,
-                firstContentfulPaint: performance.getEntriesByType('paint').find(e => e.name === 'first-contentful-paint')?.startTime
-            };
+        try {
+            if (typeof performance !== 'undefined' && performance && performance.timing) {
+                const timing = performance.timing;
+                const paintEntries = typeof performance.getEntriesByType === 'function'
+                    ? performance.getEntriesByType('paint')
+                    : [];
+                const firstPaintEntry = paintEntries.find(e => e.name === 'first-paint');
+                const fcpEntry = paintEntries.find(e => e.name === 'first-contentful-paint');
+                
+                status.performance = {
+                    pageLoad: timing.loadEventEnd && timing.navigationStart ? timing.loadEventEnd - timing.navigationStart : undefined,
+                    domContentLoaded: timing.domContentLoadedEventEnd && timing.navigationStart ? timing.domContentLoadedEventEnd - timing.navigationStart : undefined,
+                    firstPaint: firstPaintEntry?.startTime,
+                    firstContentfulPaint: fcpEntry?.startTime
+                };
+            }
+        } catch (e) {
+            // Ignore performance API errors; keep status.performance empty
         }
         
         return status;
@@ -420,7 +493,9 @@ const DebugConsole = (function() {
     // ==================== Public API ====================
 
     /**
-     * Show help message
+     * Show help message in the browser console.
+     * 
+     * @returns {void}
      */
     function help() {
         console.log(`
@@ -446,38 +521,41 @@ const DebugConsole = (function() {
   GenresFox.debug.benchmark()
   GenresFox.debug.testImage(3840, 2160)
         `, 
-        'color: #4CAF50; font-size: 16px; font-weight: bold',
-        'color: #2196F3; font-weight: bold',
-        'color: #FF9800',
-        'color: #FF9800',
-        'color: #FF9800',
-        'color: #9C27B0'
+        LOG_STYLES.helpTitle,
+        LOG_STYLES.helpSubtitle,
+        LOG_STYLES.helpCategory,
+        LOG_STYLES.helpCategory,
+        LOG_STYLES.helpCategory,
+        LOG_STYLES.helpExamples
         );
     }
 
     /**
-     * Show system status
+     * Show system status, including module availability, WASM status,
+     * memory usage (if available) and basic performance timing.
+     *
+     * @returns {Object} structured status information
      */
     function status() {
         const status = _getSystemStatus();
-        console.group('%cSystem Status', 'color: #4CAF50; font-weight: bold');
+        console.group('%cSystem Status', LOG_STYLES.sectionInfo);
         console.log('Timestamp:', status.timestamp);
         
-        console.group('%cModules', 'color: #2196F3');
+        console.group('%cModules', LOG_STYLES.sectionModules);
         Object.entries(status.modules).forEach(([name, loaded]) => {
             console.log(`${name}:`, loaded ? '[YES]' : '[NO]');
         });
         console.groupEnd();
         
         if (status.wasm) {
-            console.group('%cWASM', 'color: #FF9800');
+            console.group('%cWASM', LOG_STYLES.sectionPerformance);
             console.log('Loaded:', status.wasm.loaded ? '[YES]' : '[NO]');
             if (status.wasm.url) console.log('URL:', status.wasm.url);
             console.groupEnd();
         }
         
         if (status.memory.available !== false) {
-            console.group('%cMemory', 'color: #9C27B0');
+            console.group('%cMemory', LOG_STYLES.sectionMemory);
             console.log('Used:', status.memory.used);
             console.log('Total:', status.memory.total);
             console.log('Limit:', status.memory.limit);
@@ -485,7 +563,7 @@ const DebugConsole = (function() {
         }
         
         if (Object.keys(status.performance).length > 0) {
-            console.group('%cPerformance', 'color: #F44336');
+            console.group('%cPerformance', LOG_STYLES.sectionPerfGroup);
             Object.entries(status.performance).forEach(([key, value]) => {
                 if (value) console.log(key + ':', _formatTime(value));
             });
@@ -497,19 +575,22 @@ const DebugConsole = (function() {
     }
 
     /**
-     * Show cache information
+     * Show cache information such as localStorage usage and
+     * ImageProcessor internal cache (if available).
+     *
+     * @returns {Object} structured cache info
      */
     function cache() {
         const info = _getCacheInfo();
-        console.group('%cCache Information', 'color: #4CAF50; font-weight: bold');
+        console.group('%cCache Information', LOG_STYLES.sectionCache);
         
-        console.group('%cLocalStorage', 'color: #2196F3');
+        console.group('%cLocalStorage', LOG_STYLES.sectionLocalStorage);
         console.log('Keys:', info.localStorage.keys || 'N/A');
         console.log('Estimated Size:', info.localStorage.estimatedSize || 'N/A');
         console.groupEnd();
         
         if (info.imageProcessor) {
-            console.group('%cImageProcessor Cache', 'color: #FF9800');
+            console.group('%cImageProcessor Cache', LOG_STYLES.sectionImageProcessorCache);
             console.log(info.imageProcessor);
             console.groupEnd();
         }
@@ -519,7 +600,9 @@ const DebugConsole = (function() {
     }
 
     /**
-     * Show memory usage
+     * Show JS heap memory usage if supported by the browser.
+     *
+     * @returns {Object|null} memory info object, or null if not available
      */
     function memory() {
         const mem = _getMemoryInfo();
@@ -528,7 +611,7 @@ const DebugConsole = (function() {
             return null;
         }
         
-        console.group('%cMemory Usage', 'color: #4CAF50; font-weight: bold');
+        console.group('%cMemory Usage', LOG_STYLES.sectionMemory);
         console.log('Used:', mem.used);
         console.log('Total:', mem.total);
         console.log('Limit:', mem.limit);
@@ -537,17 +620,35 @@ const DebugConsole = (function() {
     }
 
     /**
-     * Run comprehensive performance and quality benchmarks
+     * Run comprehensive performance and quality benchmarks.
+     * This will run both performance and quality suites and
+     * return raw data plus a summarized view.
+     *
+     * @returns {Promise<{performance: Array, quality: Array, summary: Array, skipped?: boolean, reason?: string}|null>}
+     *          benchmark result object, or a skipped result when ImageProcessor is unavailable.
      */
     async function benchmark() {
         if (_state.isRunning) {
             console.warn('Benchmark already running');
             return;
         }
+
+        if (typeof ImageProcessor === 'undefined' || !ImageProcessor || !ImageProcessor.processImage) {
+            const reason = 'ImageProcessor is not available; benchmark requires image processing capabilities.';
+            console.warn('[Benchmark] Skipped:', reason);
+            const skippedResult = {
+                performance: [],
+                quality: [],
+                summary: [],
+                skipped: true,
+                reason
+            };
+            return skippedResult;
+        }
         
         _state.isRunning = true;
-        console.log('%c=== GenresFox Comprehensive Benchmark Suite ===', 'color: #4CAF50; font-size: 16px; font-weight: bold');
-        console.log('%cThis will test both performance and quality metrics', 'color: #2196F3; font-size: 12px');
+        console.log('%c=== GenresFox Comprehensive Benchmark Suite ===', LOG_STYLES.title);
+        console.log('%cThis will test both performance and quality metrics', LOG_STYLES.subtitle);
         
         try {
             const results = {
@@ -584,10 +685,19 @@ const DebugConsole = (function() {
      * Run performance benchmarks
      */
     async function _runPerformanceBenchmarks() {
-        console.log('\n%c[Performance] Starting performance benchmarks...', 'color: #FF9800; font-weight: bold');
+        console.log('\n%c[Performance] Starting performance benchmarks...', LOG_STYLES.sectionPerformance);
         
         const results = [];
         const wasmStatus = typeof ImageProcessor !== 'undefined' && ImageProcessor.getWasmStatus ? ImageProcessor.getWasmStatus() : null;
+
+        if (typeof ImageProcessor === 'undefined' || !ImageProcessor || !ImageProcessor.processImage) {
+            console.warn('[Performance] ImageProcessor not available, skipping performance benchmarks.');
+            return [{
+                size: 'all',
+                error: 'ImageProcessor not available',
+                skipped: true
+            }];
+        }
         
         for (const size of CONFIG.TEST_IMAGE_SIZES) {
             console.log(`\n%c[Performance] Testing ${size.name} (${size.w}x${size.h})...`, 'color: #2196F3');
@@ -608,7 +718,15 @@ const DebugConsole = (function() {
                 
                 if (typeof ImageProcessor !== 'undefined' && ImageProcessor.processImage) {
                     const times = [];
-                    const memoryBefore = performance.memory ? performance.memory.usedJSHeapSize : 0;
+                    const canMeasureMemory = (function() {
+                        try {
+                            return typeof performance !== 'undefined' && performance && performance.memory && typeof performance.memory.usedJSHeapSize === 'number';
+                        } catch (e) {
+                            return false;
+                        }
+                    })();
+                    
+                    const memoryBefore = canMeasureMemory ? performance.memory.usedJSHeapSize : 0;
                     
                     for (let i = 0; i < CONFIG.BENCHMARK_ITERATIONS; i++) {
                         const start = performance.now();
@@ -624,8 +742,8 @@ const DebugConsole = (function() {
                         }
                     }
                     
-                    const memoryAfter = performance.memory ? performance.memory.usedJSHeapSize : 0;
-                    const memoryDelta = memoryAfter - memoryBefore;
+                    const memoryAfter = canMeasureMemory ? performance.memory.usedJSHeapSize : 0;
+                    const memoryDelta = canMeasureMemory ? (memoryAfter - memoryBefore) : 0;
                     
                     if (times.length > 0) {
                         const avg = times.reduce((a, b) => a + b, 0) / times.length;
@@ -638,7 +756,7 @@ const DebugConsole = (function() {
                         perfData.maxTime = _formatTime(max);
                         perfData.stdDev = _formatTime(stdDev);
                         perfData.throughput = `${((pixels / 1000000) / (avg / 1000)).toFixed(2)} MP/s`;
-                        perfData.memoryDelta = _formatBytes(Math.abs(memoryDelta));
+                        perfData.memoryDelta = canMeasureMemory ? _formatBytes(Math.abs(memoryDelta)) : 'N/A';
                         perfData.iterations = times.length;
                         
                         console.log(`  Average: ${perfData.avgTime}`);
@@ -650,6 +768,11 @@ const DebugConsole = (function() {
                 results.push(perfData);
             } catch (e) {
                 console.error(`  Failed to benchmark ${size.name}:`, e);
+                results.push({
+                    size: size.name,
+                    dimensions: `${size.w}x${size.h}`,
+                    error: e.message || String(e)
+                });
             }
         }
         
@@ -657,10 +780,13 @@ const DebugConsole = (function() {
     }
 
     /**
-     * Run quality benchmarks
+     * Run quality benchmarks (SSIM/PSNR) comparing ImageProcessor
+     * output against Canvas-based resizing.
+     *
+     * @returns {Promise<Array>} array of quality result objects
      */
     async function _runQualityBenchmarks() {
-        console.log('\n%c[Quality] Starting quality benchmarks...', 'color: #9C27B0; font-weight: bold');
+        console.log('\n%c[Quality] Starting quality benchmarks...', LOG_STYLES.sectionQuality);
         
         const results = [];
         const testSizes = [
@@ -668,6 +794,15 @@ const DebugConsole = (function() {
             { w: 3840, h: 2160, name: '4K', targetW: 1920, targetH: 1080 }
         ];
         
+        if (typeof ImageProcessor === 'undefined' || !ImageProcessor || !ImageProcessor.processImage) {
+            console.warn('[Quality] ImageProcessor not available, skipping quality benchmarks.');
+            return [{
+                size: 'all',
+                error: 'ImageProcessor not available',
+                skipped: true
+            }];
+        }
+
         for (const size of testSizes) {
             console.log(`\n%c[Quality] Testing ${size.name} (${size.w}x${size.h} -> ${size.targetW}x${size.targetH})...`, 'color: #2196F3');
             
@@ -761,6 +896,10 @@ const DebugConsole = (function() {
                 results.push(qualityData);
             } catch (e) {
                 console.error(`  Failed to test quality for ${size.name}:`, e);
+                results.push({
+                    size: size.name,
+                    error: e.message || String(e)
+                });
             }
         }
         
@@ -773,7 +912,7 @@ const DebugConsole = (function() {
     function _generateBenchmarkSummary(results) {
         const summary = [];
         
-        if (results.performance && results.performance.length > 0) {
+        if (results.performance && results.performance.length > 0 && !results.performance.every(r => r.skipped)) {
             const avgPerf = results.performance.reduce((sum, r) => {
                 const timeStr = r.avgTime || '0 ms';
                 const timeMs = parseFloat(timeStr.replace(/[^\d.]/g, '')) || 0;
@@ -787,7 +926,7 @@ const DebugConsole = (function() {
             });
         }
         
-        if (results.quality && results.quality.length > 0) {
+        if (results.quality && results.quality.length > 0 && !results.quality.every(r => r.skipped)) {
             const avgSSIM = results.quality.reduce((sum, r) => sum + parseFloat(r.ssim || 0), 0) / results.quality.length;
             const avgPSNR = results.quality.reduce((sum, r) => {
                 const psnrStr = r.psnr || '0 dB';
@@ -812,7 +951,11 @@ const DebugConsole = (function() {
     }
 
     /**
-     * Test image processing with custom dimensions
+     * Test image processing with custom dimensions.
+     *
+     * @param {number} [width=1920]  source image width
+     * @param {number} [height=1080] source image height
+     * @returns {Promise<*>} result returned by ImageProcessor.processImage, or null when unavailable
      */
     async function testImage(width = 1920, height = 1080) {
         console.log(`%c[Test] Creating test image: ${width}x${height}`, 'color: #4CAF50; font-weight: bold');
@@ -847,14 +990,25 @@ const DebugConsole = (function() {
      */
     function clear() {
         console.clear();
-        console.log('%cGenresFox Debug Console - Ready', 'color: #4CAF50; font-size: 14px; font-weight: bold');
+        console.log('%cGenresFox Debug Console - Ready', LOG_STYLES.debugReady);
         help();
     }
 
+    /**
+     * Enable debug mode, which activates various console easter eggs
+     * and special getters on the window object.
+     *
+     * @returns {void}
+     */
     function debugMode() {
         _state.debugMode = true;
     }
 
+    /**
+     * Trigger the internal 6-7 easter egg output when in debug mode.
+     *
+     * @returns {void}
+     */
     function easterEgg67() {
         if (!_state.debugMode) {
             return;
@@ -875,13 +1029,60 @@ const DebugConsole = (function() {
     }
 
     /**
-     * Check if debug mode is active
+     * Check if debug mode is currently active.
+     *
+     * @returns {boolean}
      */
     function isDebugMode() {
         return _state.debugMode;
     }
 
     // ==================== Exports ====================
+    /**
+     * Get a shallow copy of the current debug configuration.
+     *
+     * @returns {{BENCHMARK_ITERATIONS: number, TEST_IMAGE_SIZES: Array, QUALITY_TEST_ITERATIONS: number}}
+     */
+    function getConfig() {
+        return {
+            BENCHMARK_ITERATIONS: CONFIG.BENCHMARK_ITERATIONS,
+            TEST_IMAGE_SIZES: CONFIG.TEST_IMAGE_SIZES.slice(),
+            QUALITY_TEST_ITERATIONS: CONFIG.QUALITY_TEST_ITERATIONS
+        };
+    }
+
+    /**
+     * Update selected configuration options at runtime.
+     * Only known keys will be applied and basic validation is performed.
+     *
+     * @param {Object} options
+     * @param {number} [options.BENCHMARK_ITERATIONS]
+     * @param {Array<{w:number,h:number,name:string}>} [options.TEST_IMAGE_SIZES]
+     * @param {number} [options.QUALITY_TEST_ITERATIONS]
+     * @returns {void}
+     */
+    function configure(options) {
+        if (!options || typeof options !== 'object') return;
+
+        if (typeof options.BENCHMARK_ITERATIONS === 'number' && options.BENCHMARK_ITERATIONS > 0) {
+            CONFIG.BENCHMARK_ITERATIONS = Math.floor(options.BENCHMARK_ITERATIONS);
+        }
+
+        if (Array.isArray(options.TEST_IMAGE_SIZES) && options.TEST_IMAGE_SIZES.length > 0) {
+            CONFIG.TEST_IMAGE_SIZES = options.TEST_IMAGE_SIZES
+                .filter(size => size && typeof size.w === 'number' && typeof size.h === 'number')
+                .map(size => ({
+                    w: Math.floor(size.w),
+                    h: Math.floor(size.h),
+                    name: size.name || `${size.w}x${size.h}`
+                }));
+        }
+
+        if (typeof options.QUALITY_TEST_ITERATIONS === 'number' && options.QUALITY_TEST_ITERATIONS > 0) {
+            CONFIG.QUALITY_TEST_ITERATIONS = Math.floor(options.QUALITY_TEST_ITERATIONS);
+        }
+    }
+
     return {
         help,
         status,
@@ -894,7 +1095,9 @@ const DebugConsole = (function() {
         clear,
         debugMode,
         easterEgg67,
-        isDebugMode
+        isDebugMode,
+        getConfig,
+        configure
     };
 })();
 

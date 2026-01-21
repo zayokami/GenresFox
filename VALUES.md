@@ -42,4 +42,5 @@ I hate stupid people, but I make products that even stupid people can use.
 
 
 —— The above content is from Steve Jobs.
+
 上述内容出自史蒂夫·乔布斯。
