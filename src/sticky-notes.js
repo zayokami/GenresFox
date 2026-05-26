@@ -621,7 +621,8 @@ const StickyNotes = (function() {
         var panel = document.createElement('div');
         panel.className = 'sn-font-panel';
 
-        var font = note.font || Object.assign({}, CONFIG.DEFAULT_FONT);
+        if (!note.font) note.font = Object.assign({}, CONFIG.DEFAULT_FONT);
+        var font = note.font;
 
         // Size
         var sizeInput = document.createElement('input');
