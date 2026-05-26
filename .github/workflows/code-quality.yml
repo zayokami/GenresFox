@@ -1,0 +1,104 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check JSON syntax
+        run: |
+          echo "Checking JSON syntax..."
+          find src -name "*.json" -type f | while read file; do
+            echo "Checking $file..."
+            node -e "JSON.parse(require('fs').readFileSync('$file', 'utf8'))" || exit 1
+          done
+          echo "✓ All JSON files are valid"
+
+      - name: Check for syntax errors in JavaScript
+        run: |
+          echo "Checking JavaScript syntax..."
+          find src -name "*.js" -type f ! -name "*.min.js" | while read file; do
+            echo "Checking $file..."
+            node --check "$file" || exit 1
+          done
+          echo "✓ All JavaScript files have valid syntax"
+
+      - name: Check HTML syntax
+        run: |
+          echo "Checking HTML syntax..."
+          if command -v tidy &> /dev/null; then
+            tidy -e -q src/newtab.html 2>&1 | grep -v "Warning:" || true
+          else
+            echo "HTML Tidy not installed, skipping HTML validation"
+            echo "Install with: sudo apt-get install tidy"
+          fi
+
+      - name: Check for security issues
+        run: |
+          echo "Checking for common security issues..."
+          
+          # Check for eval() usage
+          if grep -r "eval(" src/*.js 2>/dev/null; then
+            echo "Warning: Found eval() usage (potential security risk)"
+          fi
+          
+          # Check for innerHTML with user input
+          if grep -r "innerHTML" src/*.js 2>/dev/null | grep -v "textContent\|createElement"; then
+            echo "Info: Found innerHTML usage (ensure proper sanitization)"
+          fi
+          
+          # Check for dangerous URL schemes
+          if grep -r "javascript:\|data:\|vbscript:" src/*.js 2>/dev/null; then
+            echo "Warning: Found potentially dangerous URL schemes"
+          fi
+          
+          echo "✓ Security checks completed"
+
+      - name: Check file sizes
+        run: |
+          echo "Checking file sizes..."
+          
+          # Check for unusually large files
+          find src -type f -size +1M | while read file; do
+            SIZE=$(du -h "$file" | cut -f1)
+            echo "Large file: $file ($SIZE)"
+          done
+          
+          echo "✓ File size check completed"
+
+      - name: Verify manifest permissions
+        run: |
+          echo "Verifying manifest permissions..."
+          node -e "
+            const fs = require('fs');
+            const manifest = JSON.parse(fs.readFileSync('src/manifest.json', 'utf8'));
+            
+            // Check for overly broad permissions
+            if (manifest.permissions && manifest.permissions.includes('<all_urls>')) {
+              console.log('Warning: <all_urls> permission detected');
+            }
+            
+            if (manifest.host_permissions && manifest.host_permissions.includes('<all_urls>')) {
+              console.log('Warning: <all_urls> host_permission detected');
+            }
+            
+            console.log('Permissions:', JSON.stringify(manifest.permissions || [], null, 2));
+            console.log('Host Permissions:', JSON.stringify(manifest.host_permissions || [], null, 2));
+            console.log('✓ Permission check completed');
+          "

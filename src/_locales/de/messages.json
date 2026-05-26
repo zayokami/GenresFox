@@ -1,117 +1,33 @@
 {
-    "searchPlaceholder": {
-        "message": "Suchen..."
-    },
-    "searchActionLabel": {
-        "message": "Suchen"
-    },
-    "appTitle": {
-        "message": "GenresFox"
-    },
-    "settingsTitle": {
-        "message": "Einstellungen"
-    },
-    "tabWallpaper": {
-        "message": "Hintergrundbild"
-    },
-    "tabSearch": {
-        "message": "Suche und Schnellzugriffe"
-    },
-    "tabAccessibility": {
-        "message": "Barrierefreiheit"
-    },
-    "tabAbout": {
-        "message": "Über"
-    },
-    "uploadWallpaper": {
-        "message": "Hintergrundbild hochladen"
-    },
-    "resetWallpaper": {
-        "message": "Standard wiederherstellen"
-    },
-    "customEngines": {
-        "message": "Benutzerdefinierte Suchmaschinen"
-    },
-    "shortcuts": {
-        "message": "Schnellzugriffe"
-    },
-    "add": {
-        "message": "Hinzufügen"
-    },
-    "dragDropText": {
-        "message": "Ziehen Sie das Bild hierher oder klicken Sie zum Hochladen"
-    },
-    "wallpaperSettings": {
-        "message": "Hintergrundbild-Einstellungen"
-    },
-    "blurAmount": {
-        "message": "Unschärfegrad"
-    },
-    "vignetteAmount": {
-        "message": "Vignettierungsgrad"
-    },
-    "resetShortcuts": {
-        "message": "Schnellzugriffe zurücksetzen"
-    },
-    "shortcutOpenCurrent": {
-        "message": "In aktueller Seite öffnen"
-    },
-    "shortcutOpenNewTab": {
-        "message": "In neuem Tab öffnen"
-    },
-    "searchBoxSettings": {
-        "message": "Suchfeld-Einstellungen"
-    },
-    "searchBoxWidth": {
-        "message": "Breite"
-    },
-    "searchBoxScale": {
-        "message": "Größe"
-    },
-    "searchBoxPosition": {
-        "message": "Vertikale Position"
-    },
-    "searchBoxRadius": {
-        "message": "Eckenradius"
-    },
-    "searchBoxShadow": {
-        "message": "Schattenintensität"
-    },
-    "showShortcutNames": {
-        "message": "Namen der Schnellzugriffe anzeigen"
-    },
-    "shortcutDragHint": {
-        "message": "💡 Ziehen Sie die Schnellzugriffe, um die Reihenfolge anzupassen"
-    },
-    "livePreview": {
-        "message": "Live-Vorschau"
+    "a11yAnimations": {
+        "message": "Animationseffekte"
     },
     "a11yDisplay": {
         "message": "Anzeige"
     },
-    "a11yTheme": {
-        "message": "Thema"
+    "a11yFocus": {
+        "message": "Fokus"
     },
-    "a11yThemeStandard": {
+    "a11yFocusEnhanced": {
+        "message": "Erweitert"
+    },
+    "a11yFocusIndicator": {
+        "message": "Fokusindikator"
+    },
+    "a11yFocusLarge": {
+        "message": "Groß"
+    },
+    "a11yFocusStandard": {
         "message": "Standard"
-    },
-    "a11yThemeHCDark": {
-        "message": "Hoher Kontrast (Dunkel)"
-    },
-    "a11yThemeHCLight": {
-        "message": "Hoher Kontrast (Hell)"
-    },
-    "a11yThemeYellowBlack": {
-        "message": "Gelb auf Schwarz"
-    },
-    "a11yFontSize": {
-        "message": "Schriftgröße"
-    },
-    "a11yFontFamily": {
-        "message": "Schriftart"
     },
     "a11yFontDefault": {
         "message": "Standard"
+    },
+    "a11yFontDyslexic": {
+        "message": "Dyslexiefreundlich"
+    },
+    "a11yFontFamily": {
+        "message": "Schriftart"
     },
     "a11yFontSans": {
         "message": "Serifenlos"
@@ -119,11 +35,35 @@
     "a11yFontSerif": {
         "message": "Serifenhaltig"
     },
-    "a11yFontDyslexic": {
-        "message": "Dyslexiefreundlich"
+    "a11yFontSize": {
+        "message": "Schriftgröße"
+    },
+    "a11yKeyboardShortcuts": {
+        "message": "Tastenkürzel"
+    },
+    "a11yLetterSpacing": {
+        "message": "Zeichenabstand"
     },
     "a11yLineSpacing": {
         "message": "Zeilenabstand"
+    },
+    "a11yMotion": {
+        "message": "Animationen"
+    },
+    "a11yMotionFull": {
+        "message": "Vollständig"
+    },
+    "a11yMotionNone": {
+        "message": "Keine"
+    },
+    "a11yMotionReduced": {
+        "message": "Reduziert"
+    },
+    "a11yReset": {
+        "message": "Einstellungen auf Standard zurücksetzen"
+    },
+    "a11yShowShortcuts": {
+        "message": "Tastenkürzel anzeigen"
     },
     "a11ySpacingNormal": {
         "message": "Normal"
@@ -134,38 +74,29 @@
     "a11ySpacingVeryRelaxed": {
         "message": "Sehr locker"
     },
-    "a11yMotion": {
-        "message": "Animationen"
+    "a11ySpacingWide": {
+        "message": "Weit"
     },
-    "a11yAnimations": {
-        "message": "Animationseffekte"
+    "a11ySpacingWider": {
+        "message": "Sehr weit"
     },
-    "a11yMotionFull": {
-        "message": "Vollständig"
+    "a11yTheme": {
+        "message": "Thema"
     },
-    "a11yMotionReduced": {
-        "message": "Reduziert"
+    "a11yThemeHCDark": {
+        "message": "Hoher Kontrast (Dunkel)"
     },
-    "a11yMotionNone": {
-        "message": "Keine"
+    "a11yThemeHCLight": {
+        "message": "Hoher Kontrast (Hell)"
     },
-    "a11yFocus": {
-        "message": "Fokus"
-    },
-    "a11yFocusIndicator": {
-        "message": "Fokusindikator"
-    },
-    "a11yFocusStandard": {
+    "a11yThemeStandard": {
         "message": "Standard"
     },
-    "a11yFocusEnhanced": {
-        "message": "Erweitert"
+    "a11yThemeYellowBlack": {
+        "message": "Gelb auf Schwarz"
     },
-    "a11yFocusLarge": {
-        "message": "Groß"
-    },
-    "a11yReset": {
-        "message": "Einstellungen auf Standard zurücksetzen"
+    "a11yWordSpacing": {
+        "message": "Wortabstand"
     },
     "aboutDescription": {
         "message": "Eine vollständig quelloffene, leistungsstarke und äußerst minimalistische Browser-Erweiterung für neue Registerkarten."
@@ -173,14 +104,164 @@
     "aboutOpenSource": {
         "message": "GenresFox ist ein quelloffenes Projekt – Sie finden den Quellcode auf GitHub!"
     },
-    "viewOnGitHub": {
-        "message": "Auf GitHub anzeigen"
+    "accessibilitySettingsReset": {
+        "message": "Barrierefreiheitseinstellungen auf Standardwerte zurückgesetzt"
+    },
+    "activate": {
+        "message": "Schaltfläche oder Link aktivieren"
+    },
+    "add": {
+        "message": "Hinzufügen"
+    },
+    "addStickyNote": {
+        "message": "Notiz hinzufügen"
+    },
+    "appTitle": {
+        "message": "GenresFox"
+    },
+    "blurAmount": {
+        "message": "Unschärfegrad"
+    },
+    "bringToFront": {
+        "message": "In den Vordergrund bringen"
+    },
+    "clearAllStickyNotes": {
+        "message": "Alle löschen"
+    },
+    "clearAllStickyNotesConfirm": {
+        "message": "Alle Haftnotizen löschen?"
+    },
+    "closeModal": {
+        "message": "Modal schließen oder abbrechen"
+    },
+    "createStickyNoteShortcut": {
+        "message": "Haftnotiz erstellen"
+    },
+    "creditsBingWallpaper": {
+        "message": "Standard-Hintergrundbilder werden von Bing Tagesbilder bereitgestellt."
     },
     "creditsTitle": {
         "message": "Danksagungen"
     },
-    "creditsBingWallpaper": {
-        "message": "Standard-Hintergrundbilder werden von Bing Tagesbilder bereitgestellt."
+    "customEngines": {
+        "message": "Benutzerdefinierte Suchmaschinen"
+    },
+    "debugConsoleClear": {
+        "message": "Konsole leeren"
+    },
+    "debugConsoleClose": {
+        "message": "Schließen"
+    },
+    "debugConsoleHelp": {
+        "message": "Hilfe anzeigen"
+    },
+    "debugConsoleTitle": {
+        "message": "Debug-Konsole"
+    },
+    "deleteEngineConfirm": {
+        "message": "Sind Sie sicher, dass Sie diese Suchmaschine löschen möchten?"
+    },
+    "deleteShortcutAriaLabel": {
+        "message": "Schnellzugriff %s löschen"
+    },
+    "deleteShortcutConfirm": {
+        "message": "Sind Sie sicher, dass Sie den Schnellzugriff „%s“ löschen möchten?"
+    },
+    "deleteStickyNote": {
+        "message": "Notiz löschen"
+    },
+    "dragDropText": {
+        "message": "Ziehen Sie das Bild hierher oder klicken Sie zum Hochladen"
+    },
+    "dragOverMerge": {
+        "message": "Halten, um in Ordner zu gruppieren"
+    },
+    "enableStickyNotes": {
+        "message": "Haftnotizen aktivieren"
+    },
+    "errorImageTooLarge": {
+        "message": "Bilddatei ist zu groß (max. 50 MB)"
+    },
+    "errorResolutionTooHigh": {
+        "message": "Bildauflösung ist zu hoch (max. 80 Megapixel)"
+    },
+    "exportConfigButton": {
+        "message": "Konfiguration exportieren"
+    },
+    "exportConfigDescription": {
+        "message": "Exportieren Sie alle Ihre Einstellungen, Verknüpfungen und Anpassungen in eine JSON-Datei für Backup oder zum Teilen."
+    },
+    "exportConfigError": {
+        "message": "Export der Konfiguration fehlgeschlagen."
+    },
+    "exportConfigSuccess": {
+        "message": "Konfiguration erfolgreich exportiert!"
+    },
+    "exportConfigTitle": {
+        "message": "Konfiguration exportieren"
+    },
+    "focusIndicatorChanged": {
+        "message": "Fokusindikator geändert auf %s"
+    },
+    "focusSearch": {
+        "message": "Suchfeld fokussieren"
+    },
+    "folderDefault": {
+        "message": "Ordner"
+    },
+    "folderDisband": {
+        "message": "Ordner auflösen"
+    },
+    "folderExtract": {
+        "message": "Herausziehen"
+    },
+    "folderRemove": {
+        "message": "Entfernen"
+    },
+    "fontFamilyChanged": {
+        "message": "Schriftart geändert auf %s"
+    },
+    "fontSizeChanged": {
+        "message": "Schriftgröße auf %s Prozent festgelegt"
+    },
+    "imageTooLarge": {
+        "message": "Bild ist zu groß (max. %s MB)"
+    },
+    "importConfigButton": {
+        "message": "Konfiguration importieren"
+    },
+    "importConfigConfirm": {
+        "message": "Dies ersetzt alle Ihre aktuellen Einstellungen. Fortfahren?"
+    },
+    "importConfigError": {
+        "message": "Import der Konfiguration fehlgeschlagen: "
+    },
+    "importConfigSuccess": {
+        "message": "Konfiguration erfolgreich importiert!"
+    },
+    "letterSpacingChanged": {
+        "message": "Zeichenabstand geändert auf %s"
+    },
+    "lineSpacingChanged": {
+        "message": "Zeilenabstand geändert auf %s"
+    },
+    "livePreview": {
+        "message": "Live-Vorschau"
+    },
+    "motionPreferenceChanged": {
+        "message": "Animationseinstellung geändert auf %s"
+    },
+    "navigate": {
+        "message": "Zwischen Elementen navigieren"
+    },
+    "openSettings": {
+        "message": "Einstellungen öffnen"
+    },
+    "pleaseUploadImage": {
+        "message": "Bitte laden Sie eine Bilddatei hoch"
+    },
+    "processingCompressing": {
+        "message": "Komprimiert wird..."
     },
     "processingImage": {
         "message": "Bild wird verarbeitet..."
@@ -191,29 +272,47 @@
     "processingOptimizing": {
         "message": "Optimiert wird..."
     },
-    "processingCompressing": {
-        "message": "Komprimiert wird..."
-    },
     "processingSaving": {
         "message": "Wird gespeichert..."
     },
     "processingStarting": {
         "message": "Verarbeitung startet..."
     },
-    "errorImageTooLarge": {
-        "message": "Bilddatei ist zu groß (max. 50 MB)"
+    "resetAccessibilityConfirm": {
+        "message": "Alle Barrierefreiheitseinstellungen auf Standardwerte zurücksetzen?"
     },
-    "errorResolutionTooHigh": {
-        "message": "Bildauflösung ist zu hoch (max. 80 Megapixel)"
+    "resetShortcuts": {
+        "message": "Schnellzugriffe zurücksetzen"
     },
     "resetToBing": {
         "message": "Wechsel zu Bing Tagesbild abgeschlossen"
     },
-    "deleteShortcutConfirm": {
-        "message": "Sind Sie sicher, dass Sie den Schnellzugriff „%s“ löschen möchten?"
+    "resetWallpaper": {
+        "message": "Standard wiederherstellen"
     },
-    "searchErrorUnsafeUrl": {
-        "message": "Zugriff auf diese URL nicht möglich – möglicherweise unsicher."
+    "resetWallpaperConfirm": {
+        "message": "Sind Sie sicher, dass Sie das Hintergrundbild zurücksetzen möchten?"
+    },
+    "searchActionLabel": {
+        "message": "Suchen"
+    },
+    "searchBoxPosition": {
+        "message": "Vertikale Position"
+    },
+    "searchBoxRadius": {
+        "message": "Eckenradius"
+    },
+    "searchBoxScale": {
+        "message": "Größe"
+    },
+    "searchBoxSettings": {
+        "message": "Suchfeld-Einstellungen"
+    },
+    "searchBoxShadow": {
+        "message": "Schattenintensität"
+    },
+    "searchBoxWidth": {
+        "message": "Breite"
     },
     "searchErrorNavigationFailed": {
         "message": "Link konnte nicht geöffnet werden."
@@ -221,40 +320,100 @@
     "searchErrorNoEngine": {
         "message": "Keine Suchmaschinen verfügbar."
     },
+    "searchErrorUnsafeUrl": {
+        "message": "Zugriff auf diese URL nicht möglich – möglicherweise unsicher."
+    },
+    "searchPlaceholder": {
+        "message": "Suchen..."
+    },
+    "settingsTitle": {
+        "message": "Einstellungen"
+    },
+    "shortcutDragHint": {
+        "message": "💡 Ziehen Sie die Schnellzugriffe, um die Reihenfolge anzupassen"
+    },
+    "shortcutOpenCurrent": {
+        "message": "In aktueller Seite öffnen"
+    },
+    "shortcutOpenNewTab": {
+        "message": "In neuem Tab öffnen"
+    },
+    "shortcuts": {
+        "message": "Schnellzugriffe"
+    },
+    "shortcutsHelpClosed": {
+        "message": "Tastenkürzel-Hilfe geschlossen"
+    },
+    "shortcutsHelpOpened": {
+        "message": "Tastenkürzel-Hilfe geöffnet"
+    },
+    "showShortcutNames": {
+        "message": "Namen der Schnellzugriffe anzeigen"
+    },
+    "skipToMainContent": {
+        "message": "Zum Hauptinhalt springen"
+    },
+    "snowEffectToggle": {
+        "message": "Schneeeffekt"
+    },
+    "stickyNoteFontSettings": {
+        "message": "Schriftarteinstellungen"
+    },
+    "stickyNoteFontSize": {
+        "message": "Größe"
+    },
+    "stickyNoteLetterSpacing": {
+        "message": "Zeichenabstand"
+    },
+    "stickyNoteLineHeight": {
+        "message": "Zeilenabstand"
+    },
+    "stickyNotePlaceholder": {
+        "message": "Hier tippen..."
+    },
+    "stickyNotes": {
+        "message": "Haftnotizen"
+    },
+    "switchEngineNext": {
+        "message": "Zur nächsten Suchmaschine wechseln"
+    },
+    "switchEnginePrev": {
+        "message": "Zum vorherigen Suchmaschine wechseln"
+    },
+    "tabAbout": {
+        "message": "Über"
+    },
+    "tabAccessibility": {
+        "message": "Barrierefreiheit"
+    },
+    "tabSearch": {
+        "message": "Suche und Schnellzugriffe"
+    },
+    "tabWallpaper": {
+        "message": "Hintergrundbild"
+    },
+    "themeChanged": {
+        "message": "Thema geändert auf %s"
+    },
     "themeSectionTitle": {
         "message": "Thema"
     },
     "themeUseWallpaperAccent": {
         "message": "Hintergrundfarben als Akzent verwenden"
     },
-    "snowEffectToggle": {
-        "message": "Schneeeffekt"
+    "uploadWallpaper": {
+        "message": "Hintergrundbild hochladen"
     },
-    "exportConfigTitle": {
-        "message": "Konfiguration exportieren"
+    "viewOnGitHub": {
+        "message": "Auf GitHub anzeigen"
     },
-    "exportConfigDescription": {
-        "message": "Exportieren Sie alle Ihre Einstellungen, Verknüpfungen und Anpassungen in eine JSON-Datei für Backup oder zum Teilen."
+    "vignetteAmount": {
+        "message": "Vignettierungsgrad"
     },
-    "exportConfigButton": {
-        "message": "Konfiguration exportieren"
+    "wallpaperSettings": {
+        "message": "Hintergrundbild-Einstellungen"
     },
-    "exportConfigSuccess": {
-        "message": "Konfiguration erfolgreich exportiert!"
-    },
-    "exportConfigError": {
-        "message": "Export der Konfiguration fehlgeschlagen."
-    },
-    "importConfigButton": {
-        "message": "Konfiguration importieren"
-    },
-    "importConfigConfirm": {
-        "message": "Dies ersetzt alle Ihre aktuellen Einstellungen. Fortfahren?"
-    },
-    "importConfigSuccess": {
-        "message": "Konfiguration erfolgreich importiert!"
-    },
-    "importConfigError": {
-        "message": "Import der Konfiguration fehlgeschlagen: "
+    "wordSpacingChanged": {
+        "message": "Wortabstand geändert auf %s"
     }
 }

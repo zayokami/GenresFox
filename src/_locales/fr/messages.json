@@ -1,89 +1,419 @@
 {
-    "searchPlaceholder": { "message": "Rechercher..." },
-    "searchActionLabel": { "message": "Rechercher" },
-    "appTitle": { "message": "GenresFox" },
-    "settingsTitle": { "message": "Paramètres" },
-    "tabWallpaper": { "message": "Fond d'écran" },
-    "tabSearch": { "message": "Recherche & raccourcis" },
-    "tabAccessibility": { "message": "Accessibilité" },
-    "tabAbout": { "message": "À propos" },
-    "uploadWallpaper": { "message": "Téléverser un fond" },
-    "resetWallpaper": { "message": "Restaurer par défaut" },
-    "customEngines": { "message": "Moteurs de recherche personnalisés" },
-    "shortcuts": { "message": "Raccourcis" },
-    "add": { "message": "Ajouter" },
-    "dragDropText": { "message": "Glissez une image ici ou cliquez pour téléverser" },
-    "wallpaperSettings": { "message": "Paramètres du fond" },
-    "blurAmount": { "message": "Flou" },
-    "vignetteAmount": { "message": "Vignette" },
-    "resetShortcuts": { "message": "Réinitialiser les raccourcis" },
-    "shortcutOpenCurrent": { "message": "Ouvrir dans l’onglet actuel" },
-    "shortcutOpenNewTab": { "message": "Ouvrir dans un nouvel onglet" },
-    "searchBoxSettings": { "message": "Paramètres de la recherche" },
-    "searchBoxWidth": { "message": "Largeur" },
-    "searchBoxScale": { "message": "Taille" },
-    "searchBoxPosition": { "message": "Position verticale" },
-    "searchBoxRadius": { "message": "Rayon des angles" },
-    "searchBoxShadow": { "message": "Intensité de l'ombre" },
-    "showShortcutNames": { "message": "Afficher les noms des raccourcis" },
-    "shortcutDragHint": { "message": "💡 Faites glisser pour réorganiser" },
-    "livePreview": { "message": "Aperçu en direct" },
-    "a11yDisplay": { "message": "Affichage" },
-    "a11yTheme": { "message": "Thème" },
-    "a11yThemeStandard": { "message": "Standard" },
-    "a11yThemeHCDark": { "message": "Contraste élevé (sombre)" },
-    "a11yThemeHCLight": { "message": "Contraste élevé (clair)" },
-    "a11yThemeYellowBlack": { "message": "Jaune sur noir" },
-    "a11yFontSize": { "message": "Taille de police" },
-    "a11yFontFamily": { "message": "Famille de police" },
-    "a11yFontDefault": { "message": "Par défaut" },
-    "a11yFontSans": { "message": "Sans-serif" },
-    "a11yFontSerif": { "message": "Serif" },
-    "a11yFontDyslexic": { "message": "OpenDyslexic" },
-    "a11yLineSpacing": { "message": "Interligne" },
-    "a11ySpacingNormal": { "message": "Normal" },
-    "a11ySpacingRelaxed": { "message": "Détendu" },
-    "a11ySpacingVeryRelaxed": { "message": "Très détendu" },
-    "a11yMotion": { "message": "Mouvements" },
-    "a11yAnimations": { "message": "Animations" },
-    "a11yMotionFull": { "message": "Complet" },
-    "a11yMotionReduced": { "message": "Réduit" },
-    "a11yMotionNone": { "message": "Aucun" },
-    "a11yFocus": { "message": "Focus" },
-    "a11yFocusIndicator": { "message": "Indicateur de focus" },
-    "a11yFocusStandard": { "message": "Standard" },
-    "a11yFocusEnhanced": { "message": "Amélioré" },
-    "a11yFocusLarge": { "message": "Grand" },
-    "a11yReset": { "message": "Restaurer les paramètres" },
-    "aboutDescription": { "message": "Extension de nouvel onglet de navigateur entièrement open source, haute performance et extrêmement minimaliste." },
-    "aboutOpenSource": { "message": "GenresFox est open source. Retrouvez le code sur GitHub !" },
-    "viewOnGitHub": { "message": "Voir sur GitHub" },
-    "creditsTitle": { "message": "Crédits" },
-    "creditsBingWallpaper": { "message": "Fond par défaut : Bing Daily Wallpaper." },
-    "processingImage": { "message": "Traitement de l'image..." },
-    "processingLoading": { "message": "Chargement de l'image..." },
-    "processingOptimizing": { "message": "Optimisation..." },
-    "processingCompressing": { "message": "Compression..." },
-    "processingSaving": { "message": "Enregistrement..." },
-    "processingStarting": { "message": "Démarrage..." },
-    "errorImageTooLarge": { "message": "Fichier trop volumineux (max 50MB)" },
-    "errorResolutionTooHigh": { "message": "Résolution trop élevée (max 80 mégapixels)" },
-    "resetToBing": { "message": "Passé au fond quotidien Bing" },
-    "deleteShortcutConfirm": { "message": "Supprimer le raccourci \"%s\" ?" },
-    "searchErrorUnsafeUrl": { "message": "Cette URL peut être dangereuse." },
-    "searchErrorNavigationFailed": { "message": "Impossible d'ouvrir le lien." },
-    "searchErrorNoEngine": { "message": "Aucun moteur de recherche disponible." },
-    "themeSectionTitle": { "message": "Thème" },
-    "themeUseWallpaperAccent": { "message": "Utiliser les couleurs du fond comme accent" },
-    "snowEffectToggle": { "message": "Effet de neige" },
-    "exportConfigTitle": { "message": "Exporter la configuration" },
-    "exportConfigDescription": { "message": "Exportez tous vos paramètres, raccourcis et personnalisations dans un fichier JSON pour sauvegarde ou partage." },
-    "exportConfigButton": { "message": "Exporter la configuration" },
-    "exportConfigSuccess": { "message": "Configuration exportée avec succès !" },
-    "exportConfigError": { "message": "Échec de l'exportation de la configuration." },
-    "importConfigButton": { "message": "Importer la configuration" },
-    "importConfigConfirm": { "message": "Cela remplacera tous vos paramètres actuels. Continuer ?" },
-    "importConfigSuccess": { "message": "Configuration importée avec succès !" },
-    "importConfigError": { "message": "Échec de l'importation de la configuration : " }
+    "a11yAnimations": {
+        "message": "Animations"
+    },
+    "a11yDisplay": {
+        "message": "Affichage"
+    },
+    "a11yFocus": {
+        "message": "Focus"
+    },
+    "a11yFocusEnhanced": {
+        "message": "Amélioré"
+    },
+    "a11yFocusIndicator": {
+        "message": "Indicateur de focus"
+    },
+    "a11yFocusLarge": {
+        "message": "Grand"
+    },
+    "a11yFocusStandard": {
+        "message": "Standard"
+    },
+    "a11yFontDefault": {
+        "message": "Par défaut"
+    },
+    "a11yFontDyslexic": {
+        "message": "OpenDyslexic"
+    },
+    "a11yFontFamily": {
+        "message": "Famille de police"
+    },
+    "a11yFontSans": {
+        "message": "Sans-serif"
+    },
+    "a11yFontSerif": {
+        "message": "Serif"
+    },
+    "a11yFontSize": {
+        "message": "Taille de police"
+    },
+    "a11yKeyboardShortcuts": {
+        "message": "Raccourcis clavier"
+    },
+    "a11yLetterSpacing": {
+        "message": "Espacement des lettres"
+    },
+    "a11yLineSpacing": {
+        "message": "Interligne"
+    },
+    "a11yMotion": {
+        "message": "Mouvements"
+    },
+    "a11yMotionFull": {
+        "message": "Complet"
+    },
+    "a11yMotionNone": {
+        "message": "Aucun"
+    },
+    "a11yMotionReduced": {
+        "message": "Réduit"
+    },
+    "a11yReset": {
+        "message": "Restaurer les paramètres"
+    },
+    "a11yShowShortcuts": {
+        "message": "Afficher les raccourcis clavier"
+    },
+    "a11ySpacingNormal": {
+        "message": "Normal"
+    },
+    "a11ySpacingRelaxed": {
+        "message": "Détendu"
+    },
+    "a11ySpacingVeryRelaxed": {
+        "message": "Très détendu"
+    },
+    "a11ySpacingWide": {
+        "message": "Large"
+    },
+    "a11ySpacingWider": {
+        "message": "Très large"
+    },
+    "a11yTheme": {
+        "message": "Thème"
+    },
+    "a11yThemeHCDark": {
+        "message": "Contraste élevé (sombre)"
+    },
+    "a11yThemeHCLight": {
+        "message": "Contraste élevé (clair)"
+    },
+    "a11yThemeStandard": {
+        "message": "Standard"
+    },
+    "a11yThemeYellowBlack": {
+        "message": "Jaune sur noir"
+    },
+    "a11yWordSpacing": {
+        "message": "Espacement des mots"
+    },
+    "aboutDescription": {
+        "message": "Extension de nouvel onglet de navigateur entièrement open source, haute performance et extrêmement minimaliste."
+    },
+    "aboutOpenSource": {
+        "message": "GenresFox est open source. Retrouvez le code sur GitHub !"
+    },
+    "accessibilitySettingsReset": {
+        "message": "Paramètres d'accessibilité réinitialisés"
+    },
+    "activate": {
+        "message": "Activer le bouton ou le lien"
+    },
+    "add": {
+        "message": "Ajouter"
+    },
+    "addStickyNote": {
+        "message": "Ajouter une note"
+    },
+    "appTitle": {
+        "message": "GenresFox"
+    },
+    "blurAmount": {
+        "message": "Flou"
+    },
+    "bringToFront": {
+        "message": "Mettre au premier plan"
+    },
+    "clearAllStickyNotes": {
+        "message": "Tout effacer"
+    },
+    "clearAllStickyNotesConfirm": {
+        "message": "Effacer toutes les notes ?"
+    },
+    "closeModal": {
+        "message": "Fermer la fenêtre ou annuler"
+    },
+    "createStickyNoteShortcut": {
+        "message": "Créer un post-it"
+    },
+    "creditsBingWallpaper": {
+        "message": "Fond par défaut : Bing Daily Wallpaper."
+    },
+    "creditsTitle": {
+        "message": "Crédits"
+    },
+    "customEngines": {
+        "message": "Moteurs de recherche personnalisés"
+    },
+    "debugConsoleClear": {
+        "message": "Effacer la console"
+    },
+    "debugConsoleClose": {
+        "message": "Fermer"
+    },
+    "debugConsoleHelp": {
+        "message": "Afficher l'aide"
+    },
+    "debugConsoleTitle": {
+        "message": "Console de débogage"
+    },
+    "deleteEngineConfirm": {
+        "message": "Voulez-vous vraiment supprimer ce moteur de recherche ?"
+    },
+    "deleteShortcutAriaLabel": {
+        "message": "Supprimer le raccourci %s"
+    },
+    "deleteShortcutConfirm": {
+        "message": "Supprimer le raccourci \"%s\" ?"
+    },
+    "deleteStickyNote": {
+        "message": "Supprimer la note"
+    },
+    "dragDropText": {
+        "message": "Glissez une image ici ou cliquez pour téléverser"
+    },
+    "dragOverMerge": {
+        "message": "Maintenir pour fusionner dans le dossier"
+    },
+    "enableStickyNotes": {
+        "message": "Activer les post-its"
+    },
+    "errorImageTooLarge": {
+        "message": "Fichier trop volumineux (max 50MB)"
+    },
+    "errorResolutionTooHigh": {
+        "message": "Résolution trop élevée (max 80 mégapixels)"
+    },
+    "exportConfigButton": {
+        "message": "Exporter la configuration"
+    },
+    "exportConfigDescription": {
+        "message": "Exportez tous vos paramètres, raccourcis et personnalisations dans un fichier JSON pour sauvegarde ou partage."
+    },
+    "exportConfigError": {
+        "message": "Échec de l'exportation de la configuration."
+    },
+    "exportConfigSuccess": {
+        "message": "Configuration exportée avec succès !"
+    },
+    "exportConfigTitle": {
+        "message": "Exporter la configuration"
+    },
+    "focusIndicatorChanged": {
+        "message": "Indicateur de focus changé en %s"
+    },
+    "focusSearch": {
+        "message": "Mettre le focus sur la zone de recherche"
+    },
+    "folderDefault": {
+        "message": "Dossier"
+    },
+    "folderDisband": {
+        "message": "Dissoudre le dossier"
+    },
+    "folderExtract": {
+        "message": "Extraire"
+    },
+    "folderRemove": {
+        "message": "Retirer"
+    },
+    "fontFamilyChanged": {
+        "message": "Famille de police changée en %s"
+    },
+    "fontSizeChanged": {
+        "message": "Taille de police définie à %s pour cent"
+    },
+    "imageTooLarge": {
+        "message": "Image trop volumineuse (max %s Mo)"
+    },
+    "importConfigButton": {
+        "message": "Importer la configuration"
+    },
+    "importConfigConfirm": {
+        "message": "Cela remplacera tous vos paramètres actuels. Continuer ?"
+    },
+    "importConfigError": {
+        "message": "Échec de l'importation de la configuration : "
+    },
+    "importConfigSuccess": {
+        "message": "Configuration importée avec succès !"
+    },
+    "letterSpacingChanged": {
+        "message": "Espacement des lettres changé en %s"
+    },
+    "lineSpacingChanged": {
+        "message": "Interligne changé en %s"
+    },
+    "livePreview": {
+        "message": "Aperçu en direct"
+    },
+    "motionPreferenceChanged": {
+        "message": "Préférence d'animation changée en %s"
+    },
+    "navigate": {
+        "message": "Naviguer entre les éléments"
+    },
+    "openSettings": {
+        "message": "Ouvrir les paramètres"
+    },
+    "pleaseUploadImage": {
+        "message": "Veuillez téléverser un fichier image"
+    },
+    "processingCompressing": {
+        "message": "Compression..."
+    },
+    "processingImage": {
+        "message": "Traitement de l'image..."
+    },
+    "processingLoading": {
+        "message": "Chargement de l'image..."
+    },
+    "processingOptimizing": {
+        "message": "Optimisation..."
+    },
+    "processingSaving": {
+        "message": "Enregistrement..."
+    },
+    "processingStarting": {
+        "message": "Démarrage..."
+    },
+    "resetAccessibilityConfirm": {
+        "message": "Réinitialiser tous les paramètres d'accessibilité ?"
+    },
+    "resetShortcuts": {
+        "message": "Réinitialiser les raccourcis"
+    },
+    "resetToBing": {
+        "message": "Passé au fond quotidien Bing"
+    },
+    "resetWallpaper": {
+        "message": "Restaurer par défaut"
+    },
+    "resetWallpaperConfirm": {
+        "message": "Êtes-vous sûr de vouloir réinitialiser le fond d'écran ?"
+    },
+    "searchActionLabel": {
+        "message": "Rechercher"
+    },
+    "searchBoxPosition": {
+        "message": "Position verticale"
+    },
+    "searchBoxRadius": {
+        "message": "Rayon des angles"
+    },
+    "searchBoxScale": {
+        "message": "Taille"
+    },
+    "searchBoxSettings": {
+        "message": "Paramètres de la recherche"
+    },
+    "searchBoxShadow": {
+        "message": "Intensité de l'ombre"
+    },
+    "searchBoxWidth": {
+        "message": "Largeur"
+    },
+    "searchErrorNavigationFailed": {
+        "message": "Impossible d'ouvrir le lien."
+    },
+    "searchErrorNoEngine": {
+        "message": "Aucun moteur de recherche disponible."
+    },
+    "searchErrorUnsafeUrl": {
+        "message": "Cette URL peut être dangereuse."
+    },
+    "searchPlaceholder": {
+        "message": "Rechercher..."
+    },
+    "settingsTitle": {
+        "message": "Paramètres"
+    },
+    "shortcutDragHint": {
+        "message": "💡 Faites glisser pour réorganiser"
+    },
+    "shortcutOpenCurrent": {
+        "message": "Ouvrir dans l’onglet actuel"
+    },
+    "shortcutOpenNewTab": {
+        "message": "Ouvrir dans un nouvel onglet"
+    },
+    "shortcuts": {
+        "message": "Raccourcis"
+    },
+    "shortcutsHelpClosed": {
+        "message": "Aide des raccourcis clavier fermée"
+    },
+    "shortcutsHelpOpened": {
+        "message": "Aide des raccourcis clavier ouverte"
+    },
+    "showShortcutNames": {
+        "message": "Afficher les noms des raccourcis"
+    },
+    "skipToMainContent": {
+        "message": "Aller au contenu principal"
+    },
+    "snowEffectToggle": {
+        "message": "Effet de neige"
+    },
+    "stickyNoteFontSettings": {
+        "message": "Paramètres de police"
+    },
+    "stickyNoteFontSize": {
+        "message": "Taille"
+    },
+    "stickyNoteLetterSpacing": {
+        "message": "Espacement"
+    },
+    "stickyNoteLineHeight": {
+        "message": "Interligne"
+    },
+    "stickyNotePlaceholder": {
+        "message": "Écrivez ici..."
+    },
+    "stickyNotes": {
+        "message": "Post-its"
+    },
+    "switchEngineNext": {
+        "message": "Passer au moteur de recherche suivant"
+    },
+    "switchEnginePrev": {
+        "message": "Passer au moteur de recherche précédent"
+    },
+    "tabAbout": {
+        "message": "À propos"
+    },
+    "tabAccessibility": {
+        "message": "Accessibilité"
+    },
+    "tabSearch": {
+        "message": "Recherche & raccourcis"
+    },
+    "tabWallpaper": {
+        "message": "Fond d'écran"
+    },
+    "themeChanged": {
+        "message": "Thème changé en %s"
+    },
+    "themeSectionTitle": {
+        "message": "Thème"
+    },
+    "themeUseWallpaperAccent": {
+        "message": "Utiliser les couleurs du fond comme accent"
+    },
+    "uploadWallpaper": {
+        "message": "Téléverser un fond"
+    },
+    "viewOnGitHub": {
+        "message": "Voir sur GitHub"
+    },
+    "vignetteAmount": {
+        "message": "Vignette"
+    },
+    "wallpaperSettings": {
+        "message": "Paramètres du fond"
+    },
+    "wordSpacingChanged": {
+        "message": "Espacement des mots changé en %s"
+    }
 }
-

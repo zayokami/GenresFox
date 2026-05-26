@@ -9,6 +9,8 @@ const I18n = (function () {
     // Fallback messages for when Chrome i18n API is unavailable
     const _fallbackMessages = {
         "zh_CN": {
+            "languageLabel": "界面语言",
+            "languageFollowBrowser": "跟随浏览器设置",
             "appTitle": "GenresFox",
             "searchPlaceholder": "搜索...",
             "searchActionLabel": "搜索",
@@ -54,6 +56,20 @@ const I18n = (function () {
             "a11ySpacingNormal": "正常",
             "a11ySpacingRelaxed": "宽松",
             "a11ySpacingVeryRelaxed": "很宽松",
+            "a11yLetterSpacing": "字母间距",
+            "a11yWordSpacing": "单词间距",
+            "a11ySpacingWide": "较宽",
+            "a11ySpacingWider": "很宽",
+            "a11yKeyboardShortcuts": "键盘快捷键",
+            "a11yShowShortcuts": "显示键盘快捷键",
+            "switchEnginePrev": "切换到上一个搜索引擎",
+            "switchEngineNext": "切换到下一个搜索引擎",
+            "focusSearch": "聚焦搜索框",
+            "openSettings": "打开设置",
+            "closeModal": "关闭对话框",
+            "createStickyNoteShortcut": "创建便签",
+            "navigate": "在元素间导航",
+            "activate": "激活按钮或链接",
             "a11yMotion": "动画",
             "a11yAnimations": "动画效果",
             "a11yMotionFull": "完整",
@@ -83,9 +99,33 @@ const I18n = (function () {
             "searchErrorUnsafeUrl": "无法访问此网址，可能不安全。",
             "searchErrorNavigationFailed": "链接打开失败。",
             "searchErrorNoEngine": "没有可用的搜索引擎。",
+            "searchErrorNoInput": "搜索输入框不可用。",
+            "searchErrorInvalidInput": "请输入有效的搜索内容。",
+            "searchErrorInvalidEngine": "搜索引擎 URL 无效。",
+            "searchErrorQueryTooLong": "搜索内容过长。",
+            "searchErrorBuildUrl": "构建搜索 URL 失败。",
+            "searchErrorUnexpected": "发生意外错误，请重试。",
+            "searchErrorInitFailed": "搜索栏初始化失败。",
             "themeSectionTitle": "主题",
             "themeUseWallpaperAccent": "使用壁纸主色作为主题色",
             "snowEffectToggle": "雪花效果",
+            "stickyNotes": "便签",
+            "addStickyNote": "添加便签",
+            "clearAllStickyNotes": "清除全部",
+            "clearAllStickyNotesConfirm": "清除所有便签？",
+            "deleteStickyNote": "删除便签",
+            "enableStickyNotes": "启用便签",
+            "stickyNotePlaceholder": "在此输入...",
+            "folderDefault": "文件夹",
+            "folderRemove": "移除",
+            "folderExtract": "提取",
+            "folderDisband": "解散文件夹",
+            "dragOverMerge": "按住以合并到文件夹",
+            "bringToFront": "置于顶层",
+            "stickyNoteFontSettings": "字体设置",
+            "stickyNoteFontSize": "字号",
+            "stickyNoteLetterSpacing": "字间距",
+            "stickyNoteLineHeight": "行高",
             "exportConfigTitle": "导出配置",
             "exportConfigDescription": "将所有设置、快捷方式和自定义项导出为 JSON 文件，用于备份或分享。",
             "exportConfigButton": "导出配置",
@@ -97,6 +137,8 @@ const I18n = (function () {
             "importConfigError": "配置导入失败："
         },
         "en": {
+            "languageLabel": "Interface Language",
+            "languageFollowBrowser": "Follow browser language",
             "appTitle": "GenresFox",
             "searchPlaceholder": "Search...",
             "searchActionLabel": "Search",
@@ -139,9 +181,13 @@ const I18n = (function () {
             "a11yFontSerif": "Serif",
             "a11yFontDyslexic": "OpenDyslexic",
             "a11yLineSpacing": "Line Spacing",
+            "a11yLetterSpacing": "Letter Spacing",
+            "a11yWordSpacing": "Word Spacing",
             "a11ySpacingNormal": "Normal",
             "a11ySpacingRelaxed": "Relaxed",
             "a11ySpacingVeryRelaxed": "Very Relaxed",
+            "a11ySpacingWide": "Wide",
+            "a11ySpacingWider": "Wider",
             "a11yMotion": "Motion",
             "a11yAnimations": "Animations",
             "a11yMotionFull": "Full",
@@ -152,6 +198,8 @@ const I18n = (function () {
             "a11yFocusStandard": "Standard",
             "a11yFocusEnhanced": "Enhanced",
             "a11yFocusLarge": "Large",
+            "a11yKeyboardShortcuts": "Keyboard Shortcuts",
+            "a11yShowShortcuts": "Show Keyboard Shortcuts",
             "a11yReset": "Reset to Defaults",
             "aboutDescription": "A completely open-source, high-performance, and extremely minimalist browser new tab page extension.",
             "aboutOpenSource": "GenresFox is an open-source project. You can find the source code on GitHub!",
@@ -171,9 +219,39 @@ const I18n = (function () {
             "searchErrorUnsafeUrl": "This URL may be unsafe.",
             "searchErrorNavigationFailed": "Failed to open the link.",
             "searchErrorNoEngine": "No available search engine.",
+            "searchErrorNoInput": "Search input not available.",
+            "searchErrorInvalidInput": "Please enter a valid search query.",
+            "searchErrorInvalidEngine": "Search engine URL is invalid.",
+            "searchErrorQueryTooLong": "Search query is too long.",
+            "searchErrorBuildUrl": "Failed to build search URL.",
+            "searchErrorUnexpected": "An unexpected error occurred. Please try again.",
+            "searchErrorInitFailed": "Search bar initialization failed.",
             "themeSectionTitle": "Theme",
             "themeUseWallpaperAccent": "Use wallpaper colors as accent",
             "snowEffectToggle": "Snow Effect",
+            "stickyNotes": "Sticky Notes",
+            "addStickyNote": "Add Note",
+            "clearAllStickyNotes": "Clear All",
+            "clearAllStickyNotesConfirm": "Clear all sticky notes?",
+            "deleteStickyNote": "Delete note",
+            "enableStickyNotes": "Enable sticky notes",
+            "stickyNotePlaceholder": "Type here...",
+            "folderDefault": "Folder",
+            "folderRemove": "Remove",
+            "folderExtract": "Extract",
+            "folderDisband": "Disband Folder",
+            "dragOverMerge": "Hold to merge into folder",
+            "activate": "Activate button or link",
+            "closeModal": "Close dialog",
+            "createStickyNoteShortcut": "Create sticky note",
+            "focusSearch": "Focus search box",
+            "navigate": "Navigate between elements",
+            "openSettings": "Open settings",
+            "bringToFront": "Bring to Front",
+            "stickyNoteFontSettings": "Font Settings",
+            "stickyNoteFontSize": "Size",
+            "stickyNoteLetterSpacing": "Spacing",
+            "stickyNoteLineHeight": "Line Height",
             "exportConfigTitle": "Export Configuration",
             "exportConfigDescription": "Export all your settings, shortcuts, and customizations to a JSON file for backup or sharing.",
             "exportConfigButton": "Export Configuration",
@@ -185,6 +263,8 @@ const I18n = (function () {
             "importConfigError": "Failed to import configuration: "
         },
         "zh_TW": {
+            "languageLabel": "介面語言",
+            "languageFollowBrowser": "跟隨瀏覽器設定",
             "appTitle": "GenresFox",
             "searchPlaceholder": "搜尋...",
             "searchActionLabel": "搜尋",
@@ -230,6 +310,20 @@ const I18n = (function () {
             "a11ySpacingNormal": "正常",
             "a11ySpacingRelaxed": "寬鬆",
             "a11ySpacingVeryRelaxed": "非常寬鬆",
+            "a11yLetterSpacing": "字母間距",
+            "a11yWordSpacing": "單詞間距",
+            "a11ySpacingWide": "較寬",
+            "a11ySpacingWider": "很寬",
+            "a11yKeyboardShortcuts": "鍵盤快捷鍵",
+            "a11yShowShortcuts": "顯示鍵盤快捷鍵",
+            "switchEnginePrev": "切換到上一個搜索引擎",
+            "switchEngineNext": "切換到下一個搜索引擎",
+            "focusSearch": "聚焦搜索框",
+            "openSettings": "打開設置",
+            "closeModal": "關閉對話框",
+            "createStickyNoteShortcut": "新增便籤",
+            "navigate": "在元素間導航",
+            "activate": "激活按鈕或鏈接",
             "a11yMotion": "動畫",
             "a11yAnimations": "動畫效果",
             "a11yMotionFull": "完整",
@@ -259,9 +353,33 @@ const I18n = (function () {
             "searchErrorUnsafeUrl": "無法訪問此網址，可能不安全。",
             "searchErrorNavigationFailed": "連結開啟失敗。",
             "searchErrorNoEngine": "沒有可用的搜尋引擎。",
+            "searchErrorNoInput": "搜尋輸入框不可用。",
+            "searchErrorInvalidInput": "請輸入有效的搜尋內容。",
+            "searchErrorInvalidEngine": "搜尋引擎 URL 無效。",
+            "searchErrorQueryTooLong": "搜尋內容過長。",
+            "searchErrorBuildUrl": "建構搜尋 URL 失敗。",
+            "searchErrorUnexpected": "發生意外錯誤，請重試。",
+            "searchErrorInitFailed": "搜尋列初始化失敗。",
             "themeSectionTitle": "主題",
             "themeUseWallpaperAccent": "使用桌布主色作為主題色",
             "snowEffectToggle": "雪花效果",
+            "stickyNotes": "便籤",
+            "addStickyNote": "新增便籤",
+            "clearAllStickyNotes": "清除全部",
+            "clearAllStickyNotesConfirm": "清除所有便籤？",
+            "deleteStickyNote": "刪除便籤",
+            "enableStickyNotes": "啟用便籤",
+            "stickyNotePlaceholder": "在此輸入...",
+            "folderDefault": "資料夾",
+            "folderRemove": "移除",
+            "folderExtract": "提取",
+            "folderDisband": "解散資料夾",
+            "dragOverMerge": "按住以合併到資料夾",
+            "bringToFront": "置於頂層",
+            "stickyNoteFontSettings": "字型設定",
+            "stickyNoteFontSize": "字級",
+            "stickyNoteLetterSpacing": "字距",
+            "stickyNoteLineHeight": "行高",
             "exportConfigTitle": "匯出設定",
             "exportConfigDescription": "將所有設定、捷徑和自訂項目匯出為 JSON 檔案，用於備份或分享。",
             "exportConfigButton": "匯出設定",
@@ -273,6 +391,8 @@ const I18n = (function () {
             "importConfigError": "設定匯入失敗："
         },
         "ja": {
+            "languageLabel": "インターフェース言語",
+            "languageFollowBrowser": "ブラウザーの言語に合わせる",
             "appTitle": "GenresFox",
             "searchPlaceholder": "検索...",
             "searchActionLabel": "検索",
@@ -318,6 +438,20 @@ const I18n = (function () {
             "a11ySpacingNormal": "標準",
             "a11ySpacingRelaxed": "広め",
             "a11ySpacingVeryRelaxed": "とても広め",
+            "a11yLetterSpacing": "文字間隔",
+            "a11yWordSpacing": "単語間隔",
+            "a11ySpacingWide": "広め",
+            "a11ySpacingWider": "とても広め",
+            "a11yKeyboardShortcuts": "キーボードショートカット",
+            "a11yShowShortcuts": "キーボードショートカットを表示",
+            "switchEnginePrev": "前の検索エンジンに切り替え",
+            "switchEngineNext": "次の検索エンジンに切り替え",
+            "focusSearch": "検索ボックスにフォーカス",
+            "openSettings": "設定を開く",
+            "closeModal": "モーダルを閉じるまたはキャンセル",
+            "createStickyNoteShortcut": "付箋を作成",
+            "navigate": "要素間を移動",
+            "activate": "ボタンまたはリンクをアクティブ化",
             "a11yMotion": "モーション",
             "a11yAnimations": "アニメーション",
             "a11yMotionFull": "フル",
@@ -333,34 +467,60 @@ const I18n = (function () {
             "aboutOpenSource": "GenresFox はオープンソースプロジェクトです。GitHub でソースコードを見つけることができます！",
             "viewOnGitHub": "GitHub で見る",
             "creditsTitle": "クレジット",
-            "creditsBingWallpaper": "デフォルト壁紙は Bing 日替わり壁紙を使用しています。",
+            "creditsBingWallpaper": "デフォルト壁紙は Bing 日替わり壁紙です。",
             "processingImage": "画像を処理中...",
             "processingLoading": "画像を読み込み中...",
             "processingOptimizing": "最適化中...",
             "processingCompressing": "圧縮中...",
             "processingSaving": "保存中...",
-            "processingStarting": "処理を開始...",
+            "processingStarting": "開始中...",
             "errorImageTooLarge": "画像ファイルが大きすぎます（最大 50MB）",
-            "errorResolutionTooHigh": "画像の解像度が高すぎます（最大 8000 万ピクセル）",
+            "errorResolutionTooHigh": "画像の解像度が高すぎます（最大 8000 万画素）",
             "resetToBing": "Bing 日替わり壁紙に切り替えました",
             "deleteShortcutConfirm": "ショートカット「%s」を削除しますか？",
-            "searchErrorUnsafeUrl": "この URL は安全ではない可能性があります。",
+            "searchErrorUnsafeUrl": "この URL は安全ではありません。",
             "searchErrorNavigationFailed": "リンクを開けませんでした。",
-            "searchErrorNoEngine": "利用できる検索エンジンがありません。",
+            "searchErrorNoEngine": "検索エンジンがありません。",
+            "searchErrorNoInput": "検索欄が使えません。",
+            "searchErrorInvalidInput": "検索内容を入力してください。",
+            "searchErrorInvalidEngine": "検索エンジンの URL が正しくありません。",
+            "searchErrorQueryTooLong": "検索内容が長すぎます。",
+            "searchErrorBuildUrl": "検索 URL の作成に失敗しました。",
+            "searchErrorUnexpected": "エラーが発生しました。再試行してください。",
+            "searchErrorInitFailed": "検索欄の初期化に失敗しました。",
             "themeSectionTitle": "テーマ",
             "themeUseWallpaperAccent": "壁紙の主色をアクセントに使う",
             "snowEffectToggle": "雪のエフェクト",
+            "stickyNotes": "付箋",
+            "addStickyNote": "メモを追加",
+            "clearAllStickyNotes": "すべて消去",
+            "clearAllStickyNotesConfirm": "すべての付箋を消去しますか？",
+            "deleteStickyNote": "メモを削除",
+            "enableStickyNotes": "付箋を有効化",
+            "stickyNotePlaceholder": "ここに入力...",
+            "folderDefault": "フォルダ",
+            "folderRemove": "削除",
+            "folderExtract": "抽出",
+            "folderDisband": "フォルダを解散",
+            "dragOverMerge": "フォルダにマージするには長押し",
+            "bringToFront": "最前面に移動",
+            "stickyNoteFontSettings": "フォント設定",
+            "stickyNoteFontSize": "サイズ",
+            "stickyNoteLetterSpacing": "字間",
+            "stickyNoteLineHeight": "行間",
             "exportConfigTitle": "設定のエクスポート",
-            "exportConfigDescription": "すべての設定、ショートカット、カスタマイズを JSON ファイルにエクスポートして、バックアップまたは共有できます。",
+            "exportConfigDescription": "設定を JSON ファイルにエクスポートしてバックアップできます。",
             "exportConfigButton": "設定をエクスポート",
             "exportConfigSuccess": "設定のエクスポートに成功しました！",
             "exportConfigError": "設定のエクスポートに失敗しました。",
             "importConfigButton": "設定をインポート",
-            "importConfigConfirm": "これにより現在のすべての設定が置き換えられます。続行しますか？",
+            "importConfigConfirm": "現在の設定が上書きされます。続行しますか？",
             "importConfigSuccess": "設定のインポートに成功しました！",
             "importConfigError": "設定のインポートに失敗しました："
         },
         "es": {
+            "languageLabel": "Idioma de la interfaz",
+            "languageFollowBrowser": "Seguir el idioma del navegador",
             "appTitle": "GenresFox",
             "searchPlaceholder": "Buscar...",
             "searchActionLabel": "Buscar",
@@ -406,6 +566,20 @@ const I18n = (function () {
             "a11ySpacingNormal": "Normal",
             "a11ySpacingRelaxed": "Relajado",
             "a11ySpacingVeryRelaxed": "Muy relajado",
+            "a11yLetterSpacing": "Espaciado de letras",
+            "a11yWordSpacing": "Espaciado de palabras",
+            "a11ySpacingWide": "Amplio",
+            "a11ySpacingWider": "Muy amplio",
+            "a11yKeyboardShortcuts": "Atajos de teclado",
+            "a11yShowShortcuts": "Mostrar atajos de teclado",
+            "switchEnginePrev": "Cambiar al motor de búsqueda anterior",
+            "switchEngineNext": "Cambiar al siguiente motor de búsqueda",
+            "focusSearch": "Enfocar cuadro de búsqueda",
+            "openSettings": "Abrir configuración",
+            "closeModal": "Cerrar modal o cancelar",
+            "createStickyNoteShortcut": "Crear nota adhesiva",
+            "navigate": "Navegar entre elementos",
+            "activate": "Activar botón o enlace",
             "a11yMotion": "Movimiento",
             "a11yAnimations": "Animaciones",
             "a11yMotionFull": "Completo",
@@ -435,9 +609,33 @@ const I18n = (function () {
             "searchErrorUnsafeUrl": "Esta URL puede ser insegura.",
             "searchErrorNavigationFailed": "No se pudo abrir el enlace.",
             "searchErrorNoEngine": "No hay motor de búsqueda disponible.",
+            "searchErrorNoInput": "El campo de búsqueda no está disponible.",
+            "searchErrorInvalidInput": "Por favor, ingrese una consulta de búsqueda válida.",
+            "searchErrorInvalidEngine": "La URL del motor de búsqueda es inválida.",
+            "searchErrorQueryTooLong": "La consulta de búsqueda es demasiado larga.",
+            "searchErrorBuildUrl": "Error al construir la URL de búsqueda.",
+            "searchErrorUnexpected": "Ocurrió un error inesperado. Por favor, intente nuevamente.",
+            "searchErrorInitFailed": "Error al inicializar la barra de búsqueda.",
             "themeSectionTitle": "Tema",
             "themeUseWallpaperAccent": "Usar colores del fondo como acento",
             "snowEffectToggle": "Efecto de nieve",
+            "stickyNotes": "Notas adhesivas",
+            "addStickyNote": "Añadir nota",
+            "clearAllStickyNotes": "Borrar todas",
+            "clearAllStickyNotesConfirm": "¿Borrar todas las notas adhesivas?",
+            "deleteStickyNote": "Eliminar nota",
+            "enableStickyNotes": "Habilitar notas adhesivas",
+            "stickyNotePlaceholder": "Escribe aquí...",
+            "folderDefault": "Carpeta",
+            "folderRemove": "Eliminar",
+            "folderExtract": "Extraer",
+            "folderDisband": "Desagrupar carpeta",
+            "dragOverMerge": "Mantén para agrupar en carpeta",
+            "bringToFront": "Traer al frente",
+            "stickyNoteFontSettings": "Configuración de fuente",
+            "stickyNoteFontSize": "Tamaño",
+            "stickyNoteLetterSpacing": "Espaciado",
+            "stickyNoteLineHeight": "Interlineado",
             "exportConfigTitle": "Exportar configuración",
             "exportConfigDescription": "Exporta todas tus configuraciones, accesos directos y personalizaciones a un archivo JSON para respaldo o compartir.",
             "exportConfigButton": "Exportar configuración",
@@ -449,6 +647,8 @@ const I18n = (function () {
             "importConfigError": "Error al importar la configuración: "
         },
         "fr": {
+            "languageLabel": "Langue de l’interface",
+            "languageFollowBrowser": "Suivre la langue du navigateur",
             "appTitle": "GenresFox",
             "searchPlaceholder": "Rechercher...",
             "searchActionLabel": "Rechercher",
@@ -494,6 +694,20 @@ const I18n = (function () {
             "a11ySpacingNormal": "Normal",
             "a11ySpacingRelaxed": "Détendu",
             "a11ySpacingVeryRelaxed": "Très détendu",
+            "a11yLetterSpacing": "Espacement des lettres",
+            "a11yWordSpacing": "Espacement des mots",
+            "a11ySpacingWide": "Large",
+            "a11ySpacingWider": "Très large",
+            "a11yKeyboardShortcuts": "Raccourcis clavier",
+            "a11yShowShortcuts": "Afficher les raccourcis clavier",
+            "switchEnginePrev": "Passer au moteur de recherche précédent",
+            "switchEngineNext": "Passer au moteur de recherche suivant",
+            "focusSearch": "Mettre le focus sur la zone de recherche",
+            "openSettings": "Ouvrir les paramètres",
+            "closeModal": "Fermer la fenêtre ou annuler",
+            "createStickyNoteShortcut": "Créer un post-it",
+            "navigate": "Naviguer entre les éléments",
+            "activate": "Activer le bouton ou le lien",
             "a11yMotion": "Mouvements",
             "a11yAnimations": "Animations",
             "a11yMotionFull": "Complet",
@@ -523,9 +737,33 @@ const I18n = (function () {
             "searchErrorUnsafeUrl": "Cette URL peut être dangereuse.",
             "searchErrorNavigationFailed": "Impossible d'ouvrir le lien.",
             "searchErrorNoEngine": "Aucun moteur de recherche disponible.",
+            "searchErrorNoInput": "Le champ de recherche n'est pas disponible.",
+            "searchErrorInvalidInput": "Veuillez entrer une requête de recherche valide.",
+            "searchErrorInvalidEngine": "L'URL du moteur de recherche est invalide.",
+            "searchErrorQueryTooLong": "La requête de recherche est trop longue.",
+            "searchErrorBuildUrl": "Échec de la construction de l'URL de recherche.",
+            "searchErrorUnexpected": "Une erreur inattendue s'est produite. Veuillez réessayer.",
+            "searchErrorInitFailed": "Échec de l'initialisation de la barre de recherche.",
             "themeSectionTitle": "Thème",
             "themeUseWallpaperAccent": "Utiliser les couleurs du fond comme accent",
             "snowEffectToggle": "Effet de neige",
+            "stickyNotes": "Post-its",
+            "addStickyNote": "Ajouter une note",
+            "clearAllStickyNotes": "Tout effacer",
+            "clearAllStickyNotesConfirm": "Effacer toutes les notes ?",
+            "deleteStickyNote": "Supprimer la note",
+            "enableStickyNotes": "Activer les post-its",
+            "stickyNotePlaceholder": "Tapez ici...",
+            "folderDefault": "Dossier",
+            "folderRemove": "Retirer",
+            "folderExtract": "Extraire",
+            "folderDisband": "Dissoudre le dossier",
+            "dragOverMerge": "Maintenir pour fusionner dans le dossier",
+            "bringToFront": "Mettre au premier plan",
+            "stickyNoteFontSettings": "Paramètres de police",
+            "stickyNoteFontSize": "Taille",
+            "stickyNoteLetterSpacing": "Espacement",
+            "stickyNoteLineHeight": "Interligne",
             "exportConfigTitle": "Exporter la configuration",
             "exportConfigDescription": "Exportez tous vos paramètres, raccourcis et personnalisations dans un fichier JSON pour sauvegarde ou partage.",
             "exportConfigButton": "Exporter la configuration",
@@ -537,6 +775,8 @@ const I18n = (function () {
             "importConfigError": "Échec de l'importation de la configuration : "
         },
         "de": {
+            "languageLabel": "Oberflächensprache",
+            "languageFollowBrowser": "Browsersprache verwenden",
             "appTitle": "GenresFox",
             "searchPlaceholder": "Suchen...",
             "searchActionLabel": "Suchen",
@@ -582,6 +822,20 @@ const I18n = (function () {
             "a11ySpacingNormal": "Normal",
             "a11ySpacingRelaxed": "Lockerer",
             "a11ySpacingVeryRelaxed": "Sehr locker",
+            "a11yLetterSpacing": "Zeichenabstand",
+            "a11yWordSpacing": "Wortabstand",
+            "a11ySpacingWide": "Weit",
+            "a11ySpacingWider": "Sehr weit",
+            "a11yKeyboardShortcuts": "Tastenkürzel",
+            "a11yShowShortcuts": "Tastenkürzel anzeigen",
+            "switchEnginePrev": "Zum vorherigen Suchmaschine wechseln",
+            "switchEngineNext": "Zur nächsten Suchmaschine wechseln",
+            "focusSearch": "Suchfeld fokussieren",
+            "openSettings": "Einstellungen öffnen",
+            "closeModal": "Modal schließen oder abbrechen",
+            "createStickyNoteShortcut": "Haftnotiz erstellen",
+            "navigate": "Zwischen Elementen navigieren",
+            "activate": "Schaltfläche oder Link aktivieren",
             "a11yMotion": "Animationen",
             "a11yAnimations": "Animationseffekte",
             "a11yMotionFull": "Vollständig",
@@ -611,9 +865,33 @@ const I18n = (function () {
             "searchErrorUnsafeUrl": "Zugriff auf diese URL nicht möglich – möglicherweise unsicher.",
             "searchErrorNavigationFailed": "Link konnte nicht geöffnet werden.",
             "searchErrorNoEngine": "Keine Suchmaschinen verfügbar.",
+            "searchErrorNoInput": "Suchfeld nicht verfügbar.",
+            "searchErrorInvalidInput": "Bitte geben Sie eine gültige Suchanfrage ein.",
+            "searchErrorInvalidEngine": "Die URL der Suchmaschine ist ungültig.",
+            "searchErrorQueryTooLong": "Die Suchanfrage ist zu lang.",
+            "searchErrorBuildUrl": "Fehler beim Erstellen der Such-URL.",
+            "searchErrorUnexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+            "searchErrorInitFailed": "Fehler beim Initialisieren der Suchleiste.",
             "themeSectionTitle": "Thema",
             "themeUseWallpaperAccent": "Hintergrundfarben als Akzent verwenden",
             "snowEffectToggle": "Schneeeffekt",
+            "stickyNotes": "Haftnotizen",
+            "addStickyNote": "Notiz hinzufügen",
+            "clearAllStickyNotes": "Alle löschen",
+            "clearAllStickyNotesConfirm": "Alle Haftnotizen löschen?",
+            "deleteStickyNote": "Notiz löschen",
+            "enableStickyNotes": "Haftnotizen aktivieren",
+            "stickyNotePlaceholder": "Hier eingeben...",
+            "folderDefault": "Ordner",
+            "folderRemove": "Entfernen",
+            "folderExtract": "Herausziehen",
+            "folderDisband": "Ordner auflösen",
+            "dragOverMerge": "Halten, um in Ordner zu gruppieren",
+            "bringToFront": "In den Vordergrund bringen",
+            "stickyNoteFontSettings": "Schriftarteinstellungen",
+            "stickyNoteFontSize": "Größe",
+            "stickyNoteLetterSpacing": "Zeichenabstand",
+            "stickyNoteLineHeight": "Zeilenabstand",
             "exportConfigTitle": "Konfiguration exportieren",
             "exportConfigDescription": "Exportieren Sie alle Ihre Einstellungen, Verknüpfungen und Anpassungen in eine JSON-Datei für Backup oder zum Teilen.",
             "exportConfigButton": "Konfiguration exportieren",
@@ -625,6 +903,8 @@ const I18n = (function () {
             "importConfigError": "Import der Konfiguration fehlgeschlagen: "
         },
         "ru": {
+            "languageLabel": "Язык интерфейса",
+            "languageFollowBrowser": "Следовать языку браузера",
             "appTitle": "GenresFox",
             "searchPlaceholder": "Поиск...",
             "searchActionLabel": "Поиск",
@@ -670,6 +950,20 @@ const I18n = (function () {
             "a11ySpacingNormal": "Нормальный",
             "a11ySpacingRelaxed": "Увеличенный",
             "a11ySpacingVeryRelaxed": "Очень большой",
+            "a11yLetterSpacing": "Межбуквенный интервал",
+            "a11yWordSpacing": "Межсловный интервал",
+            "a11ySpacingWide": "Широкий",
+            "a11ySpacingWider": "Очень широкий",
+            "a11yKeyboardShortcuts": "Горячие клавиши",
+            "a11yShowShortcuts": "Показать горячие клавиши",
+            "switchEnginePrev": "Переключиться на предыдущую поисковую систему",
+            "switchEngineNext": "Переключиться на следующую поисковую систему",
+            "focusSearch": "Фокус на поле поиска",
+            "openSettings": "Открыть настройки",
+            "closeModal": "Закрыть модальное окно или отменить",
+            "createStickyNoteShortcut": "Создать заметку",
+            "navigate": "Навигация между элементами",
+            "activate": "Активировать кнопку или ссылку",
             "a11yMotion": "Анимации",
             "a11yAnimations": "Эффекты анимации",
             "a11yMotionFull": "Полные",
@@ -699,9 +993,33 @@ const I18n = (function () {
             "searchErrorUnsafeUrl": "Невозможно получить доступ к этому адресу — он может быть небезопасным.",
             "searchErrorNavigationFailed": "Не удалось открыть ссылку.",
             "searchErrorNoEngine": "Нет доступных поисковых систем.",
+            "searchErrorNoInput": "Поле поиска недоступно.",
+            "searchErrorInvalidInput": "Пожалуйста, введите действительный поисковый запрос.",
+            "searchErrorInvalidEngine": "URL поисковой системы недействителен.",
+            "searchErrorQueryTooLong": "Поисковый запрос слишком длинный.",
+            "searchErrorBuildUrl": "Не удалось создать URL для поиска.",
+            "searchErrorUnexpected": "Произошла непредвиденная ошибка. Пожалуйста, попробуйте снова.",
+            "searchErrorInitFailed": "Не удалось инициализировать панель поиска.",
             "themeSectionTitle": "Тема",
             "themeUseWallpaperAccent": "Использовать основные цвета обоев как акцент",
             "snowEffectToggle": "Эффект снега",
+            "stickyNotes": "Заметки",
+            "addStickyNote": "Добавить заметку",
+            "clearAllStickyNotes": "Очистить все",
+            "clearAllStickyNotesConfirm": "Очистить все заметки?",
+            "deleteStickyNote": "Удалить заметку",
+            "enableStickyNotes": "Включить заметки",
+            "stickyNotePlaceholder": "Введите текст...",
+            "folderDefault": "Папка",
+            "folderRemove": "Удалить",
+            "folderExtract": "Извлечь",
+            "folderDisband": "Распустить папку",
+            "dragOverMerge": "Удерживайте для объединения в папку",
+            "bringToFront": "На передний план",
+            "stickyNoteFontSettings": "Настройки шрифта",
+            "stickyNoteFontSize": "Размер",
+            "stickyNoteLetterSpacing": "Межбуквенный интервал",
+            "stickyNoteLineHeight": "Межстрочный интервал",
             "exportConfigTitle": "Экспорт конфигурации",
             "exportConfigDescription": "Экспортируйте все ваши настройки, ярлыки и кастомизации в JSON-файл для резервного копирования или обмена.",
             "exportConfigButton": "Экспортировать конфигурацию",
@@ -826,24 +1144,66 @@ const I18n = (function () {
         }
 
         if (chromeI18nReliable) {
-            // Use Chrome's i18n only if it's reliable
+            // Use Chrome's i18n only if it's reliable, and only when it returns
+            // a real translation (not just echoing the key name).
             document.querySelectorAll('[data-i18n]').forEach(elem => {
                 const key = elem.dataset.i18n;
+
+                // Accessibility keys have known-good fallbacks and some builds
+                // ship with uppercase placeholders in Chrome messages, so always
+                // prefer our own translations for them.
+                if (key && key.startsWith('a11y')) {
+                    const fallbackMsg = fallback && fallback[key] ? fallback[key] : key;
+                    elem.textContent = fallbackMsg;
+                    return;
+                }
+
                 let msg = chrome.i18n.getMessage(key);
-                // If Chrome API returns empty string or null, use fallback
-                if (!msg || msg.trim().length === 0) {
+                // If Chrome API returns empty string / null / or just the key itself, use fallback
+                if (!msg ||
+                    msg.trim().length === 0 ||
+                    msg === key ||
+                    msg.toUpperCase() === key.toUpperCase()) {
                     msg = fallback && fallback[key] ? fallback[key] : key;
                 }
                 elem.textContent = msg;
             });
             document.querySelectorAll('[data-i18n-placeholder]').forEach(elem => {
                 const key = elem.dataset.i18nPlaceholder;
+
+                if (key && key.startsWith('a11y')) {
+                    const fallbackMsg = fallback && fallback[key] ? fallback[key] : key;
+                    elem.placeholder = fallbackMsg;
+                    return;
+                }
+
                 let msg = chrome.i18n.getMessage(key);
-                // If Chrome API returns empty string or null, use fallback
-                if (!msg || msg.trim().length === 0) {
+                // If Chrome API returns empty string / null / or just the key itself, use fallback
+                if (!msg ||
+                    msg.trim().length === 0 ||
+                    msg === key ||
+                    msg.toUpperCase() === key.toUpperCase()) {
                     msg = fallback && fallback[key] ? fallback[key] : key;
                 }
                 elem.placeholder = msg;
+            });
+            document.querySelectorAll('[data-i18n-aria-label]').forEach(elem => {
+                const key = elem.dataset.i18nAriaLabel;
+
+                if (key && key.startsWith('a11y')) {
+                    const fallbackMsg = fallback && fallback[key] ? fallback[key] : key;
+                    elem.setAttribute('aria-label', fallbackMsg);
+                    return;
+                }
+
+                let msg = chrome.i18n.getMessage(key);
+                if (!msg ||
+                    msg.trim().length === 0 ||
+                    msg === key ||
+                    msg.toUpperCase() === key.toUpperCase()) {
+                    msg = fallback && fallback[key] ? fallback[key] : key;
+                }
+                elem.setAttribute('aria-label', msg);
             });
         } else {
             // Use fallback messages with selected language (more reliable)
@@ -881,6 +1241,23 @@ const I18n = (function () {
                 });
             } catch (e) {
                 console.error('[I18n] Error in data-i18n-placeholder localization:', e);
+            }
+
+            try {
+                document.querySelectorAll('[data-i18n-aria-label]').forEach(elem => {
+                    try {
+                        const key = elem.dataset.i18nAriaLabel;
+                        if (key && messages[key]) {
+                            elem.setAttribute('aria-label', messages[key]);
+                        } else if (key) {
+                            elem.setAttribute('aria-label', key);
+                        }
+                    } catch (e) {
+                        console.warn('[I18n] Error localizing aria-label:', e);
+                    }
+                });
+            } catch (e) {
+                console.error('[I18n] Error in data-i18n-aria-label localization:', e);
             }
         }
 

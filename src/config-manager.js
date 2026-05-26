@@ -14,9 +14,12 @@ const ConfigManager = (function () {
 
     // ==================== Configuration Constants ====================
     const CONFIG = {
-        VERSION: '0.4.6',
+        VERSION: '0.4.7',
         MAX_AGE_DAYS: 365, // Maximum age of config file (1 year)
         MIN_AGE_MS: 1000, // Minimum age to prevent replay attacks (1 second)
+        // NOTE: This hardcoded key is for accidental corruption detection only,
+        // NOT for cryptographic security. The config is signed to catch accidental
+        // file corruption or manual edits, not to prevent malicious tampering.
         SIGNATURE_KEY: 'genresfox-config-signature-v1', // Secret key for HMAC
         ALGORITHM: 'HMAC',
         HASH: 'SHA-256',
@@ -162,10 +165,16 @@ const ConfigManager = (function () {
      * @returns {number} -1 if v1 < v2, 0 if v1 === v2, 1 if v1 > v2
      */
     function _compareVersions(v1, v2) {
-        const parts1 = v1.split('.').map(Number);
-        const parts2 = v2.split('.').map(Number);
+        const parts1 = v1.split('.').map(p => {
+            const n = parseInt(p, 10);
+            return Number.isNaN(n) ? 0 : n;
+        });
+        const parts2 = v2.split('.').map(p => {
+            const n = parseInt(p, 10);
+            return Number.isNaN(n) ? 0 : n;
+        });
         const maxLength = Math.max(parts1.length, parts2.length);
-        
+
         for (let i = 0; i < maxLength; i++) {
             const part1 = parts1[i] || 0;
             const part2 = parts2[i] || 0;
@@ -255,6 +264,10 @@ const ConfigManager = (function () {
                 if (typeof shortcut.name !== 'string' || typeof shortcut.url !== 'string') {
                     return { valid: false, reason: `Invalid shortcut fields at index ${i}` };
                 }
+                const dangerousProtocols = /^(javascript:|data:|vbscript:)/i;
+                if (dangerousProtocols.test(shortcut.url.trim())) {
+                    return { valid: false, reason: `Unsafe shortcut URL at index ${i}` };
+                }
             }
         }
 
@@ -270,6 +283,10 @@ const ConfigManager = (function () {
      */
     async function exportConfig(configData) {
         try {
+            if (typeof crypto === 'undefined' || !crypto.subtle) {
+                throw new Error('Web Crypto API not available. Configuration signing requires a secure context.');
+            }
+
             // Validate input
             if (!configData || typeof configData !== 'object') {
                 throw new Error('Invalid configuration data');
@@ -489,6 +506,10 @@ const ConfigManager = (function () {
      */
     async function verifyConfig(config) {
         try {
+            if (typeof crypto === 'undefined' || !crypto.subtle) {
+                throw new Error('Web Crypto API not available. Configuration signing requires a secure context.');
+            }
+
             // Detect version
             const detectedVersion = _detectVersion(config);
             const configVersion = config.version || detectedVersion;

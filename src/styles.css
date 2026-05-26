@@ -69,6 +69,11 @@
     scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
+/* Utility: hidden state controlled by JS instead of inline styles */
+.is-hidden {
+    display: none;
+}
+
 body {
     background: var(--bg-color);
     color: var(--text-color);
@@ -330,6 +335,50 @@ body::after {
     opacity: 0.7;
 }
 
+.folder-bubble-footer {
+    display: flex;
+    justify-content: center;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.folder-bubble-disband {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    background: rgba(255, 59, 48, 0.15);
+    color: #ff6b6b;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.folder-bubble-disband:hover {
+    background: rgba(255, 59, 48, 0.28);
+    transform: scale(1.02);
+}
+
+.folder-bubble-disband:active {
+    transform: scale(0.98);
+}
+
+.shortcut-item.drag-over-merge {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5), 0 8px 24px rgba(59, 130, 246, 0.25);
+    animation: folderMergePulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes folderMergePulse {
+    from {
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4), 0 8px 24px rgba(59, 130, 246, 0.2);
+    }
+    to {
+        box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.6), 0 8px 28px rgba(59, 130, 246, 0.35);
+    }
+}
+
 .modal-open {
     overflow: hidden;
 }
@@ -384,11 +433,13 @@ body::after {
     border: none;
     outline: none;
     color: #fff;
-    font-size: 1.2rem;
+    font-size: 15px;
     font-weight: 300;
     padding: 8px 0;
     font-family: inherit;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
 }
 
 #search::placeholder {
@@ -467,6 +518,11 @@ body::after {
     visibility: hidden;
     transition: opacity 0.18s ease-out, visibility 0.18s ease-out;
     z-index: 200;
+}
+
+/* Shortcuts modal should appear above settings modal */
+#shortcutsModal {
+    z-index: 300;
 }
 
 .modal-overlay.active {
@@ -916,7 +972,8 @@ input[type="text"]:focus {
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
 }
 
-.checkbox-label input[type="checkbox"] {
+.checkbox-label input[type="checkbox"],
+.checkbox-label input[type="radio"] {
     width: 18px;
     height: 18px;
     accent-color: var(--accent-color);
@@ -1119,6 +1176,8 @@ input[type="text"]:focus {
     overflow: hidden;
 }
 
+/* Icon color background mode */
+
 .shortcut-item:hover .shortcut-icon {
     background: rgba(255, 255, 255, 0.24);
     border-color: rgba(255, 255, 255, 0.36);
@@ -1251,6 +1310,17 @@ input[type="text"]:focus {
 
 .github-btn svg {
     flex-shrink: 0;
+}
+
+.email-link {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.email-link:hover {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: underline;
 }
 
 /* ==================== Ripple Effect ==================== */
@@ -1722,4 +1792,418 @@ footer,
 /* Hide elements marked by JavaScript */
 [data-genresfox-hidden="true"] {
     display: none !important;
+}
+
+/* ==================== Sticky Notes ==================== */
+
+#sticky-notes-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 30;
+}
+
+#sticky-notes-container.is-hidden {
+    display: none;
+}
+
+.sticky-note {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--sn-border, #f59e0b);
+    background-color: var(--sn-bg, #fef3c7);
+    color: var(--sn-text, #78350f);
+    box-shadow: var(--shadow-medium);
+    pointer-events: auto;
+    transition: box-shadow var(--transition-fast) var(--transition-curve),
+                transform var(--transition-fast) var(--transition-curve),
+                filter var(--transition-fast) var(--transition-curve);
+    overflow: hidden;
+    cursor: grab;
+    user-select: none;
+}
+
+.sticky-note.dragging {
+    cursor: grabbing;
+    z-index: 9999 !important;
+    transform: rotate(0deg) scale(1.06) !important;
+    box-shadow:
+        0 25px 60px rgba(0, 0, 0, 0.45),
+        0 10px 20px rgba(0, 0, 0, 0.25),
+        0 0 0 1px rgba(255, 255, 255, 0.08);
+    filter: brightness(1.08);
+    transition:
+        box-shadow var(--transition-normal) var(--transition-curve),
+        transform var(--transition-normal) var(--transition-curve),
+        filter var(--transition-normal) var(--transition-curve);
+}
+
+.sticky-note-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 6px;
+    min-height: 24px;
+    opacity: 0;
+    transition: opacity var(--transition-fast) var(--transition-curve);
+}
+
+.sticky-note:hover .sticky-note-header,
+.sticky-note:focus-within .sticky-note-header {
+    opacity: 1;
+}
+
+.sticky-note-delete {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: var(--radius-xs);
+    background: transparent;
+    color: var(--sn-text, #78350f);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity var(--transition-fast), background var(--transition-fast);
+}
+
+.sticky-note-delete:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.sticky-note-colors {
+    display: flex;
+    gap: 3px;
+}
+
+.sticky-note-color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.sticky-note-color-dot:hover {
+    opacity: 1;
+    transform: scale(1.15);
+}
+
+.sticky-note-color-dot.active {
+    opacity: 1;
+    box-shadow: 0 0 0 1.5px var(--sn-text, #78350f);
+}
+
+.sticky-note-font-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: var(--radius-xs);
+    background: transparent;
+    color: var(--sn-text, #78350f);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity var(--transition-fast), background var(--transition-fast);
+    margin-left: 4px;
+}
+
+.sticky-note-font-btn:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.sticky-note-content {
+    flex: 1;
+    padding: 4px 10px 10px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--sn-text, #78350f);
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    overflow-y: auto;
+    word-wrap: break-word;
+    cursor: text;
+    user-select: text;
+}
+
+.sticky-note-content:empty::before {
+    content: attr(data-placeholder);
+    color: var(--sn-text, #78350f);
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.sticky-note-content:focus {
+    outline: none;
+}
+
+/* Sticky notes settings in modal */
+.sticky-note-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+/* Responsive: reduce sticky note sizes on small screens */
+@media (max-width: 640px) {
+    .sticky-note {
+        max-width: 160px;
+        max-height: 160px;
+    }
+
+    .sticky-note-content {
+        font-size: 13px;
+    }
+}
+
+/* ==================== Sticky Notes Context Menu ==================== */
+
+.sn-context-menu {
+    position: fixed;
+    min-width: 160px;
+    background: rgba(20, 20, 26, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-strong);
+    padding: 6px 0;
+    z-index: 99999;
+    animation: sn-menu-fade-in 0.12s var(--transition-curve);
+    user-select: none;
+}
+
+@keyframes sn-menu-fade-in {
+    from {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.sn-context-menu-item {
+    padding: 8px 16px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    transition: background var(--transition-fast) ease;
+    white-space: nowrap;
+}
+
+.sn-context-menu-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.sn-context-menu-item.danger {
+    color: #ff6b6b;
+}
+
+.sn-context-menu-item.danger:hover {
+    background: rgba(255, 77, 77, 0.12);
+}
+
+.sn-context-menu-separator {
+    height: 1px;
+    margin: 6px 10px;
+    background: rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+}
+
+.sn-context-menu-colors {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 8px 16px;
+}
+
+.sn-context-color-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform var(--transition-fast) ease,
+                box-shadow var(--transition-fast) ease;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.sn-context-color-dot:hover {
+    transform: scale(1.2);
+}
+
+.sn-context-color-dot.active {
+    box-shadow: 0 0 0 2px #fff;
+}
+
+/* ==================== Sticky Notes Font Panel ==================== */
+
+.sn-font-panel {
+    position: fixed;
+    z-index: 99999;
+    width: 220px;
+    background: rgba(20, 20, 26, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-strong);
+    padding: 12px;
+    animation: sn-menu-fade-in 0.12s var(--transition-curve);
+    user-select: none;
+}
+
+.sn-font-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.sn-font-row:last-child {
+    margin-bottom: 0;
+}
+
+.sn-font-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    min-width: 56px;
+    flex-shrink: 0;
+}
+
+.sn-font-row input[type="range"] {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.sn-font-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent-color, #3b82f6);
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.sn-font-row input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent-color, #3b82f6);
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.sn-font-toggles {
+    gap: 8px;
+    justify-content: flex-end;
+    padding-left: 64px;
+}
+
+.sn-font-toggle {
+    width: 28px;
+    height: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-xs);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.sn-font-toggle:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.sn-font-toggle.active {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: rgba(59, 130, 246, 0.5);
+    color: #fff;
+}
+
+.sn-font-panel-close {
+    display: flex;
+    justify-content: center;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sn-font-panel-close button {
+    padding: 5px 14px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.sn-font-panel-close button:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Extracted from inline styles in newtab.html */
+
+.modal--shortcuts {
+    max-width: 600px;
+}
+
+.form-actions {
+    margin-top: 16px;
+    text-align: right;
+}
+
+.about-export {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.setting-desc {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+}
+
+.export-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
 }

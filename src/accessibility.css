@@ -203,6 +203,75 @@ input[type="text"] {
     line-height: 2.2 !important;
 }
 
+/* ==================== Letter Spacing ==================== */
+
+.a11y-letter-spacing-wide * {
+    letter-spacing: 0.05em !important;
+}
+
+.a11y-letter-spacing-wider * {
+    letter-spacing: 0.1em !important;
+}
+
+/* ==================== Word Spacing ==================== */
+
+.a11y-word-spacing-wide * {
+    word-spacing: 0.2em !important;
+}
+
+.a11y-word-spacing-wider * {
+    word-spacing: 0.4em !important;
+}
+
+/* ==================== Skip Link ==================== */
+
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: #000;
+    color: #fff;
+    padding: 8px 16px;
+    text-decoration: none;
+    z-index: 10000;
+    border-radius: 0 0 4px 0;
+}
+
+.skip-link:focus {
+    top: 0;
+    outline: 3px solid #fff;
+    outline-offset: 2px;
+}
+
+/* High contrast theme overrides for skip link */
+.a11y-theme-high-contrast-dark .skip-link {
+    background: var(--hc-bg) !important;
+    color: var(--hc-text) !important;
+    border: 2px solid var(--hc-border) !important;
+}
+
+.a11y-theme-high-contrast-light .skip-link {
+    background: var(--hc-bg) !important;
+    color: var(--hc-text) !important;
+    border: 2px solid var(--hc-border) !important;
+}
+
+.a11y-theme-yellow-black .skip-link {
+    background: var(--hc-bg) !important;
+    color: var(--hc-text) !important;
+    border: 2px solid var(--hc-border) !important;
+}
+
+/* ==================== Screen Reader Only ==================== */
+
+.sr-only {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
 /* ==================== Motion Preferences ==================== */
 
 /* Reduced motion - minimal animations */

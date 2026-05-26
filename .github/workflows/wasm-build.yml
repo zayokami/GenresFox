@@ -1,0 +1,110 @@
+name: WASM Build
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'src/wasm-resize/**'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'src/wasm-resize/**'
+  workflow_dispatch:
+
+jobs:
+  build-wasm:
+    name: Build WebAssembly Module
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            src/wasm-resize/target/
+          key: ${{ runner.os }}-wasm-${{ hashFiles('src/wasm-resize/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-wasm-
+
+      - name: Build WASM module
+        working-directory: src/wasm-resize
+        run: |
+          echo "Building WASM module..."
+          cargo build --release --target wasm32-unknown-unknown
+          
+          if [ ! -f "target/wasm32-unknown-unknown/release/wasm_resize.wasm" ]; then
+            echo "Error: WASM build failed"
+            exit 1
+          fi
+          
+          FILE_SIZE=$(du -h "target/wasm32-unknown-unknown/release/wasm_resize.wasm" | cut -f1)
+          echo "✓ WASM module built successfully ($FILE_SIZE)"
+
+      - name: Verify WASM file
+        run: |
+          echo "Verifying WASM file..."
+          if [ -f "src/wasm-resize/target/wasm32-unknown-unknown/release/wasm_resize.wasm" ]; then
+            FILE_SIZE=$(stat -c%s "src/wasm-resize/target/wasm32-unknown-unknown/release/wasm_resize.wasm")
+            echo "WASM file size: $FILE_SIZE bytes"
+            
+            # Check if file is reasonable size (should be < 100KB for this module)
+            if [ $FILE_SIZE -gt 102400 ]; then
+              echo "Warning: WASM file is larger than expected (>100KB)"
+            fi
+          else
+            echo "Error: WASM file not found"
+            exit 1
+          fi
+
+      - name: Compare with existing WASM
+        run: |
+          if [ -f "src/resize.wasm" ]; then
+            echo "Comparing with existing WASM file..."
+            EXISTING_SIZE=$(stat -c%s "src/resize.wasm")
+            NEW_SIZE=$(stat -c%s "src/wasm-resize/target/wasm32-unknown-unknown/release/wasm_resize.wasm")
+            
+            echo "Existing: $EXISTING_SIZE bytes"
+            echo "New: $NEW_SIZE bytes"
+            
+            if [ $EXISTING_SIZE -ne $NEW_SIZE ]; then
+              echo "Info: WASM file size changed (this is expected if source was modified)"
+            else
+              echo "✓ WASM file size unchanged"
+            fi
+          else
+            echo "Info: No existing WASM file to compare"
+          fi
+
+      - name: Upload WASM artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-module
+          path: src/wasm-resize/target/wasm32-unknown-unknown/release/wasm_resize.wasm
+          retention-days: 7
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ WASM module built successfully. Remember to copy the built file to `src/resize.wasm` if changes are merged.'
+            })

@@ -12,28 +12,41 @@
  */
 (function() {
     'use strict';
+
+    // Guard against non-browser environments
+    if (typeof window === 'undefined') {
+        return;
+    }
     
     // Only polyfill if not natively supported
-    if (window.requestIdleCallback && window.cancelIdleCallback) {
+    if (typeof window.requestIdleCallback === 'function' && typeof window.cancelIdleCallback === 'function') {
         return; // Native support available, no polyfill needed
     }
     
     // Use MessageChannel for better performance if available
-    const useMessageChannel = typeof MessageChannel !== 'undefined';
-    let channel;
-    
-    if (useMessageChannel) {
-        channel = new MessageChannel();
-        channel.port1.onmessage = function() {
-            // Port message received, browser is idle
-        };
+    var hasMessageChannel = typeof MessageChannel !== 'undefined';
+    var hasRAF = typeof window.requestAnimationFrame === 'function';
+    var hasCancelRAF = typeof window.cancelAnimationFrame === 'function';
+    var hasPerformanceNow = typeof performance !== 'undefined' && performance && typeof performance.now === 'function';
+
+    var channel = null;
+    if (hasMessageChannel) {
+        try {
+            channel = new MessageChannel();
+            channel.port1.onmessage = function() {
+                // Port message received, browser is idle
+            };
+        } catch (e) {
+            channel = null;
+            hasMessageChannel = false;
+        }
     }
     
     /**
      * Polyfill for requestIdleCallback
-     * @param {Function} callback - Function to call when idle
-     * @param {Object} options - Options object
-     * @param {number} options.timeout - Maximum time to wait before executing (ms)
+     * @param {Function} cb - Function to call when idle
+     * @param {Object} [options] - Options object
+     * @param {number} [options.timeout] - Maximum time to wait before executing (ms)
      * @returns {number} Request ID for cancellation
      */
     window.requestIdleCallback = function(cb, options) {
@@ -41,35 +54,58 @@
             throw new TypeError('callback must be a function');
         }
         
-        const timeout = (options && options.timeout) ? Math.max(0, options.timeout) : 0;
-        const start = performance.now();
-        let timeoutId = null;
-        let frameId = null;
+        var timeout = (options && typeof options.timeout === 'number')
+            ? Math.max(0, options.timeout)
+            : 0;
+        var start = hasPerformanceNow ? performance.now() : Date.now();
+        var timeoutId = null;
+        var frameId = null;
         
         // If timeout is specified, set a fallback timeout
         if (timeout > 0) {
             timeoutId = setTimeout(function() {
-                if (frameId !== null) {
-                    cancelAnimationFrame(frameId);
+                if (frameId !== null && hasCancelRAF) {
+                    window.cancelAnimationFrame(frameId);
                     frameId = null;
                 }
+                var now = hasPerformanceNow ? performance.now() : Date.now();
                 cb({
                     didTimeout: true,
                     timeRemaining: function() {
-                        return Math.max(0, timeout - (performance.now() - start));
+                        return Math.max(0, timeout - (now - start));
                     }
                 });
             }, timeout);
         }
         
+        // If requestAnimationFrame is not available, fall back to simple timeout
+        if (!hasRAF) {
+            var fallbackId = setTimeout(function() {
+                if (timeoutId !== null) {
+                    clearTimeout(timeoutId);
+                }
+                cb({
+                    didTimeout: false,
+                    timeRemaining: function() {
+                        return 1;
+                    }
+                });
+            }, 1);
+            return fallbackId;
+        }
+
         // Use requestAnimationFrame to wait for next frame
         // This ensures we're not blocking the main thread
-        frameId = requestAnimationFrame(function() {
+        frameId = window.requestAnimationFrame(function() {
             // Use MessageChannel to detect idle time if available
-            if (useMessageChannel && channel) {
-                channel.port2.postMessage(0);
+            if (hasMessageChannel && channel) {
+                try {
+                    channel.port2.postMessage(0);
+                } catch (e) {
+                    // If postMessage fails, fall back to normal path
+                }
                 // Schedule callback for next idle period
-                frameId = requestAnimationFrame(function() {
+                frameId = window.requestAnimationFrame(function() {
                     if (timeoutId !== null) {
                         clearTimeout(timeoutId);
                     }
@@ -109,8 +145,8 @@
     window.cancelIdleCallback = function(id) {
         if (typeof id === 'number') {
             // Cancel animation frame if it's a frame ID
-            if (id < 1000000) { // Frame IDs are typically small
-                cancelAnimationFrame(id);
+            if (hasCancelRAF && id < 1000000) { // Frame IDs are typically small
+                window.cancelAnimationFrame(id);
             }
             // Cancel timeout
             clearTimeout(id);

@@ -33,8 +33,6 @@
     // Handle unhandled promise rejections
     window.addEventListener('unhandledrejection', (event) => {
         console.error('[Global Error Handler] Unhandled promise rejection:', event.reason);
-        // Prevent default handling
-        event.preventDefault();
     });
     
     // Monitor for critical element removal
@@ -138,6 +136,8 @@ const CustomSelect = (function() {
                 customOption.classList.add('selected');
                 customOption.setAttribute('aria-selected', 'true');
                 trigger.textContent = option.textContent;
+            } else {
+                customOption.setAttribute('aria-selected', 'false');
             }
 
             customOption.addEventListener('click', (e) => {
@@ -340,7 +340,7 @@ const shortcutsList = document.getElementById("shortcutsList");
 const shortcutsGrid = document.getElementById("shortcuts");
 const settingsBtn = document.querySelector(".settings-btn");
 const settingsModal = document.getElementById("settingsModal");
-const closeSettings = document.querySelector(".close-btn");
+const closeSettings = document.getElementById("closeSettings");
 const tabBtns = document.querySelectorAll(".tab-btn");
 const tabContents = document.querySelectorAll(".tab-content");
 const addEngineBtn = document.getElementById("addEngineBtn");
@@ -348,8 +348,6 @@ const addShortcutBtn = document.getElementById("addShortcutBtn");
 const engineSelector = document.querySelector(".engine-selector");
 const selectedEngineIcon = document.querySelector(".selected-engine");
 const engineDropdown = document.querySelector(".engine-dropdown");
-const shortcutOpenCurrent = document.getElementById("shortcutOpenCurrent");
-const shortcutOpenNewTab = document.getElementById("shortcutOpenNewTab");
 
 // Default Data
 const defaultEngines = {
@@ -380,12 +378,12 @@ const defaultEngines = {
     }
 };
 
+// Default shortcuts are now in ShortcutManager
+// Keep for backward compatibility
 const defaultShortcuts = [
     { name: "GitHub", url: "https://github.com", icon: "https://github.com/favicon.ico" },
     { name: "YouTube", url: "https://youtube.com", icon: "https://www.youtube.com/favicon.ico" },
-    // Use site's own favicon first; fallback to icon services if needed
     { name: "Bilibili", url: "https://bilibili.com", icon: "https://bilibili.com/favicon.ico" },
-    // Gmail: Use DuckDuckGo icon service as mail.google.com has SameSite cookie restrictions
     { name: "Gmail", url: "https://mail.google.com", icon: "https://icons.duckduckgo.com/ip3/mail.google.com.ico" }
 ];
 
@@ -400,52 +398,29 @@ try {
 
 let currentEngine = localStorage.getItem("preferredEngine") || "google";
 
-const FOLDER_FEATURE_ENABLED = false; // Temporarily disable folder feature
 const SHORTCUT_TARGET_KEY = 'shortcutOpenTarget';
 
-// --- Image helpers to reduce hotlink failures ---
-function _decorateImg(img) {
-    if (!img) return;
-    img.referrerPolicy = 'no-referrer';
-    img.decoding = 'async';
-    // Use eager loading for above-the-fold icons to improve LCP
-    // Lazy loading is applied only for below-the-fold content
-    img.loading = 'eager';
-}
+// Image helpers are now in ShortcutManager
+const _decorateImg = (typeof ShortcutManager !== 'undefined' && ShortcutManager._decorateImg)
+    ? ShortcutManager._decorateImg
+    : function(img) {
+        if (!img) return;
+        img.referrerPolicy = 'no-referrer';
+        img.decoding = 'async';
+        img.loading = 'eager';
+    };
 
-let shortcuts;
-try {
-    const stored = localStorage.getItem("shortcuts");
-    shortcuts = stored ? JSON.parse(stored) : null;
-} catch (e) {
-    console.warn('Failed to parse shortcuts from localStorage, using defaults');
-    shortcuts = null;
-}
-
-if (!shortcuts || !Array.isArray(shortcuts) || shortcuts.length === 0) {
-    shortcuts = defaultShortcuts;
-    localStorage.setItem("shortcuts", JSON.stringify(shortcuts));
-} else {
-    // Lightweight migration: fix known problematic icons for existing users
-    let migrated = false;
-    shortcuts.forEach((s) => {
-        if (!s || typeof s.url !== 'string') return;
-        // Fix Bilibili icon
-        if (s.url.includes('bilibili.com') && typeof s.icon === 'string' && s.icon.includes('www.bilibili.com')) {
-            s.icon = "https://bilibili.com/favicon.ico";
-            migrated = true;
-        }
-        // Fix Gmail icon - mail.google.com has SameSite cookie restrictions
-        // Use DuckDuckGo service which works reliably
-        if (s.url.includes('mail.google.com') && typeof s.icon === 'string' && s.icon.includes('mail.google.com/favicon.ico')) {
-            s.icon = "https://icons.duckduckgo.com/ip3/mail.google.com.ico";
-            migrated = true;
-        }
-    });
-    if (migrated) {
-        localStorage.setItem("shortcuts", JSON.stringify(shortcuts));
+// Shortcuts are now managed by ShortcutManager
+// Helper function to get shortcuts array (for backward compatibility)
+function getShortcuts() {
+    if (typeof ShortcutManager !== 'undefined' && ShortcutManager.getAll) {
+        return ShortcutManager.getAll();
     }
+    return shortcuts || [];
 }
+
+// Keep shortcuts variable for backward compatibility during migration
+let shortcuts = [];
 
 // Folder helpers
 function _isFolder(item) {
@@ -472,526 +447,93 @@ function saveEngines() {
     renderEngineDropdown();
 }
 
+// Shortcut management functions are now in ShortcutManager
 function saveShortcuts() {
-    localStorage.setItem("shortcuts", JSON.stringify(shortcuts));
-    renderShortcutsList();
-    renderShortcutsGrid();
-}
-
-function getFavicon(url) {
-    try {
-        const urlObj = new URL(url);
-        // Prefer site's own favicon (most reliable, no CORS issues)
-        return `${urlObj.origin}/favicon.ico`;
-    } catch (e) {
-        return "icon.png";
-    }
-}
-
-// Cache for resource existence checks (to avoid repeated HEAD requests)
-const _resourceExistsCache = new Map();
-
-async function _checkResourceExists(url) {
-    // Check cache first
-    if (_resourceExistsCache.has(url)) {
-        return _resourceExistsCache.get(url);
+    // Sync shortcuts variable for backward compatibility
+    if (typeof ShortcutManager !== 'undefined' && ShortcutManager.getAll) {
+        shortcuts = ShortcutManager.getAll();
     }
     
-    // For non-CORS services, skip HEAD check and assume it exists
-    if (_isNonCorsService(url)) {
-        _resourceExistsCache.set(url, true);
-        return true;
-    }
-    
-    try {
-        // Use HEAD request to check if resource exists
-        const response = await fetch(url, {
-            method: 'HEAD',
-            mode: 'cors',
-            credentials: 'omit',
-            cache: 'no-cache'
-        });
-        const exists = response.ok;
-        _resourceExistsCache.set(url, exists);
-        return exists;
-    } catch (e) {
-        // If HEAD fails, assume it might exist and let Image loading handle it
-        // This avoids blocking on CORS issues
-        _resourceExistsCache.set(url, true);
-        return true;
+    if (typeof ShortcutManager !== 'undefined') {
+        // ShortcutManager handles saving internally, but we need to trigger rendering
+        if (ShortcutManager.renderShortcutsList) {
+            ShortcutManager.renderShortcutsList();
+        }
+        if (ShortcutManager.renderShortcutsGrid) {
+            ShortcutManager.renderShortcutsGrid(
+                handleShortcutDragStart,
+                handleShortcutDragEnd,
+                handleShortcutDragOver,
+                handleShortcutDrop,
+                handleShortcutDragLeave,
+                openFolderOverlay
+            );
+        }
     }
 }
 
-function _buildIconCandidates(rawIconUrl, pageUrl) {
-    const candidates = [];
-    const seen = new Set();
-    const add = (u) => {
-        if (!u || seen.has(u)) return;
-        candidates.push(u);
-        seen.add(u);
+// Icon management functions are now in ShortcutManager
+const getFavicon = (typeof ShortcutManager !== 'undefined' && ShortcutManager.getFavicon) 
+    ? ShortcutManager.getFavicon 
+    : function(url) {
+        try {
+            const urlObj = new URL(url);
+            return `${urlObj.origin}/favicon.ico`;
+        } catch (e) {
+            return "icon.png";
+        }
     };
 
-    const basisUrl = pageUrl || rawIconUrl;
-    if (basisUrl) {
-        try {
-            const urlObj = new URL(basisUrl);
-            const origin = urlObj.origin;
-            const domain = urlObj.hostname;
-            
-            // Special handling for Gmail - use known working icon URLs
-            if (domain === 'mail.google.com' || domain.includes('mail.google.com')) {
-                // Gmail has SameSite cookie restrictions, so we use alternative sources
-                // Try DuckDuckGo first (most reliable for Gmail)
-                add('https://icons.duckduckgo.com/ip3/mail.google.com.ico');
-                // Then try Google's Gmail icon directly (if available)
-                add('https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico');
-                // Finally try the site's own favicon (may fail due to SameSite, but worth trying)
-                add(`${origin}/favicon.ico`);
-                return candidates.length > 0 ? candidates : ['icon.png'];
-            }
-            
-            // Prioritize site's own favicon first (most reliable, no CORS issues)
-            add(`${origin}/favicon.ico`);
-            // Skip apple-touch-icon for known domains that don't have it
-            // This reduces 404 errors in console
-            const skipAppleTouchDomains = ['www.google.com', 'google.com', 'mail.google.com'];
-            if (!skipAppleTouchDomains.some(d => domain === d || domain.endsWith('.' + d))) {
-                add(`${origin}/apple-touch-icon.png`);
-                add(`${origin}/apple-touch-icon-precomposed.png`);
-            }
-        } catch (e) {
-            // Ignore parse errors
-        }
-    }
+// Icon management code has been moved to ShortcutManager
+// The following functions are now available via ShortcutManager:
+// - getIconSrc(key, url, pageUrl)
+// - cacheIcon(key, rawIconUrl, pageUrl)
+// - getFavicon(url)
 
-    // Then use provided icon URL (if any)
-    if (rawIconUrl) add(rawIconUrl);
+// Alias for backward compatibility
+const getIconSrc = (typeof ShortcutManager !== 'undefined' && ShortcutManager.getIconSrc)
+    ? ShortcutManager.getIconSrc
+    : function(key, url, pageUrl) {
+        return url || (pageUrl ? getFavicon(pageUrl) : null) || "icon.png";
+    };
 
-    // Finally, add icon services as fallbacks (may have CORS issues)
-    // Skip Google s2 for known problematic domains
-    if (basisUrl) {
-        try {
-            const urlObj = new URL(basisUrl);
-            const domain = urlObj.hostname;
-            // Skip Google s2 for mail.google.com as it returns 404
-            const skipGoogleS2Domains = ['mail.google.com'];
-            if (!skipGoogleS2Domains.some(d => domain === d || domain.endsWith('.' + d))) {
-                add(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`);
-            }
-            // DuckDuckGo icon service (may have CORS issues, but we handle it)
-            // For Gmail, we already added it above, so skip here to avoid duplicate
-            if (domain !== 'mail.google.com' && !domain.includes('mail.google.com')) {
-                add(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
-            }
-        } catch (e) {
-            // Ignore parse errors
-        }
-    }
+const cacheIcon = (typeof ShortcutManager !== 'undefined' && ShortcutManager.cacheIcon)
+    ? ShortcutManager.cacheIcon
+    : function(key, rawIconUrl, pageUrl) {
+        // Fallback: do nothing if ShortcutManager not available
+        return Promise.resolve();
+    };
 
-    if (candidates.length === 0) add("icon.png");
-    return candidates;
-}
-
-// --- Icon Caching Logic (IndexedDB with expiry and fallback) ---
-const ICON_CACHE_DB_NAME = 'genresfox-icon-cache';
-const ICON_CACHE_STORE = 'icons';
-const ICON_CACHE_DB_VERSION = 1;
-const ICON_CACHE_VERSION = 1;
-const ICON_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
-const _iconCacheInMemory = new Map();
-const _iconCacheInFlight = new Map();
-let _iconCacheDbPromise = null;
-
-function _openIconCacheDB() {
-    if (_iconCacheDbPromise) return _iconCacheDbPromise;
-    _iconCacheDbPromise = new Promise((resolve, reject) => {
-        const request = indexedDB.open(ICON_CACHE_DB_NAME, ICON_CACHE_DB_VERSION);
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains(ICON_CACHE_STORE)) {
-                db.createObjectStore(ICON_CACHE_STORE, { keyPath: 'key' });
-            }
-        };
-        request.onsuccess = () => {
-            resolve(request.result);
-        };
-        request.onerror = () => {
-            reject(request.error);
-        };
-    });
-    return _iconCacheDbPromise;
-}
-
-function _isIconFresh(entry) {
-    if (!entry) return false;
-    if (entry.version !== ICON_CACHE_VERSION) return false;
-    return (Date.now() - entry.updatedAt) < ICON_CACHE_TTL;
-}
-
-async function _getIconFromDB(key) {
-    const db = await _openIconCacheDB();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(ICON_CACHE_STORE, 'readonly');
-        const store = tx.objectStore(ICON_CACHE_STORE);
-        const req = store.get(key);
-        req.onsuccess = () => {
-            const entry = req.result || null;
-            resolve(entry);
-        };
-        req.onerror = () => {
-            reject(req.error);
-        };
-    });
-}
-
-async function _putIconToDB(key, dataUrl) {
-    const db = await _openIconCacheDB();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(ICON_CACHE_STORE, 'readwrite');
-        const store = tx.objectStore(ICON_CACHE_STORE);
-        const record = { 
-            key, 
-            data: dataUrl || null, 
-            status: dataUrl ? 'ok' : 'failed',
-            updatedAt: Date.now(), 
-            version: ICON_CACHE_VERSION 
-        };
-        store.put(record);
-        tx.oncomplete = () => {
-            resolve(record);
-        };
-        tx.onerror = () => {
-            reject(tx.error);
-        };
-    });
-}
-
-function _updateImagesForKey(key, dataUrl) {
-    document.querySelectorAll(`img[data-cache-key="${key}"]`).forEach(img => {
-        img.src = dataUrl;
-    });
-}
-
-/**
- * Check if URL is from a service that doesn't support CORS
- * @param {string} url
- * @returns {boolean}
- */
-function _isNonCorsService(url) {
-    if (!url) return false;
-    try {
-        const urlObj = new URL(url);
-        const hostname = urlObj.hostname;
-        const path = urlObj.pathname.toLowerCase();
-        
-        // Services that don't support CORS
-        const nonCorsServices = [
-            'icons.duckduckgo.com',
-            't0.gstatic.com',
-            't1.gstatic.com',
-            't2.gstatic.com',
-            't3.gstatic.com',
-            't4.gstatic.com',
-            't5.gstatic.com'
-        ];
-        
-        // Check for gstatic.com (including subdomains)
-        if (hostname.endsWith('.gstatic.com') || nonCorsServices.includes(hostname)) {
-            return true;
-        }
-        
-        // Google s2 favicon service redirects to gstatic.com, which doesn't support CORS
-        if (hostname === 'www.google.com' && path.includes('/s2/favicons')) {
-            return true;
-        }
-        
-        // Common websites that don't allow CORS for favicon
-        // These sites typically block CORS for favicon.ico and apple-touch-icon
-        const nonCorsDomains = [
-            'youtube.com',
-            'www.youtube.com',
-            'bilibili.com',
-            'www.bilibili.com',
-            'mail.google.com',
-            'github.com',
-            'www.github.com'
-        ];
-        
-        // Check if it's a favicon or icon request to these domains
-        const isIconRequest = path.includes('favicon') || 
-                             path.includes('apple-touch-icon') ||
-                             path.includes('icon');
-        
-        if (isIconRequest && nonCorsDomains.some(domain => hostname === domain || hostname.endsWith('.' + domain))) {
-            return true;
-        }
-        
-        return false;
-    } catch (e) {
-        return false;
-    }
-}
-
-async function _fetchIconAsDataUrl(url) {
-    // For services that don't support CORS, skip fetch and use Image fallback
-    if (_isNonCorsService(url)) {
-        throw new Error('Service does not support CORS, use Image fallback');
-    }
-    
-    try {
-        // Try with CORS first (for services that support it)
-        const response = await fetch(url, { 
-            mode: 'cors',
-            credentials: 'omit', // Don't send credentials
-            redirect: 'follow' // Follow redirects, but note that redirected URLs may have CORS issues
-        });
-        
-        // Check if response is ok (not 404, etc.)
-        if (!response.ok) {
-            // Silently handle 404 and other HTTP errors
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
-        const blob = await response.blob();
-        return await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    } catch (fetchErr) {
-        // Silently handle all fetch errors (CORS, 404, network errors, etc.)
-        // These are expected for some services and don't need to be logged
-        throw new Error('Fetch failed, use Image fallback');
-    }
-}
-
-async function _loadIconViaImage(url) {
-    return new Promise((resolve, reject) => {
-        // Suppress browser console errors for this image load
-        // We'll handle errors ourselves
-        const img = new Image();
-        
-        // Only set crossOrigin for services that support CORS
-        // For non-CORS services (like DuckDuckGo), don't set crossOrigin
-        // This allows the image to load but we can't convert to data URL
-        if (!_isNonCorsService(url)) {
-            img.crossOrigin = 'anonymous';
-        }
-        
-        // Set timeout to avoid hanging on slow/broken resources
-        const timeout = setTimeout(() => {
-            img.onload = null;
-            img.onerror = null;
-            img.src = ''; // Clear src to stop loading
-            reject(new Error('Image load timeout'));
-        }, 5000); // Reduced to 5 seconds for faster failure
-        
-        let resolved = false;
-        
-        img.onload = () => {
-            if (resolved) return;
-            resolved = true;
-            clearTimeout(timeout);
-            try {
-                // For non-CORS images, we can't use canvas.toDataURL due to tainted canvas
-                // Instead, return the original URL as data URL is not possible
-                if (_isNonCorsService(url)) {
-                    // Return the URL directly - browser will handle it
-                    resolve(url);
-                    return;
-                }
-                
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width || 64;
-                canvas.height = img.height || 64;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-                resolve(canvas.toDataURL('image/png'));
-            } catch (err) {
-                // If canvas conversion fails (tainted canvas), return original URL
-                if (err.name === 'SecurityError' || err.message.includes('tainted')) {
-                    resolve(url);
-                } else {
-                    reject(err);
-                }
-            }
-        };
-        
-        img.onerror = () => {
-            if (resolved) return;
-            resolved = true;
-            clearTimeout(timeout);
-            img.src = ''; // Clear src to stop any further attempts
-            // Silently reject - errors are expected for missing resources (404, CORS, etc.)
-            reject(new Error('Image load failed'));
-        };
-        
-        // Set src last to start loading
-        img.src = url;
-    });
-}
-
-async function cacheIcon(key, rawIconUrl, pageUrl) {
-    if (_iconCacheInFlight.has(key)) return _iconCacheInFlight.get(key);
-
-    const task = (async () => {
-        const candidates = _buildIconCandidates(rawIconUrl, pageUrl);
-        for (const candidate of candidates) {
-            try {
-                // For known non-CORS services, skip fetch and use Image directly
-                if (_isNonCorsService(candidate)) {
-                    const result = await _loadIconViaImage(candidate);
-                    // result might be a data URL or the original URL (for non-CORS services)
-                    _iconCacheInMemory.set(key, { data: result, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
-                    // Only store in DB if it's a data URL (not a regular URL)
-                    if (result.startsWith('data:')) {
-                        await _putIconToDB(key, result);
-                        localStorage.setItem(`icon_cache_${key}`, result);
-                    }
-                    _updateImagesForKey(key, result);
-                    return;
-                }
-                
-                // Try fetch first (for CORS-enabled services)
-                const dataUrl = await _fetchIconAsDataUrl(candidate);
-                _iconCacheInMemory.set(key, { data: dataUrl, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
-                await _putIconToDB(key, dataUrl);
-                _updateImagesForKey(key, dataUrl);
-                // Keep legacy localStorage for backward compatibility
-                localStorage.setItem(`icon_cache_${key}`, dataUrl);
-                return;
-            } catch (fetchErr) {
-                // If fetch failed (CORS or other error), try Image-based fallback
-                try {
-                    const result = await _loadIconViaImage(candidate);
-                    // result might be a data URL or the original URL (for non-CORS services)
-                    _iconCacheInMemory.set(key, { data: result, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
-                    // Only store in DB if it's a data URL (not a regular URL)
-                    if (result.startsWith('data:')) {
-                        await _putIconToDB(key, result);
-                        localStorage.setItem(`icon_cache_${key}`, result);
-                    }
-                    _updateImagesForKey(key, result);
-                    return;
-                } catch (imgErr) {
-                    // Silently continue to next candidate
-                    // All errors are expected and handled gracefully
-                    continue;
-                }
-            }
-        }
-        // Silently mark as failed - don't warn as this is expected for some icons
-        // Mark this key as failed so future getIconSrc() calls won't keep retrying
-        const failedEntry = {
-            key,
-            data: null,
-            status: 'failed',
-            updatedAt: Date.now(),
-            version: ICON_CACHE_VERSION
-        };
-        _iconCacheInMemory.set(key, failedEntry);
-        try {
-            await _putIconToDB(key, null);
-        } catch (_) {
-            // ignore DB failure for failed marker
-        }
-    })().finally(() => {
-        _iconCacheInFlight.delete(key);
-    });
-
-    _iconCacheInFlight.set(key, task);
-    return task;
-}
-
-function getIconSrc(key, url, pageUrl) {
-    const preferredUrl = url || (pageUrl ? getFavicon(pageUrl) : null) || "icon.png";
-
-    // 1) In-memory cache
-    const mem = _iconCacheInMemory.get(key);
-    if (mem && _isIconFresh(mem)) {
-        const isFailed = mem.status === 'failed' || !mem.data;
-        if (isFailed) {
-            return preferredUrl;
-        }
-        return mem.data;
-    }
-
-    // 2) Legacy localStorage (migrate to DB asynchronously)
-    const legacy = localStorage.getItem(`icon_cache_${key}`);
-    if (legacy) {
-        // Treat legacy localStorage entry as fresh for this session so we don't refetch every render
-        _iconCacheInMemory.set(key, { data: legacy, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
-        _putIconToDB(key, legacy).catch(() => {});
-        // Refresh asynchronously to ensure long-term freshness
-        cacheIcon(key, preferredUrl, pageUrl);
-        return legacy;
-    }
-
-    // 3) IndexedDB async fetch; update DOM when ready
-    _getIconFromDB(key).then(entry => {
-        if (entry && _isIconFresh(entry)) {
-            const isFailed = entry.status === 'failed' || !entry.data;
-            _iconCacheInMemory.set(key, entry);
-            if (!isFailed && entry.data) {
-                _updateImagesForKey(key, entry.data);
-            }
-            if (!isFailed) {
-                return;
-            }
-            // For failed entries, don't retry cacheIcon; just rely on preferredUrl
-            return; // Fix: explicitly return to prevent retry
-        } else if (entry && entry.data) {
-            // Stale: show it first, then refresh
-            _iconCacheInMemory.set(key, entry);
-            _updateImagesForKey(key, entry.data);
-            cacheIcon(key, preferredUrl, pageUrl);
-            return;
-        } else {
-            cacheIcon(key, preferredUrl, pageUrl);
-            return;
-        }
-    }).catch((err) => {
-        cacheIcon(key, preferredUrl, pageUrl);
-    });
-
-    // 4) Fallback to live URL while cache resolves
-    return preferredUrl;
-}
+// Remove old icon management code (moved to ShortcutManager)
+// Keeping this comment block to mark where code was removed
+/* Icon management code removed - see shortcut-manager.js */
 
 // --- UI Rendering ---
 function _updateSearchActionWidth() {
     if (!searchActionBtn || !searchActionLabel) return;
-    
-    // Temporarily show label to measure its actual width
-    const originalMaxWidth = searchActionLabel.style.maxWidth;
-    const originalOpacity = searchActionLabel.style.opacity;
-    const originalVisibility = searchActionLabel.style.visibility;
-    
-    // Make label visible for measurement
-    searchActionLabel.style.maxWidth = 'none';
-    searchActionLabel.style.opacity = '1';
-    searchActionLabel.style.visibility = 'hidden'; // Hidden but still measurable
-    searchActionLabel.style.position = 'absolute';
-    searchActionLabel.style.whiteSpace = 'nowrap';
-    
-    // Measure the actual width
-    const labelWidth = searchActionLabel.scrollWidth || searchActionLabel.offsetWidth;
-    
-    // Restore original styles
-    searchActionLabel.style.maxWidth = originalMaxWidth;
-    searchActionLabel.style.opacity = originalOpacity;
-    searchActionLabel.style.visibility = originalVisibility;
-    searchActionLabel.style.position = '';
-    
-        // Calculate expanded width: icon (16px) + gap (8px) + label + padding (32px total)
-        // Expanded = icon(16) + gap(8) + labelWidth + padding(32) = 56 + labelWidth
-        const iconWidth = 16;
-        const gap = 8;
-        const paddingTotal = 32; // 16px left + 16px right
-        const minExpanded = 120; // Minimum expanded width for short texts
-        const expanded = Math.max(iconWidth + gap + labelWidth + paddingTotal, minExpanded);
-    
+
+    // Clone off-screen for measurement to avoid DOM thrashing on the live element
+    const clone = searchActionLabel.cloneNode(true);
+    clone.style.maxWidth = 'none';
+    clone.style.opacity = '1';
+    clone.style.visibility = 'hidden';
+    clone.style.position = 'absolute';
+    clone.style.whiteSpace = 'nowrap';
+    clone.style.left = '-9999px';
+    clone.style.top = '-9999px';
+    document.body.appendChild(clone);
+
+    const labelWidth = clone.scrollWidth || clone.offsetWidth || 0;
+    document.body.removeChild(clone);
+
+    // Calculate expanded width: icon (16px) + gap (8px) + label + padding (32px total)
+    // Expanded = icon(16) + gap(8) + labelWidth + padding(32) = 56 + labelWidth
+    const iconWidth = 16;
+    const gap = 8;
+    const paddingTotal = 32; // 16px left + 16px right
+    const minExpanded = 120; // Minimum expanded width for short texts
+    const expanded = Math.max(iconWidth + gap + labelWidth + paddingTotal, minExpanded);
+
     searchActionBtn.style.setProperty('--search-action-expand', `${expanded}px`);
 }
 
@@ -1023,6 +565,8 @@ function renderEngineDropdown() {
         const div = document.createElement("div");
         div.className = "engine-option";
         div.dataset.engine = key;
+        div.setAttribute('role', 'option');
+        div.setAttribute('aria-selected', key === currentEngine ? 'true' : 'false');
         
         const img = document.createElement('img');
         img.src = getIconSrc(key, engine.icon);
@@ -1078,171 +622,25 @@ function renderEnginesList() {
     });
 }
 
+// Shortcut rendering functions are now in ShortcutManager
 function renderShortcutsList() {
-    shortcutsList.innerHTML = '';
-    shortcuts.forEach((shortcut, index) => {
-        const div = document.createElement("div");
-        div.className = "list-item";
-
-        const spanInfo = document.createElement("span");
-        if (_isFolder(shortcut)) {
-            const folderIcon = document.createElement('span');
-            folderIcon.textContent = '[Folder]';
-            folderIcon.style.marginRight = '8px';
-            spanInfo.appendChild(folderIcon);
-            spanInfo.appendChild(document.createTextNode(shortcut.name || 'Folder'));
-        } else {
-            const img = document.createElement('img');
-            _decorateImg(img);
-            // Prefer cached icon; cache key matches grid view (url as stable identifier)
-            const cacheKey = `shortcut_${shortcut.url}`;
-            img.src = getIconSrc(cacheKey, shortcut.icon, shortcut.url);
-            img.dataset.cacheKey = cacheKey;
-            img.width = 20;
-            img.height = 20;
-            img.onerror = () => {
-                // Fallback to first letter to avoid repeated remote fetch retries
-                img.style.display = 'none';
-                const fallback = document.createElement('span');
-                fallback.textContent = shortcut.name.charAt(0).toUpperCase();
-                fallback.style.fontWeight = '600';
-                spanInfo.appendChild(fallback);
-            };
-            spanInfo.appendChild(img);
-            spanInfo.appendChild(document.createTextNode(' ' + shortcut.name));
-        }
-        div.appendChild(spanInfo);
-
-        const deleteBtn = document.createElement("span");
-        deleteBtn.className = "delete-btn";
-        deleteBtn.textContent = '\u00D7'; // multiplication sign
-        deleteBtn.addEventListener("click", () => deleteShortcut(index));
-        div.appendChild(deleteBtn);
-
-        shortcutsList.appendChild(div);
-    });
+    if (typeof ShortcutManager !== 'undefined' && ShortcutManager.renderShortcutsList) {
+        ShortcutManager.renderShortcutsList();
+    }
 }
 
+// Shortcut rendering functions are now in ShortcutManager
 function renderShortcutsGrid() {
-    shortcutsGrid.innerHTML = '';
-    
-    // Apply hide-names class based on setting
-    const showNames = localStorage.getItem('showShortcutNames') !== 'false';
-    shortcutsGrid.classList.toggle('hide-names', !showNames);
-    const targetPref = (localStorage.getItem(SHORTCUT_TARGET_KEY) || 'current') === 'newtab' ? '_blank' : '_self';
-    
-    shortcuts.forEach((shortcut, index) => {
-        const a = document.createElement("a");
-        a.className = "shortcut-item";
-        a.draggable = true;
-        a.dataset.index = index;
-        a.target = targetPref;
-        // Prevent CLS: set href immediately to reserve space
-        a.href = shortcut.url || '#';
-        if (targetPref === '_blank') {
-            a.rel = 'noopener noreferrer';
-        }
-
-        if (_isFolder(shortcut) && FOLDER_FEATURE_ENABLED) {
-            a.classList.add('shortcut-folder');
-            a.href = 'javascript:void(0)';
-            a.dataset.type = 'folder';
-            a.addEventListener('click', () => openFolderOverlay(index));
-
-            const iconDiv = document.createElement("div");
-            iconDiv.className = "shortcut-icon folder-icon";
-
-            const stack = document.createElement('div');
-            stack.className = 'folder-stack';
-            const previews = shortcut.items.slice(0, 4);
-            previews.forEach(item => {
-                const cell = document.createElement('div');
-                cell.className = 'folder-stack-cell';
-                const img = document.createElement('img');
-                img.alt = item.name;
-                const cacheKey = `shortcut_${item.url || item.id}`;
-                img.src = getIconSrc(cacheKey, item.icon || '', item.url);
-                img.onerror = () => {
-                    img.style.display = 'none';
-                    cell.textContent = (item.name || '?').charAt(0).toUpperCase();
-                    cell.classList.add('shortcut-icon-fallback');
-                    cell.title = (window.I18n && I18n.getMessage)
-                        ? (I18n.getMessage('shortcutIconError') || 'Icon failed to load, using initial instead.')
-                        : 'Icon failed to load, using initial instead.';
-                };
-                cell.appendChild(img);
-                stack.appendChild(cell);
-            });
-            if (previews.length === 0) {
-                const empty = document.createElement('div');
-                empty.className = 'folder-stack-empty';
-                empty.textContent = '[Folder]';
-                stack.appendChild(empty);
-            }
-            iconDiv.appendChild(stack);
-
-            const nameDiv = document.createElement("div");
-            nameDiv.className = "shortcut-name";
-            nameDiv.textContent = shortcut.name || 'Folder';
-
-            a.appendChild(iconDiv);
-            a.appendChild(nameDiv);
-        } else {
-            a.href = shortcut.url;
-            a.dataset.type = 'item';
-
-        const iconDiv = document.createElement("div");
-        iconDiv.className = "shortcut-icon loading"; // Add loading class for skeleton
-
-        const img = document.createElement("img");
-        img.alt = shortcut.name;
-        // Prevent CLS: set explicit dimensions
-        img.width = 24;
-        img.height = 24;
-        _decorateImg(img);
-            
-            // Use cached icon with stable key based on URL (not index, which changes on delete)
-            const cacheKey = `shortcut_${shortcut.url}`;
-            img.dataset.cacheKey = cacheKey; // For updating after cache completes
-            const iconSrc = getIconSrc(cacheKey, shortcut.icon, shortcut.url);
-            img.src = iconSrc;
-
-        // Remove loading class when image loads or fails
-        img.onload = () => {
-            iconDiv.classList.remove("loading");
-        };
-        img.onerror = () => {
-            iconDiv.classList.remove("loading");
-            // Use a fallback icon (first letter of name) with explicit error state
-            img.style.display = 'none';
-            iconDiv.textContent = shortcut.name.charAt(0).toUpperCase();
-            iconDiv.style.fontSize = '18px';
-            iconDiv.style.fontWeight = '600';
-            iconDiv.classList.add('shortcut-icon-fallback');
-            iconDiv.title = (window.I18n && I18n.getMessage)
-                ? (I18n.getMessage('shortcutIconError') || 'Icon failed to load, using initial instead.')
-                : 'Icon failed to load, using initial instead.';
-        };
-
-        iconDiv.appendChild(img);
-
-        const nameDiv = document.createElement("div");
-        nameDiv.className = "shortcut-name";
-        nameDiv.textContent = shortcut.name;
-
-        a.appendChild(iconDiv);
-        a.appendChild(nameDiv);
-        }
-        
-        // Add drag event listeners
-        a.addEventListener('dragstart', handleShortcutDragStart);
-        a.addEventListener('dragend', handleShortcutDragEnd);
-        a.addEventListener('dragover', handleShortcutDragOver);
-        a.addEventListener('drop', handleShortcutDrop);
-        a.addEventListener('dragleave', handleShortcutDragLeave);
-        
-        shortcutsGrid.appendChild(a);
-    });
+    if (typeof ShortcutManager !== 'undefined' && ShortcutManager.renderShortcutsGrid) {
+        ShortcutManager.renderShortcutsGrid(
+            handleShortcutDragStart,
+            handleShortcutDragEnd,
+            handleShortcutDragOver,
+            handleShortcutDrop,
+            handleShortcutDragLeave,
+            openFolderOverlay
+        );
+    }
 }
 
 // --- Actions ---
@@ -1260,59 +658,103 @@ window.engines = engines;
 
 window.deleteEngine = (key) => {
     if (defaultEngines[key]) return;
+    const engineName = engines[key]?.name || key;
+    const confirmMessage = (window.I18n && I18n.t)
+        ? I18n.t('deleteEngineConfirm', 'Delete search engine "{name}"?').replace('{name}', engineName)
+        : `Delete search engine "${engineName}"?`;
+    if (!confirm(confirmMessage)) return;
     delete engines[key];
     if (currentEngine === key) setEngine("google");
     saveEngines();
 };
 
+// Shortcut deletion is now handled by ShortcutManager
 window.deleteShortcut = (index, options = {}) => {
-    const shortcut = shortcuts[index];
-    if (!shortcut) return;
-
-    const { silent } = options;
-    if (!silent) {
-        const label = shortcut.name || shortcut.url || 'shortcut';
-        const i18nMsg = (window.I18n && I18n.getMessage) ? I18n.getMessage('deleteShortcutConfirm') : '';
-        let message = i18nMsg || '';
-
-        // Fallback to browser language if i18n not ready or missing
-        if (!message) {
-            const lang = (window.I18n && I18n.getCurrentLanguage && I18n.getCurrentLanguage()) ||
-                (navigator.language || '').toLowerCase();
-            if (lang.startsWith('zh')) {
-                message = '确认删除快捷方式"%s"？';
-            } else if (lang.startsWith('ja')) {
-                message = 'ショートカット"%s"を削除しますか？';
-            } else {
-                message = 'Delete shortcut "%s"?';
-            }
+    if (typeof ShortcutManager !== 'undefined' && ShortcutManager.delete) {
+        if (ShortcutManager.delete(index, options)) {
+            // ShortcutManager handles saving and rendering internally
+            return;
         }
-
-        if (message.includes('%s')) {
-            message = message.replace('%s', label);
-        } else {
-            message = `${message} "${label}"?`;
-        }
-        const confirmed = confirm(message);
-        if (!confirmed) return;
     }
-
-    shortcuts.splice(index, 1);
-    saveShortcuts();
+    // Fallback for backward compatibility
+    if (shortcuts && shortcuts[index]) {
+        shortcuts.splice(index, 1);
+        saveShortcuts();
+    }
 };
 
 // --- Event Listeners ---
 
 // Settings Modal
 settingsBtn.addEventListener("click", () => {
-    settingsModal.classList.add("active");
-    // Sync snow effect toggle state when opening settings
-    _updateSnowToggleVisibility();
+    openSettingsModal();
 });
-closeSettings.addEventListener("click", () => settingsModal.classList.remove("active"));
+settingsBtn.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openSettingsModal();
+    }
+});
+closeSettings.addEventListener("click", () => closeSettingsModal());
 settingsModal.addEventListener("click", (e) => {
-    if (e.target === settingsModal) settingsModal.classList.remove("active");
+    if (e.target === settingsModal) closeSettingsModal();
 });
+
+function closeSettingsModal() {
+    settingsModal.classList.remove("active");
+    document.removeEventListener("keydown", _handleSettingsModalKeydown);
+}
+
+function openSettingsModal() {
+    settingsModal.classList.add("active");
+    _updateSnowToggleVisibility();
+    document.addEventListener("keydown", _handleSettingsModalKeydown);
+}
+
+function _handleSettingsModalKeydown(e) {
+    if (e.key === "Escape") {
+        e.preventDefault();
+        closeSettingsModal();
+        return;
+    }
+    if (e.key === "Tab") {
+        _trapFocusInModal(e);
+    }
+}
+
+function _trapFocusInModal(e) {
+    const focusableSelectors = [
+        'button:not([disabled])',
+        'a[href]',
+        'input:not([disabled])',
+        'select:not([disabled])',
+        'textarea:not([disabled])',
+        '[tabindex]:not([tabindex="-1"])'
+    ];
+    const focusables = Array.from(
+        settingsModal.querySelectorAll(focusableSelectors.join(','))
+    ).filter(el => {
+        const style = window.getComputedStyle(el);
+        return style.display !== 'none' && style.visibility !== 'hidden';
+    });
+    if (focusables.length === 0) {
+        e.preventDefault();
+        return;
+    }
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey) {
+        if (document.activeElement === first || !settingsModal.contains(document.activeElement)) {
+            e.preventDefault();
+            last.focus();
+        }
+    } else {
+        if (document.activeElement === last || !settingsModal.contains(document.activeElement)) {
+            e.preventDefault();
+            first.focus();
+        }
+    }
+}
 
 // Tabs
 tabBtns.forEach(btn => {
@@ -1331,8 +773,54 @@ const resetShortcutsBtn = document.getElementById("resetShortcutsBtn");
 if (resetShortcutsBtn) {
     resetShortcutsBtn.addEventListener("click", () => {
         if (confirm("Reset shortcuts to default?")) {
-            shortcuts = JSON.parse(JSON.stringify(defaultShortcuts)); // Deep copy
+            if (typeof ShortcutManager !== 'undefined' && ShortcutManager.reset) {
+                ShortcutManager.reset();
+                shortcuts = ShortcutManager.getAll();
+            } else {
+                shortcuts = JSON.parse(JSON.stringify(defaultShortcuts)); // Deep copy
+            }
             saveShortcuts();
+        }
+    });
+}
+
+// ==================== Sticky Notes ====================
+const stickyNotesEnabledCheckbox = document.getElementById("stickyNotesEnabled");
+const addStickyNoteBtn = document.getElementById("addStickyNoteBtn");
+const clearStickyNotesBtn = document.getElementById("clearStickyNotesBtn");
+
+function _syncStickyNotesUI() {
+    if (stickyNotesEnabledCheckbox) {
+        stickyNotesEnabledCheckbox.checked = typeof StickyNotes !== 'undefined' ? StickyNotes.isEnabled() : false;
+    }
+}
+
+if (stickyNotesEnabledCheckbox) {
+    stickyNotesEnabledCheckbox.addEventListener("change", (e) => {
+        if (typeof StickyNotes !== 'undefined' && StickyNotes.setEnabled) {
+            StickyNotes.setEnabled(e.target.checked);
+        }
+    });
+}
+
+if (addStickyNoteBtn) {
+    addStickyNoteBtn.addEventListener("click", () => {
+        if (typeof StickyNotes !== 'undefined' && StickyNotes.createNote) {
+            StickyNotes.createNote();
+            _syncStickyNotesUI();
+        }
+    });
+}
+
+if (clearStickyNotesBtn) {
+    clearStickyNotesBtn.addEventListener("click", () => {
+        const msg = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? I18n.getMessage('clearAllStickyNotesConfirm', 'Clear all sticky notes?')
+            : 'Clear all sticky notes?';
+        if (confirm(msg)) {
+            if (typeof StickyNotes !== 'undefined' && StickyNotes.clearAll) {
+                StickyNotes.clearAll();
+            }
         }
     });
 }
@@ -1352,7 +840,7 @@ function _collectConfigurationData() {
     configData.settings.preferredEngine = currentEngine;
 
     // Shortcuts
-    configData.settings.shortcuts = shortcuts;
+    configData.settings.shortcuts = getShortcuts();
     const showNames = localStorage.getItem('showShortcutNames');
     if (showNames !== null) {
         configData.settings.showShortcutNames = showNames === 'true';
@@ -1360,6 +848,20 @@ function _collectConfigurationData() {
     const shortcutTarget = localStorage.getItem(SHORTCUT_TARGET_KEY);
     if (shortcutTarget) {
         configData.settings.shortcutOpenTarget = shortcutTarget;
+    }
+
+    // Shortcut settings
+    if (typeof ShortcutManager !== 'undefined' && ShortcutManager.getShortcutSettings) {
+        configData.settings.shortcutSettings = ShortcutManager.getShortcutSettings();
+    } else {
+        const shortcutSettings = localStorage.getItem('shortcutSettings');
+        if (shortcutSettings) {
+            try {
+                configData.settings.shortcutSettings = JSON.parse(shortcutSettings);
+            } catch (e) {
+                console.warn('Failed to parse shortcutSettings:', e);
+            }
+        }
     }
 
     // Wallpaper settings
@@ -1485,8 +987,20 @@ function _applyImportedConfiguration(config) {
 
     // Apply shortcuts
     if (Array.isArray(settings.shortcuts)) {
-        shortcuts = settings.shortcuts;
-        localStorage.setItem('shortcuts', JSON.stringify(shortcuts));
+        if (typeof ShortcutManager !== 'undefined') {
+            // Clear existing shortcuts and add imported ones
+            const currentShortcuts = ShortcutManager.getAll();
+            currentShortcuts.forEach((_, index) => {
+                ShortcutManager.delete(0, { silent: true });
+            });
+            settings.shortcuts.forEach(shortcut => {
+                ShortcutManager.add(shortcut);
+            });
+            shortcuts = ShortcutManager.getAll();
+        } else {
+            shortcuts = settings.shortcuts;
+            localStorage.setItem('shortcuts', JSON.stringify(shortcuts));
+        }
         renderShortcutsList();
         renderShortcutsGrid();
     }
@@ -1504,6 +1018,19 @@ function _applyImportedConfiguration(config) {
         localStorage.setItem(SHORTCUT_TARGET_KEY, settings.shortcutOpenTarget);
         _syncShortcutTargetUI();
         renderShortcutsGrid();
+    }
+
+    // Apply shortcut settings
+    if (settings.shortcutSettings && typeof settings.shortcutSettings === 'object') {
+        if (typeof ShortcutManager !== 'undefined' && ShortcutManager.updateShortcutSettings) {
+            ShortcutManager.updateShortcutSettings(settings.shortcutSettings);
+            // Re-render shortcuts
+            if (ShortcutManager.renderGrid) {
+                ShortcutManager.renderGrid(handleShortcutDragStart, handleShortcutDragEnd, handleShortcutDragOver, handleShortcutDrop, handleShortcutDragLeave, openFolderOverlay);
+            }
+        } else {
+            localStorage.setItem('shortcutSettings', JSON.stringify(settings.shortcutSettings));
+        }
     }
 
     // Apply wallpaper settings
@@ -1544,6 +1071,21 @@ function _applyImportedConfiguration(config) {
                 _updateSearchActionWidth();
             });
         }
+        if (typeof languageSelect !== 'undefined' && languageSelect) {
+            languageSelect.value = settings.preferredLanguage;
+        }
+    } else if (settings.preferredLanguage === null) {
+        // Explicitly follow browser settings
+        localStorage.removeItem('preferredLanguage');
+        if (typeof I18n !== 'undefined' && I18n.localize) {
+            I18n.localize();
+            requestAnimationFrame(() => {
+                _updateSearchActionWidth();
+            });
+        }
+        if (typeof languageSelect !== 'undefined' && languageSelect) {
+            languageSelect.value = LANGUAGE_AUTO;
+        }
     }
 
     // Apply snow effect
@@ -1562,7 +1104,12 @@ function _applyImportedConfiguration(config) {
 /**
  * Import configuration from file
  */
+let _importInProgress = false;
+
 async function importConfiguration() {
+    if (_importInProgress) return;
+    _importInProgress = true;
+
     try {
         if (typeof ConfigManager === 'undefined' || !ConfigManager.importFromFile) {
             throw new Error('ConfigManager not available');
@@ -1578,7 +1125,7 @@ async function importConfiguration() {
 
         // Wait for file selection
         await new Promise((resolve, reject) => {
-            fileInput.onchange = async (e) => {
+            fileInput.addEventListener('change', async (e) => {
                 const file = e.target.files?.[0];
                 if (!file) {
                     resolve(null);
@@ -1597,14 +1144,69 @@ async function importConfiguration() {
                         return;
                     }
 
+                    // Backup current configuration before applying imported one
+                    try {
+                        const currentConfig = {
+                            version: ConfigManager.getVersion(),
+                            exportDate: new Date().toISOString(),
+                            settings: {
+                                wallpaperSettings: JSON.parse(localStorage.getItem('wallpaperSettings') || '{}'),
+                                searchBoxSettings: JSON.parse(localStorage.getItem('searchBoxSettings') || '{}'),
+                                themeSettings: JSON.parse(localStorage.getItem('themeSettings') || '{}'),
+                                accessibilitySettings: JSON.parse(localStorage.getItem('accessibilitySettings') || '{}'),
+                                engines: JSON.parse(localStorage.getItem('customEngines') || '{}'),
+                                shortcuts: JSON.parse(localStorage.getItem('shortcuts') || '[]'),
+                                showShortcutNames: localStorage.getItem('showShortcutNames') === 'true',
+                                shortcutOpenTarget: localStorage.getItem('shortcutOpenTarget') || 'current',
+                                snowEffectEnabled: localStorage.getItem('snowEffectEnabled') === 'true',
+                                snowEffectTriggered: localStorage.getItem('snowEffectTriggered') === 'true',
+                                preferredLanguage: localStorage.getItem('preferredLanguage') || null
+                            }
+                        };
+                        const timestamp = Date.now();
+                        localStorage.setItem(`genresfox_config_backup_${timestamp}`, JSON.stringify(currentConfig));
+                        // Keep only the 5 most recent backups
+                        const backupKeys = Object.keys(localStorage)
+                            .filter(k => k.startsWith('genresfox_config_backup_'))
+                            .sort();
+                        while (backupKeys.length > 5) {
+                            localStorage.removeItem(backupKeys.shift());
+                        }
+                    } catch (backupErr) {
+                        console.warn('[Import] Failed to create backup:', backupErr);
+                    }
+
                     // Import and verify configuration
                     const result = await ConfigManager.importFromFile(file);
-                    
+
                     if (!result.success) {
-                        const errorMessage = I18n && I18n.t ? 
-                            I18n.t('importConfigError', 'Failed to import configuration: ') + result.error : 
+                        const errorMessage = I18n && I18n.t ?
+                            I18n.t('importConfigError', 'Failed to import configuration: ') + result.error :
                             'Failed to import configuration: ' + result.error;
-                        alert(errorMessage);
+
+                        // Check for backup and offer restore
+                        const backupKey = Object.keys(localStorage).find(k => k.startsWith('genresfox_config_backup_'));
+                        if (backupKey) {
+                            const restoreConfirm = I18n && I18n.t ?
+                                I18n.t('importConfigRestorePrompt', 'Import failed. Would you like to restore your previous configuration from backup?') :
+                                'Import failed. Would you like to restore your previous configuration from backup?';
+                            if (confirm(restoreConfirm)) {
+                                try {
+                                    const backupData = JSON.parse(localStorage.getItem(backupKey));
+                                    _applyImportedConfiguration(backupData);
+                                    const restoreSuccess = I18n && I18n.t ?
+                                        I18n.t('importConfigRestoreSuccess', 'Backup restored successfully!') :
+                                        'Backup restored successfully!';
+                                    alert(restoreSuccess);
+                                    window.location.reload();
+                                } catch (restoreErr) {
+                                    console.error('Failed to restore backup:', restoreErr);
+                                    alert(errorMessage);
+                                }
+                            }
+                        } else {
+                            alert(errorMessage);
+                        }
                         fileInput.value = '';
                         resolve(null);
                         return;
@@ -1612,7 +1214,7 @@ async function importConfiguration() {
 
                     // Show migration notice if configuration was migrated
                     if (result.config && result.migrated) {
-                        const migrationMessage = I18n && I18n.getMessage ? 
+                        const migrationMessage = I18n && I18n.getMessage ?
                             `Configuration was automatically upgraded from version ${result.fromVersion || 'legacy'} to ${ConfigManager.getVersion()}.` :
                             `Configuration was automatically upgraded from version ${result.fromVersion || 'legacy'} to ${ConfigManager.getVersion()}.`;
                         console.log('[Import] ' + migrationMessage);
@@ -1646,14 +1248,16 @@ async function importConfiguration() {
                     fileInput.value = '';
                     resolve(null);
                 }
-            };
+            }, { once: true });
         });
     } catch (e) {
         console.error('Failed to import configuration:', e);
-        const errorMessage = I18n && I18n.t ? 
-            I18n.t('importConfigError', 'Failed to import configuration: ') + e.message : 
+        const errorMessage = I18n && I18n.t ?
+            I18n.t('importConfigError', 'Failed to import configuration: ') + e.message :
             'Failed to import configuration: ' + e.message;
         alert(errorMessage);
+    } finally {
+        _importInProgress = false;
     }
 }
 
@@ -1667,8 +1271,10 @@ if (importConfigBtn) {
 function isDangerousUrl(url) {
     if (!url || typeof url !== 'string') return true;
     const trimmed = url.trim();
-    // Reject control/non-printable chars
-    if (/[^\x20-\x7E]/.test(trimmed)) return true;
+    // Block dangerous protocols in raw input before normalization
+    if (/^(javascript|data|vbscript|file|blob|about|chrome):/i.test(trimmed)) return true;
+    // Block control characters
+    if (/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(trimmed)) return true;
 
     try {
         // If protocol missing, assume https for validation only
@@ -1722,7 +1328,12 @@ addShortcutBtn.addEventListener("click", () => {
         
         if (!/^http(s)?:\/\//i.test(url)) url = "https://" + url;
         const icon = getFavicon(url);
-        shortcuts.push({ name, url, icon });
+        if (typeof ShortcutManager !== 'undefined' && ShortcutManager.add) {
+            ShortcutManager.add({ name, url, icon });
+            shortcuts = ShortcutManager.getAll();
+        } else {
+            shortcuts.push({ name, url, icon });
+        }
         saveShortcuts();
         document.getElementById("newShortcutName").value = "";
         document.getElementById("newShortcutUrl").value = "";
@@ -1738,6 +1349,14 @@ document.addEventListener("click", (e) => {
     if (!engineSelector.contains(e.target)) engineSelector.classList.remove("active");
 });
 
+// Engine Dropdown Escape key handler
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && engineSelector.classList.contains("active")) {
+        engineSelector.classList.remove("active");
+        selectedEngineIcon.focus();
+    }
+});
+
 // ==================== Shortcut Name Display Toggle ====================
 const showShortcutNamesCheckbox = document.getElementById('showShortcutNames');
 if (showShortcutNamesCheckbox) {
@@ -1750,6 +1369,7 @@ if (showShortcutNamesCheckbox) {
         shortcutsGrid.classList.toggle('hide-names', !e.target.checked);
     });
 }
+
 
 // ==================== Shortcut Open Target ====================
 function _syncShortcutTargetUI() {
@@ -1774,6 +1394,74 @@ if (shortcutOpenNewTab) {
         if (e.target.checked) {
             localStorage.setItem(SHORTCUT_TARGET_KEY, 'newtab');
             renderShortcutsGrid();
+        }
+    });
+}
+
+// ==================== Language Selector ====================
+const LANGUAGE_AUTO = 'auto';
+const languageSelect = document.getElementById('languageSelect');
+if (languageSelect && typeof I18n !== 'undefined') {
+    const supported = typeof I18n.getSupportedLanguages === 'function'
+        ? I18n.getSupportedLanguages()
+        : ['zh_CN', 'zh_TW', 'ja', 'en', 'es', 'fr', 'de', 'ru'];
+
+    // Ensure I18n has detected a language before we read it
+    if (typeof I18n.getCurrentLanguage === 'function' &&
+        !I18n.getCurrentLanguage() &&
+        typeof I18n.localize === 'function') {
+        // This will initialize _currentLanguage based on browser / saved prefs
+        I18n.localize();
+    }
+
+    const hasManualPreference = !!localStorage.getItem('preferredLanguage');
+    let initialLang = localStorage.getItem('preferredLanguage');
+    if (!hasManualPreference) {
+        // Follow browser: keep localStorage clean and show "auto"
+        languageSelect.value = LANGUAGE_AUTO;
+    } else {
+        if (!initialLang && typeof I18n.getCurrentLanguage === 'function') {
+            initialLang = I18n.getCurrentLanguage();
+        }
+        if (!initialLang || !supported.includes(initialLang)) {
+            initialLang = 'en';
+        }
+        languageSelect.value = initialLang;
+    }
+
+    languageSelect.addEventListener('change', (e) => {
+        const lang = e.target.value;
+
+        if (lang === LANGUAGE_AUTO) {
+            // Remove manual preference and re-detect based on browser
+            localStorage.removeItem('preferredLanguage');
+            if (typeof I18n.localize === 'function') {
+                I18n.localize();
+                if (typeof requestAnimationFrame === 'function') {
+                    requestAnimationFrame(() => {
+                        _updateSearchActionWidth();
+                    });
+                } else {
+                    _updateSearchActionWidth();
+                }
+            }
+            return;
+        }
+
+        if (!supported.includes(lang)) {
+            return;
+        }
+        localStorage.setItem('preferredLanguage', lang);
+        if (typeof I18n.localize === 'function') {
+            I18n.localize(lang);
+            // Recompute search button width after label changes
+            if (typeof requestAnimationFrame === 'function') {
+                requestAnimationFrame(() => {
+                    _updateSearchActionWidth();
+                });
+            } else {
+                _updateSearchActionWidth();
+            }
         }
     });
 }
@@ -1834,8 +1522,6 @@ function handleShortcutDragOver(e) {
     if (draggedShortcutIndex !== null && targetIndex !== draggedShortcutIndex) {
         target.classList.add('drag-over');
 
-        if (!FOLDER_FEATURE_ENABLED) return;
-
         // Only start timer if we are new to this target
         if (currentMergeTargetIndex !== targetIndex) {
             // Clean up previous target if any
@@ -1854,7 +1540,7 @@ function handleShortcutDragOver(e) {
                     mergeAllowedIndex = targetIndex;
                     target.classList.add('drag-over-merge');
                 }
-            }, 800); // 0.8s hover to allow merge
+            }, 300); // 0.3s hover to allow merge
         }
     }
 }
@@ -1867,8 +1553,6 @@ function handleShortcutDragLeave(e) {
     target.classList.remove('drag-over');
     target.classList.remove('drag-over-merge');
     
-    if (!FOLDER_FEATURE_ENABLED) return;
-
     const targetIndex = parseInt(target.dataset.index);
     if (currentMergeTargetIndex === targetIndex) {
         if (mergeHoverTimer) clearTimeout(mergeHoverTimer);
@@ -1891,51 +1575,94 @@ function handleShortcutDrop(e) {
     
     if (draggedShortcutIndex === null || targetIndex === draggedShortcutIndex) return;
 
-    const draggedItem = shortcuts[draggedShortcutIndex];
-    const targetItem = shortcuts[targetIndex];
+    const shortcutsList = getShortcuts();
+    const draggedItem = shortcutsList[draggedShortcutIndex];
+    const targetItem = shortcutsList[targetIndex];
 
-    // If drop target is a folder, push into folder (only when feature enabled)
-    if (FOLDER_FEATURE_ENABLED && _isFolder(targetItem)) {
-        shortcuts.splice(draggedShortcutIndex, 1);
-        _ensureShortcutId(draggedItem);
-        targetItem.items.push(draggedItem);
+    if (!draggedItem || !targetItem) return;
+
+    // If drop target is a folder, push into folder
+    if (_isFolder(targetItem)) {
+        if (typeof ShortcutManager !== 'undefined' && ShortcutManager.delete && ShortcutManager.update) {
+            ShortcutManager.delete(draggedShortcutIndex, { silent: true });
+            _ensureShortcutId(draggedItem);
+            targetItem.items.push(draggedItem);
+            ShortcutManager.update(targetIndex, targetItem);
+            shortcuts = ShortcutManager.getAll();
+        } else {
+            shortcuts.splice(draggedShortcutIndex, 1);
+            _ensureShortcutId(draggedItem);
+            targetItem.items.push(draggedItem);
+        }
         saveShortcuts();
         return;
     }
 
-    const allowMerge = FOLDER_FEATURE_ENABLED && mergeAllowedIndex === targetIndex;
+    const allowMerge = mergeAllowedIndex === targetIndex;
 
     // If dragging a folder onto item, just reorder
     if (_isFolder(draggedItem) && !_isFolder(targetItem)) {
-        shortcuts.splice(draggedShortcutIndex, 1);
-        shortcuts.splice(targetIndex, 0, draggedItem);
-        saveShortcuts();
-            return;
+        if (typeof ShortcutManager !== 'undefined' && ShortcutManager.reorder) {
+            ShortcutManager.reorder(draggedShortcutIndex, targetIndex);
+            shortcuts = ShortcutManager.getAll();
+        } else {
+            shortcuts.splice(draggedShortcutIndex, 1);
+            shortcuts.splice(targetIndex, 0, draggedItem);
         }
+        saveShortcuts();
+        return;
+    }
 
     // Create folder when item dropped onto another item
     if (!_isFolder(draggedItem) && !_isFolder(targetItem) && allowMerge) {
         const higher = Math.max(draggedShortcutIndex, targetIndex);
         const lower = Math.min(draggedShortcutIndex, targetIndex);
-        const first = shortcuts[lower];
-        const second = shortcuts[higher];
-        shortcuts.splice(higher, 1);
-        shortcuts.splice(lower, 1);
-        _ensureShortcutId(first);
-        _ensureShortcutId(second);
-        const folder = {
-            type: 'folder',
-            name: _createFolderName(),
-            items: [first, second]
-        };
-        shortcuts.splice(lower, 0, folder);
+        const first = shortcutsList[lower];
+        const second = shortcutsList[higher];
+        if (typeof ShortcutManager !== 'undefined' && ShortcutManager.delete && ShortcutManager.add) {
+            // Delete highest index first to avoid shifting issues
+            ShortcutManager.delete(higher, { silent: true });
+            ShortcutManager.delete(lower, { silent: true });
+            _ensureShortcutId(first);
+            _ensureShortcutId(second);
+            const folder = {
+                type: 'folder',
+                name: _createFolderName(),
+                items: [first, second]
+            };
+            ShortcutManager.add(folder);
+            // Reorder to correct position
+            const currentList = ShortcutManager.getAll();
+            const folderIndex = currentList.length - 1;
+            if (folderIndex !== lower) {
+                ShortcutManager.reorder(folderIndex, lower);
+            }
+            shortcuts = ShortcutManager.getAll();
+        } else {
+            // Delete highest index first to avoid shifting issues
+            shortcuts.splice(higher, 1);
+            shortcuts.splice(lower, 1);
+            _ensureShortcutId(first);
+            _ensureShortcutId(second);
+            const folder = {
+                type: 'folder',
+                name: _createFolderName(),
+                items: [first, second]
+            };
+            shortcuts.splice(lower, 0, folder);
+        }
         saveShortcuts();
         return;
     }
 
     // Default reorder
-    shortcuts.splice(draggedShortcutIndex, 1);
-    shortcuts.splice(targetIndex, 0, draggedItem);
+    if (typeof ShortcutManager !== 'undefined' && ShortcutManager.reorder) {
+        ShortcutManager.reorder(draggedShortcutIndex, targetIndex);
+        shortcuts = ShortcutManager.getAll();
+    } else {
+        shortcuts.splice(draggedShortcutIndex, 1);
+        shortcuts.splice(targetIndex, 0, draggedItem);
+    }
     saveShortcuts();
 }
 
@@ -1945,20 +1672,74 @@ function _ensureFolderOverlay() {
     if (folderOverlay) return;
     folderOverlay = document.createElement('div');
     folderOverlay.className = 'folder-overlay';
-    folderOverlay.innerHTML = `
-        <div class="folder-bubble">
-            <div class="folder-bubble-header">
-                <input id="folderOverlayInput" class="folder-bubble-input" />
-                <button id="folderOverlayClose" class="folder-bubble-close">&times;</button>
-            </div>
-            <div id="folderOverlayContent" class="folder-bubble-content"></div>
-        </div>
-    `;
+
+    const bubble = document.createElement('div');
+    bubble.className = 'folder-bubble';
+
+    const header = document.createElement('div');
+    header.className = 'folder-bubble-header';
+
+    const input = document.createElement('input');
+    input.id = 'folderOverlayInput';
+    input.className = 'folder-bubble-input';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.id = 'folderOverlayClose';
+    closeBtn.className = 'folder-bubble-close';
+    closeBtn.textContent = '×';
+
+    const content = document.createElement('div');
+    content.id = 'folderOverlayContent';
+    content.className = 'folder-bubble-content';
+
+    const footer = document.createElement('div');
+    footer.className = 'folder-bubble-footer';
+    const disbandBtn = document.createElement('button');
+    disbandBtn.className = 'folder-bubble-disband';
+    disbandBtn.id = 'folderOverlayDisband';
+    disbandBtn.textContent = (typeof I18n !== 'undefined' && I18n.getMessage)
+        ? I18n.getMessage('folderDisband', 'Disband Folder')
+        : 'Disband Folder';
+    footer.appendChild(disbandBtn);
+
+    header.appendChild(input);
+    header.appendChild(closeBtn);
+    bubble.appendChild(header);
+    bubble.appendChild(content);
+    bubble.appendChild(footer);
+    folderOverlay.appendChild(bubble);
+
     document.body.appendChild(folderOverlay);
-    folderOverlayContent = folderOverlay.querySelector('#folderOverlayContent');
-    folderOverlayInput = folderOverlay.querySelector('#folderOverlayInput');
-    const closeBtn = folderOverlay.querySelector('#folderOverlayClose');
+    folderOverlayContent = content;
+    folderOverlayInput = input;
     closeBtn.addEventListener('click', closeFolderOverlay);
+    disbandBtn.addEventListener('click', () => {
+        if (currentFolderIndex === null) return;
+        const shortcutsList = getShortcuts();
+        const folder = shortcutsList[currentFolderIndex];
+        if (!_isFolder(folder)) return;
+        if (typeof ShortcutManager !== 'undefined' && ShortcutManager.delete && ShortcutManager.add) {
+            ShortcutManager.delete(currentFolderIndex, { silent: true });
+            folder.items.forEach((item, i) => {
+                ShortcutManager.add(item);
+                const currentList = ShortcutManager.getAll();
+                const newIndex = currentList.length - 1;
+                const targetPos = currentFolderIndex + i;
+                if (newIndex !== targetPos && targetPos < currentList.length) {
+                    ShortcutManager.reorder(newIndex, targetPos);
+                }
+            });
+            shortcuts = ShortcutManager.getAll();
+        } else {
+            const items = folder.items.slice();
+            shortcuts.splice(currentFolderIndex, 1);
+            items.forEach((item, i) => {
+                shortcuts.splice(currentFolderIndex + i, 0, item);
+            });
+        }
+        saveShortcuts();
+        closeFolderOverlay();
+    });
     folderOverlay.addEventListener('click', (e) => {
         if (e.target === folderOverlay) closeFolderOverlay();
     });
@@ -1979,7 +1760,8 @@ function _positionFolderOverlay(targetEl) {
 
 function openFolderOverlay(index) {
     currentFolderIndex = index;
-    const folder = shortcuts[index];
+    const shortcutsList = getShortcuts();
+    const folder = shortcutsList[index];
     if (!_isFolder(folder)) return;
     _ensureFolderOverlay();
     folderOverlayInput.value = folder.name || '';
@@ -2009,29 +1791,77 @@ function openFolderOverlay(index) {
         const actions = document.createElement('div');
         actions.className = 'folder-item-actions';
         const removeBtn = document.createElement('button');
-        removeBtn.textContent = 'Remove';
+        removeBtn.textContent = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? I18n.getMessage('folderRemove', 'Remove')
+            : 'Remove';
         removeBtn.addEventListener('click', () => {
             folder.items.splice(idx, 1);
-            if (folder.items.length === 1) {
-                const lone = folder.items[0];
-                shortcuts.splice(index, 1, lone);
-            } else if (folder.items.length === 0) {
-                shortcuts.splice(index, 1);
+            if (typeof ShortcutManager !== 'undefined' && ShortcutManager.update && ShortcutManager.delete) {
+                if (folder.items.length === 1) {
+                    const lone = folder.items[0];
+                    ShortcutManager.delete(index, { silent: true });
+                    ShortcutManager.add(lone);
+                    // Reorder to correct position
+                    const currentList = ShortcutManager.getAll();
+                    const newIndex = currentList.length - 1;
+                    if (newIndex !== index) {
+                        ShortcutManager.reorder(newIndex, index);
+                    }
+                } else if (folder.items.length === 0) {
+                    ShortcutManager.delete(index, { silent: true });
+                } else {
+                    ShortcutManager.update(index, folder);
+                }
+                shortcuts = ShortcutManager.getAll();
+            } else {
+                if (folder.items.length === 1) {
+                    const lone = folder.items[0];
+                    shortcuts.splice(index, 1, lone);
+                } else if (folder.items.length === 0) {
+                    shortcuts.splice(index, 1);
+                }
             }
             saveShortcuts();
             openFolderOverlay(index);
         });
 
         const extractBtn = document.createElement('button');
-        extractBtn.textContent = 'Extract';
+        extractBtn.textContent = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? I18n.getMessage('folderExtract', 'Extract')
+            : 'Extract';
         extractBtn.addEventListener('click', () => {
             const extracted = folder.items.splice(idx, 1)[0];
-            shortcuts.splice(index + 1, 0, extracted);
-            if (folder.items.length === 1) {
-                const lone = folder.items[0];
-                shortcuts.splice(index, 1, lone);
-            } else if (folder.items.length === 0) {
-                shortcuts.splice(index, 1);
+            if (typeof ShortcutManager !== 'undefined' && ShortcutManager.add && ShortcutManager.update && ShortcutManager.delete) {
+                ShortcutManager.add(extracted);
+                // Reorder to correct position
+                const currentList = ShortcutManager.getAll();
+                const newIndex = currentList.length - 1;
+                if (newIndex !== index + 1) {
+                    ShortcutManager.reorder(newIndex, index + 1);
+                }
+                if (folder.items.length === 1) {
+                    const lone = folder.items[0];
+                    ShortcutManager.delete(index, { silent: true });
+                    ShortcutManager.add(lone);
+                    const updatedList = ShortcutManager.getAll();
+                    const loneIndex = updatedList.length - 1;
+                    if (loneIndex !== index) {
+                        ShortcutManager.reorder(loneIndex, index);
+                    }
+                } else if (folder.items.length === 0) {
+                    ShortcutManager.delete(index, { silent: true });
+                } else {
+                    ShortcutManager.update(index, folder);
+                }
+                shortcuts = ShortcutManager.getAll();
+            } else {
+                shortcuts.splice(index + 1, 0, extracted);
+                if (folder.items.length === 1) {
+                    const lone = folder.items[0];
+                    shortcuts.splice(index, 1, lone);
+                } else if (folder.items.length === 0) {
+                    shortcuts.splice(index, 1);
+                }
             }
             saveShortcuts();
             openFolderOverlay(index);
@@ -2046,10 +1876,15 @@ function openFolderOverlay(index) {
     });
 
     folderOverlayInput.onchange = () => {
-        const folder = shortcuts[currentFolderIndex];
+        const shortcutsList = getShortcuts();
+        const folder = shortcutsList[currentFolderIndex];
         if (_isFolder(folder)) {
             folder.name = folderOverlayInput.value.trim() || folder.name;
-        saveShortcuts();
+            if (typeof ShortcutManager !== 'undefined' && ShortcutManager.update) {
+                ShortcutManager.update(currentFolderIndex, folder);
+                shortcuts = ShortcutManager.getAll();
+            }
+            saveShortcuts();
         }
     };
 
@@ -2066,19 +1901,27 @@ function closeFolderOverlay() {
 }
 
 // ==================== Settings List Drag & Drop ====================
+let _settingsListDragDropObserver = null;
+
 function initSettingsListDragDrop() {
     const shortcutsList = document.getElementById('shortcutsList');
     if (!shortcutsList) return;
-    
+
+    // Disconnect any existing observer to prevent duplicates
+    if (_settingsListDragDropObserver) {
+        _settingsListDragDropObserver.disconnect();
+        _settingsListDragDropObserver = null;
+    }
+
     // Use MutationObserver to add drag handlers to new items
-    const observer = new MutationObserver(() => {
+    _settingsListDragDropObserver = new MutationObserver(() => {
         const items = shortcutsList.querySelectorAll('.list-item');
         items.forEach((item, index) => {
             if (!item.dataset.dragInit) {
                 item.draggable = true;
                 item.dataset.index = index;
                 item.dataset.dragInit = 'true';
-                
+
                 // Add drag handle icon
                 if (!item.querySelector('.drag-handle')) {
                     const handle = document.createElement('span');
@@ -2086,7 +1929,7 @@ function initSettingsListDragDrop() {
                     handle.innerHTML = '⋮⋮';
                     item.insertBefore(handle, item.firstChild);
                 }
-                
+
                 item.addEventListener('dragstart', handleListDragStart);
                 item.addEventListener('dragend', handleListDragEnd);
                 item.addEventListener('dragover', handleListDragOver);
@@ -2095,8 +1938,8 @@ function initSettingsListDragDrop() {
             }
         });
     });
-    
-    observer.observe(shortcutsList, { childList: true });
+
+    _settingsListDragDropObserver.observe(shortcutsList, { childList: true });
 }
 
 let draggedListIndex = null;
@@ -2239,66 +2082,6 @@ function _removeChromeCustomizeButton() {
             }
         }
 
-        // Fallback: search all elements for customize text and hide their containers
-        // BUT: Exclude critical app containers to prevent false positives
-        const criticalContainers = [
-            '.container',
-            '.search-container',
-            '.search-box',
-            '.shortcuts-grid',
-            '.modal',
-            '.modal-overlay',
-            '#settingsModal',
-            'body',
-            'html'
-        ];
-        
-        const allElements = document.querySelectorAll('*');
-        allElements.forEach(el => {
-            if (el.hasAttribute('data-genresfox-hidden')) return;
-            
-            // Skip critical app containers
-            let isCritical = false;
-            for (const selector of criticalContainers) {
-                if (el.matches && el.matches(selector)) {
-                    isCritical = true;
-                    break;
-                }
-                // Also check if element is inside a critical container
-                if (el.closest && el.closest(selector)) {
-                    isCritical = true;
-                    break;
-                }
-            }
-            if (isCritical) return;
-            
-            const text = (el.textContent || el.getAttribute('aria-label') || '').trim();
-            // More specific regex: must contain "Chrome" or be a button/link
-            const isCustomize = /(自定义\s*Chrome|Customize\s*Chrome|カスタマイズ\s*Chrome)/i.test(text) ||
-                               ((el.tagName === 'BUTTON' || el.tagName === 'A') && 
-                                /(自定义|Customize|カスタマイズ)/i.test(text));
-            
-            if (isCustomize) {
-                // Hide the element
-                el.style.display = 'none';
-                el.setAttribute('data-genresfox-hidden', 'true');
-                
-                // Also try to hide parent container if it looks like a footer
-                let parent = el.parentElement;
-                if (parent) {
-                    // Don't hide body or html
-                    if (parent === document.body || parent === document.documentElement) {
-                        return;
-                    }
-                    const parentStyle = window.getComputedStyle(parent);
-                    if (parentStyle.position === 'fixed' && 
-                        (parentStyle.bottom === '0px' || parentStyle.bottom === '0')) {
-                        parent.style.display = 'none';
-                        parent.setAttribute('data-genresfox-hidden', 'true');
-                    }
-                }
-            }
-        });
     }
 
     // Initial attempt
@@ -2327,14 +2110,9 @@ function _removeChromeCustomizeButton() {
         });
     }
 
-    // Periodic check as fallback (in case MutationObserver misses something)
-    const intervalId = setInterval(() => {
-        hideChromeFooter();
-    }, 500);
-
     // Stop checking after 15 seconds (Chrome usually adds it quickly)
     setTimeout(() => {
-        clearInterval(intervalId);
+        observer.disconnect();
     }, 15000);
 }
 
@@ -2449,8 +2227,8 @@ function _updateSnowToggleVisibility() {
     const toggleContainer = document.getElementById('snowEffectToggleContainer');
     if (!toggleContainer) return;
 
-    // Show toggle only if snow effect has been triggered
-    if (SnowEffect.isTriggered()) {
+    // Show toggle only if snow effect has been triggered AND we're in holiday period
+    if (SnowEffect.isTriggered() && SnowEffect.isHolidayPeriod()) {
         toggleContainer.style.display = 'block';
         
         // Sync checkbox state
@@ -2459,6 +2237,7 @@ function _updateSnowToggleVisibility() {
             snowToggle.checked = SnowEffect.isEnabled();
         }
     } else {
+        // Hide toggle if not in holiday period or not triggered
         toggleContainer.style.display = 'none';
     }
 }
@@ -2473,6 +2252,13 @@ function _setupSnowToggle() {
     if (!snowToggle) return;
 
     snowToggle.addEventListener('change', (e) => {
+        // Only allow toggling if we're in holiday period
+        if (!SnowEffect.isHolidayPeriod()) {
+            // Reset checkbox state if not in holiday period
+            e.target.checked = false;
+            return;
+        }
+
         if (e.target.checked) {
             SnowEffect.enable();
         } else {
@@ -2490,6 +2276,21 @@ async function init() {
         }
     };
 
+    // Update version number from manifest
+    await safeInit('Version Display', () => {
+        try {
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest) {
+                const manifest = chrome.runtime.getManifest();
+                const versionElement = document.getElementById('version-number');
+                if (versionElement && manifest && manifest.version) {
+                    versionElement.textContent = manifest.version;
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to update version display:', e);
+        }
+    });
+
     // Initialize i18n module first
     await safeInit('i18n', () => {
         if (typeof I18n !== 'undefined' && I18n.init) {
@@ -2502,6 +2303,23 @@ async function init() {
     await safeInit('AccessibilityManager', () => {
         if (typeof AccessibilityManager !== 'undefined' && AccessibilityManager.init) {
             AccessibilityManager.init();
+        }
+    });
+
+    // Initialize Shortcut Manager (includes icon management)
+    await safeInit('ShortcutManager', () => {
+        if (typeof ShortcutManager !== 'undefined' && ShortcutManager.init) {
+            ShortcutManager.init({
+                listElement: document.getElementById('shortcutsList'),
+                gridElement: document.getElementById('shortcuts'),
+                onChange: () => {
+                    // Sync shortcuts variable for backward compatibility
+                    shortcuts = ShortcutManager.getAll();
+                }
+            });
+            // Sync shortcuts variable
+            shortcuts = ShortcutManager.getAll();
+            
         }
     });
 
@@ -2518,6 +2336,10 @@ async function init() {
         requestIdleCallback(() => {
             safeInit('SnowEffect', () => {
                 if (typeof SnowEffect !== 'undefined') {
+                    // If not in holiday period, ensure effect is disabled
+                    if (!SnowEffect.isHolidayPeriod()) {
+                        SnowEffect.disable();
+                    }
                     SnowEffect.init();
                     _setupSnowEasterEgg();
                     // Sync toggle state after SnowEffect is initialized
@@ -2529,6 +2351,10 @@ async function init() {
         setTimeout(() => {
             safeInit('SnowEffect', () => {
                 if (typeof SnowEffect !== 'undefined') {
+                    // If not in holiday period, ensure effect is disabled
+                    if (!SnowEffect.isHolidayPeriod()) {
+                        SnowEffect.disable();
+                    }
                     SnowEffect.init();
                     _setupSnowEasterEgg();
                     // Sync toggle state after SnowEffect is initialized
@@ -2539,7 +2365,18 @@ async function init() {
     }
 
     // Ensure shortcuts exist (Double check)
-    if (!shortcuts || shortcuts.length === 0) {
+    if (typeof ShortcutManager !== 'undefined' && ShortcutManager.getAll) {
+        shortcuts = ShortcutManager.getAll();
+        if (!shortcuts || shortcuts.length === 0) {
+            if (ShortcutManager.reset) {
+                ShortcutManager.reset();
+                shortcuts = ShortcutManager.getAll();
+            } else {
+                shortcuts = JSON.parse(JSON.stringify(defaultShortcuts));
+            }
+            saveShortcuts();
+        }
+    } else if (!shortcuts || shortcuts.length === 0) {
         shortcuts = JSON.parse(JSON.stringify(defaultShortcuts));
         saveShortcuts();
     }
@@ -2570,7 +2407,15 @@ async function init() {
             AccessibilityManager.syncUI();
         }
     });
-    
+
+    // Initialize Sticky Notes
+    await safeInit('StickyNotes', () => {
+        if (typeof StickyNotes !== 'undefined' && StickyNotes.init) {
+            StickyNotes.init();
+            _syncStickyNotesUI();
+        }
+    });
+
     // Critical UI updates first (for LCP)
     updateUI();
     if (window.SearchBar && typeof window.SearchBar.init === 'function') {
@@ -2866,16 +2711,21 @@ function initRippleEffects() {
     }
     
     initRippleEffects();
-    
+
     // Re-init ripples when dynamic content is added
     const observer = new MutationObserver(() => {
         initRippleEffects();
     });
-    
+
     observer.observe(document.body, {
         childList: true,
         subtree: true
     });
+
+    // Disconnect ripple observer after initial scan to avoid perpetual overhead
+    setTimeout(() => {
+        observer.disconnect();
+    }, 5000);
 })();
 
 // Expose for global use
@@ -2885,6 +2735,6 @@ window.initRippleEffects = initRippleEffects;
 init();
 
 /**
- * Often, only those who have succeeded have a voice.
- * The words of those who haven't yet succeeded or who have failed are often treated as a joke.
+ * "Before you succeed, No one Wants to Know Your Story."
+ * -- Frank Underwood, House of Cards
  */

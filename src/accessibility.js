@@ -27,6 +27,16 @@ const AccessibilityManager = (function () {
             RELAXED: 'relaxed',
             VERY_RELAXED: 'very-relaxed'
         },
+        LETTER_SPACING: {
+            NORMAL: 'normal',
+            WIDE: 'wide',
+            WIDER: 'wider'
+        },
+        WORD_SPACING: {
+            NORMAL: 'normal',
+            WIDE: 'wide',
+            WIDER: 'wider'
+        },
         MOTION: {
             FULL: 'full',
             REDUCED: 'reduced',
@@ -51,7 +61,9 @@ const AccessibilityManager = (function () {
             theme: CONFIG.THEMES.STANDARD,
             fontSize: CONFIG.FONT_SIZE.DEFAULT,
             fontFamily: CONFIG.FONT_FAMILIES.DEFAULT,
-            lineSpacing: CONFIG.LINE_SPACING.NORMAL
+            lineSpacing: CONFIG.LINE_SPACING.NORMAL,
+            letterSpacing: CONFIG.LETTER_SPACING.NORMAL,
+            wordSpacing: CONFIG.WORD_SPACING.NORMAL
         },
         motion: CONFIG.MOTION.FULL,
         focus: CONFIG.FOCUS_STYLE.STANDARD
@@ -60,7 +72,9 @@ const AccessibilityManager = (function () {
     // ==================== Private State ====================
     let _state = {
         settings: { ...DEFAULT_SETTINGS },
-        isInitialized: false
+        isInitialized: false,
+        liveRegion: null,
+        skipLink: null
     };
 
     // ==================== DOM Element References ====================
@@ -72,12 +86,20 @@ const AccessibilityManager = (function () {
         fontSizeValue: null,
         fontFamilySelect: null,
         lineSpacingSelect: null,
+        // Letter spacing
+        letterSpacingSelect: null,
+        // Word spacing
+        wordSpacingSelect: null,
         // Motion
         motionSelect: null,
         // Focus
         focusStyleSelect: null,
         // Reset
-        resetBtn: null
+        resetBtn: null,
+        // Shortcuts
+        showShortcutsBtn: null,
+        shortcutsModal: null,
+        closeShortcutsBtn: null
     };
 
     // ==================== Settings Persistence ====================
@@ -107,7 +129,11 @@ const AccessibilityManager = (function () {
         try {
             localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(_state.settings));
         } catch (e) {
-            console.warn('Failed to save accessibility settings:', e);
+            if (e.name === 'QuotaExceededError') {
+                console.warn('Failed to save accessibility settings: storage quota exceeded');
+            } else {
+                console.warn('Failed to save accessibility settings:', e);
+            }
         }
     }
 
@@ -120,6 +146,8 @@ const AccessibilityManager = (function () {
     function _deepMerge(target, source) {
         const result = { ...target };
         for (const key in source) {
+            if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+            if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
             if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
                 result[key] = _deepMerge(target[key] || {}, source[key]);
             } else if (source[key] !== undefined) {
@@ -150,6 +178,12 @@ const AccessibilityManager = (function () {
 
         _state.settings.display.theme = theme;
         _saveSettings();
+        
+        // Announce theme change to screen readers
+        const themeAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('themeChanged', theme) || `Theme changed to ${theme}`)
+            : `Theme changed to ${theme}`;
+        _announceToScreenReader(themeAnnouncement);
     }
 
     // ==================== Font Management ====================
@@ -164,6 +198,9 @@ const AccessibilityManager = (function () {
         
         _state.settings.display.fontSize = clampedSize;
         _saveSettings();
+        
+        // Update page title with font size for screen readers
+        _updatePageTitle();
     }
 
     /**
@@ -205,6 +242,48 @@ const AccessibilityManager = (function () {
         }
 
         _state.settings.display.lineSpacing = spacing;
+        _saveSettings();
+    }
+
+    /**
+     * Apply letter spacing to document
+     * @param {string} spacing - Letter spacing identifier
+     */
+    function _applyLetterSpacing(spacing) {
+        const root = document.documentElement;
+        
+        // Remove all letter spacing classes
+        Object.values(CONFIG.LETTER_SPACING).forEach(s => {
+            root.classList.remove(`${CONFIG.CSS_CLASS_PREFIX}letter-spacing-${s}`);
+        });
+
+        // Add new letter spacing class (skip for normal)
+        if (spacing !== CONFIG.LETTER_SPACING.NORMAL) {
+            root.classList.add(`${CONFIG.CSS_CLASS_PREFIX}letter-spacing-${spacing}`);
+        }
+
+        _state.settings.display.letterSpacing = spacing;
+        _saveSettings();
+    }
+
+    /**
+     * Apply word spacing to document
+     * @param {string} spacing - Word spacing identifier
+     */
+    function _applyWordSpacing(spacing) {
+        const root = document.documentElement;
+        
+        // Remove all word spacing classes
+        Object.values(CONFIG.WORD_SPACING).forEach(s => {
+            root.classList.remove(`${CONFIG.CSS_CLASS_PREFIX}word-spacing-${s}`);
+        });
+
+        // Add new word spacing class (skip for normal)
+        if (spacing !== CONFIG.WORD_SPACING.NORMAL) {
+            root.classList.add(`${CONFIG.CSS_CLASS_PREFIX}word-spacing-${spacing}`);
+        }
+
+        _state.settings.display.wordSpacing = spacing;
         _saveSettings();
     }
 
@@ -266,6 +345,8 @@ const AccessibilityManager = (function () {
         _applyFontSize(display.fontSize);
         _applyFontFamily(display.fontFamily);
         _applyLineSpacing(display.lineSpacing);
+        _applyLetterSpacing(display.letterSpacing);
+        _applyWordSpacing(display.wordSpacing);
         _applyMotion(motion);
         _applyFocusStyle(focus);
     }
@@ -280,17 +361,36 @@ const AccessibilityManager = (function () {
         _applyTheme(e.target.value);
     }
 
+    // Debounce timer for font size slider to avoid layout thrashing on every pixel
+    let _fontSizeDebounceTimer = null;
+
     /**
      * Handle font size change
      * @param {Event} e
      */
     function _handleFontSizeChange(e) {
         const value = parseInt(e.target.value, 10);
-        _applyFontSize(value);
-        
+
+        // Update displayed value immediately for responsiveness
         if (_elements.fontSizeValue) {
             _elements.fontSizeValue.textContent = `${value}%`;
         }
+
+        // Debounce the expensive apply + save + announce work
+        if (_fontSizeDebounceTimer) {
+            clearTimeout(_fontSizeDebounceTimer);
+        }
+        _fontSizeDebounceTimer = setTimeout(() => {
+            _fontSizeDebounceTimer = null;
+            _applyFontSize(value);
+
+            if (_elements.fontSizeValue) {
+                const fontSizeAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+                    ? (I18n.getMessage('fontSizeChanged', value.toString()) || `Font size set to ${value} percent`)
+                    : `Font size set to ${value} percent`;
+                _announceToScreenReader(fontSizeAnnouncement);
+            }
+        }, 50);
     }
 
     /**
@@ -299,6 +399,10 @@ const AccessibilityManager = (function () {
      */
     function _handleFontFamilyChange(e) {
         _applyFontFamily(e.target.value);
+        const fontFamilyAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('fontFamilyChanged', e.target.value) || `Font family changed to ${e.target.value}`)
+            : `Font family changed to ${e.target.value}`;
+        _announceToScreenReader(fontFamilyAnnouncement);
     }
 
     /**
@@ -307,6 +411,34 @@ const AccessibilityManager = (function () {
      */
     function _handleLineSpacingChange(e) {
         _applyLineSpacing(e.target.value);
+        const lineSpacingAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('lineSpacingChanged', e.target.value) || `Line spacing changed to ${e.target.value}`)
+            : `Line spacing changed to ${e.target.value}`;
+        _announceToScreenReader(lineSpacingAnnouncement);
+    }
+
+    /**
+     * Handle letter spacing change
+     * @param {Event} e
+     */
+    function _handleLetterSpacingChange(e) {
+        _applyLetterSpacing(e.target.value);
+        const letterSpacingAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('letterSpacingChanged', e.target.value) || `Letter spacing changed to ${e.target.value}`)
+            : `Letter spacing changed to ${e.target.value}`;
+        _announceToScreenReader(letterSpacingAnnouncement);
+    }
+
+    /**
+     * Handle word spacing change
+     * @param {Event} e
+     */
+    function _handleWordSpacingChange(e) {
+        _applyWordSpacing(e.target.value);
+        const wordSpacingAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('wordSpacingChanged', e.target.value) || `Word spacing changed to ${e.target.value}`)
+            : `Word spacing changed to ${e.target.value}`;
+        _announceToScreenReader(wordSpacingAnnouncement);
     }
 
     /**
@@ -315,6 +447,10 @@ const AccessibilityManager = (function () {
      */
     function _handleMotionChange(e) {
         _applyMotion(e.target.value);
+        const motionAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('motionPreferenceChanged', e.target.value) || `Animation preference changed to ${e.target.value}`)
+            : `Animation preference changed to ${e.target.value}`;
+        _announceToScreenReader(motionAnnouncement);
     }
 
     /**
@@ -323,16 +459,132 @@ const AccessibilityManager = (function () {
      */
     function _handleFocusStyleChange(e) {
         _applyFocusStyle(e.target.value);
+        const focusAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('focusIndicatorChanged', e.target.value) || `Focus indicator changed to ${e.target.value}`)
+            : `Focus indicator changed to ${e.target.value}`;
+        _announceToScreenReader(focusAnnouncement);
+    }
+
+    /**
+     * Show keyboard shortcuts help
+     */
+    function _showShortcutsHelp() {
+        // Ensure elements are cached
+        if (!_elements.shortcutsModal) {
+            _elements.shortcutsModal = document.getElementById('shortcutsModal');
+        }
+        if (!_elements.shortcutsModal) {
+            console.warn('Shortcuts modal not found');
+            return;
+        }
+        
+        const shortcutsList = document.getElementById('shortcutsListContent');
+        if (!shortcutsList) {
+            console.warn('Shortcuts list content not found');
+            return;
+        }
+        
+        shortcutsList.innerHTML = '';
+        
+        const shortcuts = getShortcuts();
+        const shortcutEntries = [
+            { key: 'Alt + ↑', desc: 'switchEnginePrev', action: 'Switch to previous search engine' },
+            { key: 'Alt + ↓', desc: 'switchEngineNext', action: 'Switch to next search engine' },
+            { key: '/', desc: 'focusSearch', action: 'Focus search box' },
+            { key: 'Alt + ,', desc: 'openSettings', action: 'Open settings' },
+            { key: 'Alt + N', desc: 'createStickyNoteShortcut', action: 'Create sticky note' },
+            { key: 'Esc', desc: 'closeModal', action: 'Close modal or cancel' },
+            { key: 'Tab', desc: 'navigate', action: 'Navigate between elements' },
+            { key: 'Enter', desc: 'activate', action: 'Activate button or link' }
+        ];
+        
+        shortcutEntries.forEach(entry => {
+            const div = document.createElement('div');
+            div.className = 'shortcut-help-item';
+            div.style.cssText = 'display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);';
+            
+            const keySpan = document.createElement('span');
+            keySpan.className = 'shortcut-key';
+            keySpan.style.cssText = 'font-weight: 600; font-family: monospace; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px;';
+            keySpan.textContent = entry.key;
+            
+            const descSpan = document.createElement('span');
+            descSpan.className = 'shortcut-desc';
+            descSpan.style.cssText = 'color: rgba(255,255,255,0.8);';
+            // Try to get i18n text, fallback to action
+            if (typeof I18n !== 'undefined' && I18n.getMessage) {
+                const i18nText = I18n.getMessage(entry.desc);
+                descSpan.textContent = i18nText !== entry.desc ? i18nText : entry.action;
+            } else {
+                descSpan.textContent = entry.action;
+            }
+            
+            div.appendChild(keySpan);
+            div.appendChild(descSpan);
+            shortcutsList.appendChild(div);
+        });
+        
+        // Show modal - use both display and active class for compatibility
+        _elements.shortcutsModal.style.display = 'flex';
+        _elements.shortcutsModal.classList.add('active');
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        const openAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('shortcutsHelpOpened') || 'Keyboard shortcuts help opened')
+            : 'Keyboard shortcuts help opened';
+        _announceToScreenReader(openAnnouncement);
+        
+        // Focus close button
+        if (!_elements.closeShortcutsBtn) {
+            _elements.closeShortcutsBtn = document.getElementById('closeShortcuts');
+        }
+        if (_elements.closeShortcutsBtn) {
+            setTimeout(() => _elements.closeShortcutsBtn.focus(), 100);
+        }
+    }
+
+    /**
+     * Hide keyboard shortcuts help
+     */
+    function _hideShortcutsHelp() {
+        if (!_elements.shortcutsModal) {
+            _elements.shortcutsModal = document.getElementById('shortcutsModal');
+        }
+        if (!_elements.shortcutsModal) return;
+        
+        _elements.shortcutsModal.style.display = 'none';
+        _elements.shortcutsModal.classList.remove('active');
+        document.body.style.overflow = ''; // Restore scrolling
+        const closeAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('shortcutsHelpClosed') || 'Keyboard shortcuts help closed')
+            : 'Keyboard shortcuts help closed';
+        _announceToScreenReader(closeAnnouncement);
+        
+        // Return focus to show shortcuts button
+        if (!_elements.showShortcutsBtn) {
+            _elements.showShortcutsBtn = document.getElementById('a11yShowShortcuts');
+        }
+        if (_elements.showShortcutsBtn) {
+            _elements.showShortcutsBtn.focus();
+        }
     }
 
     /**
      * Handle reset button click
      */
     function _handleReset() {
+        const confirmMessage = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('resetAccessibilityConfirm') || 'Reset all accessibility settings to defaults?')
+            : 'Reset all accessibility settings to defaults?';
+        if (!confirm(confirmMessage)) return;
+
         _state.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
         _saveSettings();
         _applyAllSettings();
         _syncUI();
+        const resetAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('accessibilitySettingsReset') || 'Accessibility settings reset to defaults')
+            : 'Accessibility settings reset to defaults';
+        _announceToScreenReader(resetAnnouncement);
     }
 
     // ==================== UI Synchronization ====================
@@ -369,6 +621,18 @@ const AccessibilityManager = (function () {
             if (typeof CustomSelect !== 'undefined') CustomSelect.sync(_elements.lineSpacingSelect);
         }
 
+        // Letter spacing
+        if (_elements.letterSpacingSelect) {
+            _elements.letterSpacingSelect.value = display.letterSpacing || CONFIG.LETTER_SPACING.NORMAL;
+            if (typeof CustomSelect !== 'undefined') CustomSelect.sync(_elements.letterSpacingSelect);
+        }
+
+        // Word spacing
+        if (_elements.wordSpacingSelect) {
+            _elements.wordSpacingSelect.value = display.wordSpacing || CONFIG.WORD_SPACING.NORMAL;
+            if (typeof CustomSelect !== 'undefined') CustomSelect.sync(_elements.wordSpacingSelect);
+        }
+
         // Motion
         if (_elements.motionSelect) {
             _elements.motionSelect.value = motion;
@@ -380,6 +644,106 @@ const AccessibilityManager = (function () {
             _elements.focusStyleSelect.value = focus;
             if (typeof CustomSelect !== 'undefined') CustomSelect.sync(_elements.focusStyleSelect);
         }
+    }
+
+    // ==================== Screen Reader Support ====================
+
+    /**
+     * Create live region for screen reader announcements
+     */
+    function _createLiveRegion() {
+        if (_state.liveRegion) return;
+        
+        const liveRegion = document.createElement('div');
+        liveRegion.id = 'a11y-live-region';
+        liveRegion.setAttribute('role', 'status');
+        liveRegion.setAttribute('aria-live', 'polite');
+        liveRegion.setAttribute('aria-atomic', 'true');
+        liveRegion.className = 'sr-only';
+        liveRegion.style.cssText = 'position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;';
+        document.body.appendChild(liveRegion);
+        _state.liveRegion = liveRegion;
+    }
+
+    /**
+     * Announce message to screen readers
+     * @param {string} message - Message to announce
+     */
+    function _announceToScreenReader(message) {
+        if (!_state.liveRegion) {
+            _createLiveRegion();
+        }
+        
+        // Clear previous message
+        _state.liveRegion.textContent = '';
+        
+        // Set new message (with slight delay to ensure screen reader picks it up)
+        setTimeout(() => {
+            _state.liveRegion.textContent = message;
+            // Clear after announcement
+            setTimeout(() => {
+                _state.liveRegion.textContent = '';
+            }, 1000);
+        }, 100);
+    }
+
+    /**
+     * Update page title with accessibility information
+     */
+    function _updatePageTitle() {
+        try {
+            const manifest = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest 
+                ? chrome.runtime.getManifest() 
+                : null;
+            const appName = manifest ? manifest.name : 'GenresFox';
+            const fontSize = _state.settings.display.fontSize;
+            const theme = _state.settings.display.theme;
+            
+            let title = appName;
+            if (fontSize !== CONFIG.FONT_SIZE.DEFAULT) {
+                title += ` - Font: ${fontSize}%`;
+            }
+            if (theme !== CONFIG.THEMES.STANDARD) {
+                title += ` - ${theme}`;
+            }
+            
+            document.title = title;
+        } catch (e) {
+            console.warn('Failed to update page title:', e);
+        }
+    }
+
+    /**
+     * Create skip link for keyboard navigation
+     */
+    function _createSkipLink() {
+        if (_state.skipLink) return;
+        
+        const skipLink = document.createElement('a');
+        skipLink.href = '#search';
+        skipLink.className = 'skip-link';
+        const skipText = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('skipToMainContent') || 'Skip to main content')
+            : 'Skip to main content';
+        skipLink.textContent = skipText;
+        skipLink.style.cssText = `
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: #000;
+            color: #fff;
+            padding: 8px 16px;
+            text-decoration: none;
+            z-index: 10000;
+        `;
+        skipLink.addEventListener('focus', () => {
+            skipLink.style.top = '0';
+        });
+        skipLink.addEventListener('blur', () => {
+            skipLink.style.top = '-40px';
+        });
+        document.body.insertBefore(skipLink, document.body.firstChild);
+        _state.skipLink = skipLink;
     }
 
     // ==================== Initialization ====================
@@ -394,9 +758,14 @@ const AccessibilityManager = (function () {
             fontSizeValue: document.getElementById('a11yFontSizeValue'),
             fontFamilySelect: document.getElementById('a11yFontFamily'),
             lineSpacingSelect: document.getElementById('a11yLineSpacing'),
+            letterSpacingSelect: document.getElementById('a11yLetterSpacing'),
+            wordSpacingSelect: document.getElementById('a11yWordSpacing'),
             motionSelect: document.getElementById('a11yMotion'),
             focusStyleSelect: document.getElementById('a11yFocusStyle'),
-            resetBtn: document.getElementById('a11yReset')
+            resetBtn: document.getElementById('a11yReset'),
+            showShortcutsBtn: document.getElementById('a11yShowShortcuts'),
+            shortcutsModal: document.getElementById('shortcutsModal'),
+            closeShortcutsBtn: document.getElementById('closeShortcuts')
         };
     }
 
@@ -416,6 +785,12 @@ const AccessibilityManager = (function () {
         if (_elements.lineSpacingSelect) {
             _elements.lineSpacingSelect.addEventListener('change', _handleLineSpacingChange);
         }
+        if (_elements.letterSpacingSelect) {
+            _elements.letterSpacingSelect.addEventListener('change', _handleLetterSpacingChange);
+        }
+        if (_elements.wordSpacingSelect) {
+            _elements.wordSpacingSelect.addEventListener('change', _handleWordSpacingChange);
+        }
         if (_elements.motionSelect) {
             _elements.motionSelect.addEventListener('change', _handleMotionChange);
         }
@@ -425,6 +800,28 @@ const AccessibilityManager = (function () {
         if (_elements.resetBtn) {
             _elements.resetBtn.addEventListener('click', _handleReset);
         }
+        if (_elements.showShortcutsBtn) {
+            _elements.showShortcutsBtn.addEventListener('click', _showShortcutsHelp);
+        }
+        if (_elements.closeShortcutsBtn) {
+            _elements.closeShortcutsBtn.addEventListener('click', _hideShortcutsHelp);
+        }
+        if (_elements.shortcutsModal) {
+            _elements.shortcutsModal.addEventListener('click', (e) => {
+                if (e.target === _elements.shortcutsModal) {
+                    _hideShortcutsHelp();
+                }
+            });
+        }
+        
+        // Close shortcuts modal on Escape key (only if modal is visible)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (_elements.shortcutsModal && (_elements.shortcutsModal.classList.contains('active') || _elements.shortcutsModal.style.display === 'flex')) {
+                    _hideShortcutsHelp();
+                }
+            }
+        });
     }
 
     // ==================== Public API ====================
@@ -440,27 +837,88 @@ const AccessibilityManager = (function () {
             return;
         }
 
-        // 1. Load saved settings
+        // 1. Create accessibility infrastructure
+        _createLiveRegion();
+        _createSkipLink();
+
+        // 2. Load saved settings
         _state.settings = _loadSettings();
 
-        // 2. Cache DOM elements
+        // 3. Cache DOM elements
         _cacheElements();
 
-        // 3. Bind events (on native selects, they still work)
+        // 4. Bind events (on native selects, they still work)
         _bindEvents();
 
-        // 4. Apply all settings (theme, font, etc. - apply early)
+        // 5. Apply all settings (theme, font, etc. - apply early)
         _applyAllSettings();
 
-        // 5. Sync UI (native selects)
+        // 6. Sync UI (native selects)
         _syncUI();
 
-        // 6. Initialize keyboard shortcuts
+        // 7. Initialize keyboard shortcuts
         _initKeyboardShortcuts();
+
+        // 8. Enhance ARIA attributes
+        _enhanceARIA();
+
+        // 9. Update page title
+        _updatePageTitle();
 
         _state.isInitialized = true;
 
-        // 7. Custom selects will be initialized by CustomSelect module after i18n
+        // 10. Custom selects will be initialized by CustomSelect module after i18n
+    }
+
+    /**
+     * Enhance ARIA attributes for better screen reader support
+     */
+    function _enhanceARIA() {
+        // Add ARIA labels to controls
+        if (_elements.themeSelect) {
+            _elements.themeSelect.setAttribute('aria-label', 'Select theme');
+        }
+        if (_elements.fontSizeSlider) {
+            _elements.fontSizeSlider.setAttribute('aria-label', 'Font size');
+            _elements.fontSizeSlider.setAttribute('aria-valuemin', CONFIG.FONT_SIZE.MIN);
+            _elements.fontSizeSlider.setAttribute('aria-valuemax', CONFIG.FONT_SIZE.MAX);
+            _elements.fontSizeSlider.setAttribute('aria-valuenow', _state.settings.display.fontSize);
+        }
+        if (_elements.fontFamilySelect) {
+            _elements.fontFamilySelect.setAttribute('aria-label', 'Select font family');
+        }
+        if (_elements.lineSpacingSelect) {
+            _elements.lineSpacingSelect.setAttribute('aria-label', 'Select line spacing');
+        }
+        if (_elements.letterSpacingSelect) {
+            _elements.letterSpacingSelect.setAttribute('aria-label', 'Select letter spacing');
+        }
+        if (_elements.wordSpacingSelect) {
+            _elements.wordSpacingSelect.setAttribute('aria-label', 'Select word spacing');
+        }
+        if (_elements.showShortcutsBtn) {
+            _elements.showShortcutsBtn.setAttribute('aria-label', 'Show keyboard shortcuts help');
+        }
+        if (_elements.motionSelect) {
+            _elements.motionSelect.setAttribute('aria-label', 'Select animation preference');
+        }
+        if (_elements.focusStyleSelect) {
+            _elements.focusStyleSelect.setAttribute('aria-label', 'Select focus indicator style');
+        }
+        if (_elements.resetBtn) {
+            _elements.resetBtn.setAttribute('aria-label', 'Reset accessibility settings to defaults');
+        }
+
+        // Update slider ARIA attributes when value changes
+        if (_elements.fontSizeSlider) {
+            _elements.fontSizeSlider.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value, 10);
+                e.target.setAttribute('aria-valuenow', value);
+                if (_elements.fontSizeValue) {
+                    _elements.fontSizeValue.setAttribute('aria-live', 'polite');
+                }
+            });
+        }
     }
 
     /**
@@ -515,15 +973,19 @@ const AccessibilityManager = (function () {
         SWITCH_ENGINE_PREV: { key: 'ArrowUp', altKey: true, description: 'switchEnginePrev' },
         SWITCH_ENGINE_NEXT: { key: 'ArrowDown', altKey: true, description: 'switchEngineNext' },
         FOCUS_SEARCH: { key: '/', altKey: false, ctrlKey: false, description: 'focusSearch' },
-        OPEN_SETTINGS: { key: ',', altKey: true, description: 'openSettings' }
+        OPEN_SETTINGS: { key: ',', altKey: true, description: 'openSettings' },
+        CREATE_STICKY_NOTE: { key: 'n', altKey: true, description: 'createStickyNoteShortcut' }
     };
 
     let _shortcutsEnabled = true;
+    let _shortcutsInitialized = false;
 
     /**
      * Initialize keyboard shortcuts
      */
     function _initKeyboardShortcuts() {
+        if (_shortcutsInitialized) return;
+        _shortcutsInitialized = true;
         document.addEventListener('keydown', _handleGlobalKeydown);
     }
 
@@ -560,6 +1022,15 @@ const AccessibilityManager = (function () {
         if (e.altKey && e.key === ',') {
             e.preventDefault();
             _openSettings();
+            return;
+        }
+
+        // Alt + "n": Create sticky note
+        if (e.altKey && (e.key === 'n' || e.key === 'N')) {
+            e.preventDefault();
+            if (typeof StickyNotes !== 'undefined' && StickyNotes.createNote) {
+                StickyNotes.createNote();
+            }
             return;
         }
     }

@@ -20,39 +20,41 @@ const ImageProcessor = (function() {
         MAX_WIDTH: 3840,
         MAX_HEIGHT: 2160,
         
-        // Quality settings (optimized for perceptual quality)
-        QUALITY_HIGH: 0.95,      // Increased for better quality
-        QUALITY_MEDIUM: 0.88,   // Balanced quality/size
-        QUALITY_LOW: 0.75,      // Minimum acceptable quality
-        QUALITY_PREVIEW: 0.4,
-        
+        // Quality settings (near-lossless for maximum fidelity)
+        QUALITY_NEAR_LOSSLESS: 0.99,
+        QUALITY_HIGH: 0.98,
+        QUALITY_MEDIUM: 0.92,
+        QUALITY_LOW: 0.88,
+        QUALITY_PREVIEW: 0.65,
+
         // Progressive compression settings
-        PROGRESSIVE_STEPS: 3,   // Number of quality steps to try
-        QUALITY_TOLERANCE: 0.05, // Acceptable size deviation (5%)
-        
+        PROGRESSIVE_STEPS: 3,
+        QUALITY_TOLERANCE: 0.03,
+
         // Preview settings - aggressive downsampling for speed
-        PREVIEW_TINY: 100,      // Ultra-fast first preview
-        PREVIEW_SMALL: 400,     // Quick preview
-        PREVIEW_MEDIUM: 800,    // Better preview
-        
+        PREVIEW_TINY: 100,
+        PREVIEW_SMALL: 400,
+        PREVIEW_MEDIUM: 800,
+
         // Processing thresholds
-        LARGE_IMAGE_THRESHOLD: 10 * 1024 * 1024,  // 10MB
-        HUGE_IMAGE_THRESHOLD: 30 * 1024 * 1024,   // 30MB
-        
+        LARGE_IMAGE_THRESHOLD: 10 * 1024 * 1024,
+        HUGE_IMAGE_THRESHOLD: 30 * 1024 * 1024,
+
         // Pixel count limits
-        MAX_PIXELS: 80 * 1000 * 1000,  // 80 megapixels max
-        
+        MAX_PIXELS: 80 * 1000 * 1000,
+
         // Memory management
         CHUNK_SIZE: 2048,
         GC_DELAY: 100,
-        
+
         // Output formats
         OUTPUT_FORMAT: 'image/webp',
         FALLBACK_FORMAT: 'image/jpeg',
-        
+        OUTPUT_FORMAT_LOSSLESS: 'image/png',
+
         // File size limits
-        MAX_FILE_SIZE: 50 * 1024 * 1024,  // 50MB
-        TARGET_OUTPUT_SIZE: 5 * 1024 * 1024, // 5MB target
+        MAX_FILE_SIZE: 50 * 1024 * 1024,
+        TARGET_OUTPUT_SIZE: 8 * 1024 * 1024,
         
         // Cache settings
         CACHE_MAX_ENTRIES: 10,
@@ -87,7 +89,9 @@ const ImageProcessor = (function() {
             loadingPromise: null, // Promise that resolves when all workers have loaded WASM
             workersLoaded: 0, // Count of workers that have successfully loaded WASM
             totalWorkers: 0 // Total number of workers that should load WASM
-        }
+        },
+        // Shared WASM buffer fetched once in main thread
+        wasmBuffer: null
     };
 
     // ==================== Cache ====================
@@ -187,6 +191,191 @@ const ImageProcessor = (function() {
     // ==================== Web Worker ====================
     
     /**
+     * Create a shared worker onmessage handler to avoid duplicating logic
+     * @param {Worker} worker - The worker instance to bind to
+     * @returns {Function} onmessage handler
+     */
+    function _createWorkerMessageHandler(worker) {
+        return (e) => {
+            const { type, id, result, error, progress } = e.data;
+
+            const deliver = () => {
+                switch (type) {
+                    case 'loaded': {
+                        const timeoutId = _state.workerInitTimeouts.get(worker);
+                        if (timeoutId) {
+                            clearTimeout(timeoutId);
+                            _state.workerInitTimeouts.delete(worker);
+                        }
+
+                        try {
+                            worker.postMessage({
+                                type: 'init',
+                                id: 0,
+                                data: {
+                                    config: {
+                                        ...CONFIG,
+                                        WASM_ENABLED: CONFIG.WASM_URL ? CONFIG.WASM_ENABLED : false,
+                                        WASM_URL: CONFIG.WASM_URL || null
+                                    }
+                                }
+                            });
+                        } catch (err) {
+                            console.error('Failed to send init message to worker:', err);
+                            const idx = _state.workers.indexOf(worker);
+                            if (idx > -1) {
+                                _state.workers.splice(idx, 1);
+                            }
+                            try {
+                                worker.terminate();
+                            } catch (_) {
+                                // Ignore termination errors
+                            }
+                        }
+                        return true;
+                    }
+                    case 'ready':
+                        if (!worker.__ready) {
+                            worker.__ready = true;
+                            _state.workerReadyCount++;
+                            const timeoutId = _state.workerInitTimeouts.get(worker);
+                            if (timeoutId) {
+                                clearTimeout(timeoutId);
+                                _state.workerInitTimeouts.delete(worker);
+                            }
+                        }
+                        return true;
+                    case 'wasmLoaded': {
+                        if (!worker.__wasmLoaded) {
+                            worker.__wasmLoaded = true;
+                            _state.wasmState.workersLoaded++;
+                            if (_state.wasmState.workersLoaded >= _state.wasmState.totalWorkers) {
+                                _state.wasmState.status = 'loaded';
+                                if (_state.wasmState.loadingPromise) {
+                                    _state.wasmState.loadingPromise.resolve();
+                                    _state.wasmState.loadingPromise = null;
+                                }
+                            }
+                        }
+                        return true;
+                    }
+                    case 'wasmLoadFailed': {
+                        _state.wasmState.workersLoaded++;
+                        if (_state.wasmState.workersLoaded >= _state.wasmState.totalWorkers) {
+                            if (_state.wasmState.workersLoaded === _state.wasmState.totalWorkers &&
+                                _state.workers.filter(w => w?.__wasmLoaded).length === 0) {
+                                _state.wasmState.status = 'failed';
+                            } else {
+                                _state.wasmState.status = 'loaded';
+                            }
+                            if (_state.wasmState.loadingPromise) {
+                                _state.wasmState.loadingPromise.resolve();
+                                _state.wasmState.loadingPromise = null;
+                            }
+                        }
+                        return true;
+                    }
+                    case 'progress': {
+                        const progressCb = _state.workerCallbacks.get(id);
+                        if (progressCb?.onProgress) {
+                            progressCb.onProgress(progress);
+                            return true;
+                        }
+                        return false;
+                    }
+                    case 'complete':
+                    case 'previewComplete': {
+                        const cb = _state.workerCallbacks.get(id);
+                        if (cb?.resolve) {
+                            cb.resolve(result);
+                            _state.workerCallbacks.delete(id);
+                            const timeoutId = _state.callbackTimeouts.get(id);
+                            if (timeoutId) {
+                                clearTimeout(timeoutId);
+                                _state.callbackTimeouts.delete(id);
+                            }
+                        }
+                        worker.__busy = false;
+                        _dispatchAllPendingTasks();
+                        return true;
+                    }
+                    case 'error': {
+                        const errCb = _state.workerCallbacks.get(id);
+                        if (errCb?.reject) {
+                            errCb.reject(new Error(error));
+                            _state.workerCallbacks.delete(id);
+                            const timeoutId = _state.callbackTimeouts.get(id);
+                            if (timeoutId) {
+                                clearTimeout(timeoutId);
+                                _state.callbackTimeouts.delete(id);
+                            }
+                        }
+                        worker.__busy = false;
+                        _dispatchAllPendingTasks();
+                        return true;
+                    }
+                }
+                return true;
+            };
+
+            if (!deliver()) {
+                queueMicrotask(() => {
+                    if (!deliver()) {
+                        console.warn(`Worker message without callback (id=${id}, type=${type})`);
+                        _state.workerCallbacks.delete(id);
+                        const timeoutId = _state.callbackTimeouts.get(id);
+                        if (timeoutId) {
+                            clearTimeout(timeoutId);
+                            _state.callbackTimeouts.delete(id);
+                        }
+                    }
+                });
+            }
+        };
+    }
+
+    /**
+     * Create a shared worker onerror handler
+     * @param {Worker} worker - The worker instance to bind to
+     * @returns {Function} onerror handler
+     */
+    function _createWorkerErrorHandler(worker) {
+        return (e) => {
+            console.error('Worker error:', e);
+            const crashedIndex = _state.workers.indexOf(worker);
+
+            const initTimeoutId = _state.workerInitTimeouts.get(worker);
+            if (initTimeoutId) {
+                clearTimeout(initTimeoutId);
+                _state.workerInitTimeouts.delete(worker);
+            }
+
+            for (const [callbackId, callback] of _state.workerCallbacks.entries()) {
+                if (callback.reject) {
+                    callback.reject(new Error('Worker crashed or failed'));
+                }
+                _state.workerCallbacks.delete(callbackId);
+                const timeoutId = _state.callbackTimeouts.get(callbackId);
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    _state.callbackTimeouts.delete(callbackId);
+                }
+            }
+
+            if (worker.__ready) {
+                worker.__ready = false;
+                _state.workerReadyCount = Math.max(0, _state.workerReadyCount - 1);
+            }
+            worker.__busy = false;
+
+            if (crashedIndex > -1) {
+                _replaceWorker(crashedIndex);
+            }
+            _dispatchAllPendingTasks();
+        };
+    }
+
+    /**
      * Initialize Web Worker pool
      */
     function _initWorkers() {
@@ -201,229 +390,85 @@ const ImageProcessor = (function() {
             try {
                 const worker = new Worker('image-worker.js');
 
-                worker.onmessage = (e) => {
-                    const { type, id, result, error, progress } = e.data;
-
-                    const deliver = () => {
-                        switch (type) {
-                            case 'loaded': {
-                                // Worker script is loaded, now safe to send init message
-                                // Clear initialization timeout
-                                const timeoutId = _state.workerInitTimeouts.get(worker);
-                                if (timeoutId) {
-                                    clearTimeout(timeoutId);
-                                    _state.workerInitTimeouts.delete(worker);
-                                }
-                                
-                                // Send init message now that worker is ready
-                                try {
-                                    worker.postMessage({
-                                        type: 'init',
-                                        id: 0,
-                                        data: { 
-                                            config: {
-                                                ...CONFIG,
-                                                // Only pass WASM config if URL is available
-                                                WASM_ENABLED: CONFIG.WASM_URL ? CONFIG.WASM_ENABLED : false,
-                                                WASM_URL: CONFIG.WASM_URL || null
-                                            }
-                                        }
-                                    });
-                                } catch (err) {
-                                    console.error('Failed to send init message to worker:', err);
-                                    // Remove worker on init failure
-                                    const index = _state.workers.indexOf(worker);
-                                    if (index > -1) {
-                                        _state.workers.splice(index, 1);
-                                    }
-                                    try {
-                                        worker.terminate();
-                                    } catch (e) {
-                                        // Ignore termination errors
-                                    }
-                                }
-                                return true;
-                            }
-                            case 'ready':
-                                if (!worker.__ready) {
-                                    worker.__ready = true;
-                                    _state.workerReadyCount++;
-                                    // Clear initialization timeout on successful ready
-                                    const timeoutId = _state.workerInitTimeouts.get(worker);
-                                    if (timeoutId) {
-                                        clearTimeout(timeoutId);
-                                        _state.workerInitTimeouts.delete(worker);
-                                    }
-                                }
-                                return true;
-                            case 'wasmLoaded': {
-                                // Worker successfully loaded WASM
-                                if (!worker.__wasmLoaded) {
-                                    worker.__wasmLoaded = true;
-                                    _state.wasmState.workersLoaded++;
-                                    // Check if all workers have loaded
-                                    if (_state.wasmState.workersLoaded >= _state.wasmState.totalWorkers) {
-                                        _state.wasmState.status = 'loaded';
-                                        if (_state.wasmState.loadingPromise) {
-                                            _state.wasmState.loadingPromise.resolve();
-                                            _state.wasmState.loadingPromise = null;
-                                        }
-                                    }
-                                }
-                                return true;
-                            }
-                            case 'wasmLoadFailed': {
-                                // Worker failed to load WASM
-                                _state.wasmState.workersLoaded++;
-                                // Check if all workers have attempted (even if failed)
-                                if (_state.wasmState.workersLoaded >= _state.wasmState.totalWorkers) {
-                                    if (_state.wasmState.workersLoaded === _state.wasmState.totalWorkers && 
-                                        _state.workers.filter(w => w?.__wasmLoaded).length === 0) {
-                                        // All workers failed
-                                        _state.wasmState.status = 'failed';
-                                    } else {
-                                        // Some workers succeeded
-                                        _state.wasmState.status = 'loaded';
-                                    }
-                                    if (_state.wasmState.loadingPromise) {
-                                        _state.wasmState.loadingPromise.resolve();
-                                        _state.wasmState.loadingPromise = null;
-                                    }
-                                }
-                                return true;
-                            }
-                            case 'progress': {
-                                const progressCb = _state.workerCallbacks.get(id);
-                                if (progressCb?.onProgress) {
-                                    progressCb.onProgress(progress);
-                                    return true;
-                                }
-                                return false;
-                            }
-                            case 'complete':
-                            case 'previewComplete': {
-                                const cb = _state.workerCallbacks.get(id);
-                                if (cb?.resolve) {
-                                    cb.resolve(result);
-                                    _state.workerCallbacks.delete(id);
-                                    // Clear timeout
-                                    const timeoutId = _state.callbackTimeouts.get(id);
-                                    if (timeoutId) {
-                                        clearTimeout(timeoutId);
-                                        _state.callbackTimeouts.delete(id);
-                                    }
-                                }
-                                worker.__busy = false;
-                                _dispatchAllPendingTasks();
-                                return true;
-                            }
-                            case 'error': {
-                                const errCb = _state.workerCallbacks.get(id);
-                                if (errCb?.reject) {
-                                    errCb.reject(new Error(error));
-                                    _state.workerCallbacks.delete(id);
-                                    // Clear timeout
-                                    const timeoutId = _state.callbackTimeouts.get(id);
-                                    if (timeoutId) {
-                                        clearTimeout(timeoutId);
-                                        _state.callbackTimeouts.delete(id);
-                                    }
-                                }
-                                worker.__busy = false;
-                                _dispatchAllPendingTasks();
-                                return true;
-                            }
-                        }
-                        return true;
-                    };
-
-                    if (!deliver()) {
-                        queueMicrotask(() => {
-                            if (!deliver()) {
-                                console.warn(`Worker message without callback (id=${id}, type=${type})`);
-                                // Clean up callback to prevent memory leak
-                                _state.workerCallbacks.delete(id);
-                                // Clear timeout if exists
-                                const timeoutId = _state.callbackTimeouts.get(id);
-                                if (timeoutId) {
-                                    clearTimeout(timeoutId);
-                                    _state.callbackTimeouts.delete(id);
-                                }
-                            }
-                        });
-                    }
-                };
-
-                worker.onerror = (e) => {
-                    console.error('Worker error:', e);
-                    
-                    // Clean up initialization timeout if exists
-                    const initTimeoutId = _state.workerInitTimeouts.get(worker);
-                    if (initTimeoutId) {
-                        clearTimeout(initTimeoutId);
-                        _state.workerInitTimeouts.delete(worker);
-                    }
-                    
-                    // Clean up all callbacks for this worker to prevent memory leaks
-                    // Find callbacks that might be waiting on this worker
-                    for (const [callbackId, callback] of _state.workerCallbacks.entries()) {
-                        // Reject pending callbacks
-                        if (callback.reject) {
-                            callback.reject(new Error('Worker crashed or failed'));
-                        }
-                        _state.workerCallbacks.delete(callbackId);
-                        // Clear timeout
-                        const timeoutId = _state.callbackTimeouts.get(callbackId);
-                        if (timeoutId) {
-                            clearTimeout(timeoutId);
-                            _state.callbackTimeouts.delete(callbackId);
-                        }
-                    }
-                    
-                    if (worker.__ready) {
-                        worker.__ready = false;
-                        _state.workerReadyCount = Math.max(0, _state.workerReadyCount - 1);
-                    }
-                    worker.__busy = false;
-                    _dispatchAllPendingTasks();
-                };
+                worker.onmessage = _createWorkerMessageHandler(worker);
+                worker.onerror = _createWorkerErrorHandler(worker);
 
                 worker.__ready = false;
                 worker.__busy = false;
                 worker.__wasmLoaded = false;
-                worker.__initStartTime = Date.now(); // Track initialization start time
+                worker.__initStartTime = Date.now();
                 _state.workers.push(worker);
 
-                // Set up initialization timeout (10 seconds)
-                // If worker doesn't respond with 'ready' within timeout, mark as failed
                 const initTimeoutId = setTimeout(() => {
                     if (!worker.__ready) {
                         console.warn(`Worker initialization timeout after 10s, removing worker`);
-                        // Remove worker from pool
                         const index = _state.workers.indexOf(worker);
                         if (index > -1) {
                             _state.workers.splice(index, 1);
                         }
-                        // Clean up
                         try {
                             worker.terminate();
-                        } catch (e) {
+                        } catch (_) {
                             // Ignore termination errors
                         }
                         _state.workerInitTimeouts.delete(worker);
                     }
-                }, 10000); // 10 second timeout
+                }, 10000);
                 _state.workerInitTimeouts.set(worker, initTimeoutId);
-
-                // Note: We don't send init message here anymore
-                // Instead, we wait for 'loaded' message from worker (handled in onmessage handler above)
-                // This avoids race condition where init message is sent before worker script is ready
             } catch (e) {
                 console.warn('Failed to create Worker:', e);
             }
         }
     }
-    
+
+    /**
+     * Replace a crashed or terminated worker with a fresh one
+     * @param {number} index - The index of the worker to replace
+     */
+    function _replaceWorker(index) {
+        const oldWorker = _state.workers[index];
+        if (oldWorker) {
+            try {
+                oldWorker.terminate();
+            } catch (_) {
+                // Ignore termination errors
+            }
+        }
+
+        try {
+            const worker = new Worker('image-worker.js');
+
+            worker.onmessage = _createWorkerMessageHandler(worker);
+            worker.onerror = _createWorkerErrorHandler(worker);
+
+            worker.__ready = false;
+            worker.__busy = false;
+            worker.__wasmLoaded = false;
+            worker.__initStartTime = Date.now();
+            _state.workers[index] = worker;
+
+            const initTimeoutId = setTimeout(() => {
+                if (!worker.__ready) {
+                    console.warn(`Replacement worker initialization timeout after 10s, removing worker`);
+                    const idx = _state.workers.indexOf(worker);
+                    if (idx > -1) {
+                        _state.workers.splice(idx, 1);
+                    }
+                    try {
+                        worker.terminate();
+                    } catch (_) {
+                        // Ignore
+                    }
+                    _state.workerInitTimeouts.delete(worker);
+                }
+            }, 10000);
+            _state.workerInitTimeouts.set(worker, initTimeoutId);
+        } catch (e) {
+            console.warn('Failed to create replacement Worker:', e);
+            _state.workers.splice(index, 1);
+        }
+    }
+
     /**
      * Assign a task to a specific worker
      * @param {Worker} worker - The worker to assign the task to
@@ -431,6 +476,7 @@ const ImageProcessor = (function() {
      */
     function _assignTaskToWorker(worker, task) {
         const { type, data, onProgress, resolve, reject, transfers } = task;
+        const workerIndex = _state.workers.indexOf(worker);
 
         const id = ++_state.callbackId;
         _state.workerCallbacks.set(id, { resolve, reject, onProgress });
@@ -447,6 +493,15 @@ const ImageProcessor = (function() {
                 }
                 _state.workerCallbacks.delete(id);
                 worker.__busy = false;
+                // Terminate hung worker and replace it
+                try {
+                    worker.terminate();
+                } catch (e) {
+                    // Ignore termination errors
+                }
+                if (workerIndex > -1) {
+                    _replaceWorker(workerIndex);
+                }
                 _dispatchAllPendingTasks();
             }
             _state.callbackTimeouts.delete(id);
@@ -624,17 +679,20 @@ const ImageProcessor = (function() {
         return new Promise((resolve, reject) => {
             const url = _createTrackedObjectUrl(file);
             const img = new Image();
-            
+
             img.onload = () => {
                 if (onProgress) onProgress(30);
+                // Revoke the blob URL immediately after the image has loaded
+                // to prevent object URL leaks
+                _revokeTrackedObjectUrl(url);
                 resolve(img);
             };
-            
+
             img.onerror = () => {
                 _revokeTrackedObjectUrl(url);
                 reject(new Error('Failed to load image'));
             };
-            
+
             img.src = url;
         });
     }
@@ -888,10 +946,21 @@ const ImageProcessor = (function() {
 
     /**
      * Convert canvas to blob
+     * @param {HTMLCanvasElement} canvas - Source canvas
+     * @param {number} quality - Compression quality (0-1), ignored for lossless PNG
+     * @param {boolean} useLossless - Use PNG lossless encoding instead of WebP/JPEG
      */
-    async function _canvasToBlob(canvas, quality) {
+    async function _canvasToBlob(canvas, quality, useLossless = false) {
+        if (useLossless) {
+            return new Promise((resolve, reject) => {
+                canvas.toBlob(
+                    blob => blob ? resolve(blob) : reject(new Error('PNG blob conversion failed')),
+                    CONFIG.OUTPUT_FORMAT_LOSSLESS
+                );
+            });
+        }
         const format = await _getOutputFormat();
-        
+
         return new Promise((resolve, reject) => {
             canvas.toBlob(
                 blob => blob ? resolve(blob) : reject(new Error('Blob conversion failed')),
@@ -936,71 +1005,81 @@ const ImageProcessor = (function() {
     }
     
     /**
-     * Optimize blob size with intelligent quality selection
-     * Uses progressive compression and perceptual quality optimization
+     * Optimize blob size with near-lossless quality priority
+     * Favors perceptual quality over aggressive compression
+     * @param {HTMLCanvasElement} canvas - Source canvas
+     * @param {number} targetSize - Target file size
+     * @param {Object} options - Optimization options
+     * @param {boolean} options.nearLossless - Prefer PNG lossless if size permits
      */
-    async function _optimizeBlobSize(canvas, targetSize) {
+    async function _optimizeBlobSize(canvas, targetSize, options = {}) {
+        const { nearLossless = false } = options;
+
+        // For near-lossless mode, try PNG first when size is reasonable
+        if (nearLossless) {
+            const losslessBlob = await _canvasToBlob(canvas, null, true);
+            if (losslessBlob.size <= 15 * 1024 * 1024) {
+                console.log(`[ImageProcessor] Lossless PNG: ${(losslessBlob.size / 1024 / 1024).toFixed(2)}MB`);
+                return losslessBlob;
+            }
+            console.log(`[ImageProcessor] PNG too large (${(losslessBlob.size / 1024 / 1024).toFixed(2)}MB), using near-lossless WebP`);
+        }
+
         // Calculate image complexity to adjust quality baseline
         const complexity = await _calculateImageComplexity(canvas);
-        
-        // Adjust quality based on complexity:
+
         // High complexity (detailed images) -> higher quality needed
-        // Low complexity (simple images) -> can use lower quality
-        const baseQuality = CONFIG.QUALITY_HIGH + (complexity - 0.5) * 0.1;
-        const adjustedQuality = Math.max(CONFIG.QUALITY_LOW, Math.min(0.98, baseQuality));
-        
+        // Low complexity (simple images) -> can still use high quality (near-lossless)
+        const baseQuality = CONFIG.QUALITY_HIGH + (complexity - 0.5) * 0.02;
+        const adjustedQuality = Math.max(CONFIG.QUALITY_LOW, Math.min(CONFIG.QUALITY_NEAR_LOSSLESS, baseQuality));
+
         let quality = adjustedQuality;
         let blob = await _canvasToBlob(canvas, quality);
-        
-        // If already within target, return immediately
-        if (blob.size <= targetSize) {
+
+        // Near-lossless: accept larger files to preserve quality
+        if (blob.size <= targetSize * 1.5) {
             return blob;
         }
-        
-        // Progressive compression: try multiple quality levels
+
+        // Progressive compression with higher quality floor
         const qualitySteps = [
             adjustedQuality,
-            adjustedQuality * 0.9,
-            adjustedQuality * 0.8,
-            CONFIG.QUALITY_MEDIUM,
-            CONFIG.QUALITY_LOW
+            adjustedQuality * 0.97,
+            adjustedQuality * 0.94,
+            CONFIG.QUALITY_HIGH,
+            CONFIG.QUALITY_MEDIUM
         ];
-        
-        // Binary search with quality tolerance
+
         let minQuality = CONFIG.QUALITY_LOW;
         let maxQuality = adjustedQuality;
         let bestBlob = blob;
         let bestQuality = quality;
-        
-        // Try progressive steps first (faster for most cases)
+
         for (const stepQuality of qualitySteps) {
             if (stepQuality < minQuality || stepQuality > maxQuality) continue;
-            
+
             const testBlob = await _canvasToBlob(canvas, stepQuality);
-            
-            if (testBlob.size <= targetSize) {
-                // Within target, try to maximize quality
+
+            if (testBlob.size <= targetSize * (1 + CONFIG.QUALITY_TOLERANCE)) {
                 if (stepQuality > bestQuality || bestBlob.size > targetSize) {
                     bestBlob = testBlob;
                     bestQuality = stepQuality;
                     maxQuality = stepQuality;
                 }
             } else {
-                // Too large, need lower quality
                 minQuality = stepQuality;
             }
         }
-        
-        // If we found a good match, use it
+
         if (bestBlob.size <= targetSize * (1 + CONFIG.QUALITY_TOLERANCE)) {
             return bestBlob;
         }
-        
-        // Fine-tune with binary search
-        for (let i = 0; i < 5; i++) {
+
+        // Fine-tune with binary search (limited iterations)
+        for (let i = 0; i < 4; i++) {
             quality = (minQuality + maxQuality) / 2;
             blob = await _canvasToBlob(canvas, quality);
-            
+
             if (blob.size > targetSize * (1 + CONFIG.QUALITY_TOLERANCE)) {
                 maxQuality = quality;
             } else if (blob.size < targetSize * (1 - CONFIG.QUALITY_TOLERANCE)) {
@@ -1010,11 +1089,10 @@ const ImageProcessor = (function() {
                     bestQuality = quality;
                 }
             } else {
-                // Within tolerance, use this
                 return blob;
             }
         }
-        
+
         return bestBlob;
     }
 
@@ -1031,7 +1109,7 @@ const ImageProcessor = (function() {
         // Stage 1: Tiny preview (instant)
         const tinyDims = _calculateDimensions(img.width, img.height, CONFIG.PREVIEW_TINY, CONFIG.PREVIEW_TINY);
         const tinyCanvas = _processDirect(img, tinyDims.width, tinyDims.height);
-        const tinyBlob = await _canvasToBlob(tinyCanvas, 0.3);
+        const tinyBlob = await _canvasToBlob(tinyCanvas, 0.5);
         tinyCanvas.width = 0;
         tinyCanvas.height = 0;
         
@@ -1047,7 +1125,7 @@ const ImageProcessor = (function() {
         
         const smallDims = _calculateDimensions(img.width, img.height, CONFIG.PREVIEW_SMALL, CONFIG.PREVIEW_SMALL);
         const smallCanvas = _processDirect(img, smallDims.width, smallDims.height);
-        const smallBlob = await _canvasToBlob(smallCanvas, 0.5);
+        const smallBlob = await _canvasToBlob(smallCanvas, 0.65);
         smallCanvas.width = 0;
         smallCanvas.height = 0;
         
@@ -1130,7 +1208,8 @@ const ImageProcessor = (function() {
             useCache = true,
             useWorker = true,
             gammaCorrect = false,  // Use gamma-correct resampling
-            algorithm = 'auto'      // Resize algorithm: 'auto', 'nearest', 'bilinear', 'lanczos'
+            algorithm = 'auto',    // Resize algorithm: 'auto', 'nearest', 'bilinear', 'lanczos'
+            nearLossless = false   // Prefer near-lossless encoding (PNG or high-quality WebP)
         } = options;
 
         try {
@@ -1195,13 +1274,13 @@ const ImageProcessor = (function() {
                     _state.wasmState.status = 'loading';
                     _state.wasmState.workersLoaded = 0;
                     _state.wasmState.totalWorkers = _state.workers.filter(w => w && w.__ready).length;
-                    
+
                     if (_state.wasmState.totalWorkers === 0) {
                         console.warn('[ImageProcessor] No ready workers available for WASM loading');
                         _state.wasmState.status = 'failed';
                     } else {
                         CONFIG.WASM_ENABLED = true;
-                        
+
                         // Create promise to wait for WASM loading
                         let resolvePromise;
                         _state.wasmState.loadingPromise = {
@@ -1210,30 +1289,54 @@ const ImageProcessor = (function() {
                             }),
                             resolve: resolvePromise
                         };
-                        
-                        // Notify all ready workers to load WASM
-                        _state.workers.forEach(worker => {
-                            if (worker && worker.__ready) {
-                                worker.postMessage({
-                                    type: 'init',
-                                    id: 0,
-                                    data: { 
-                                        config: { 
-                                            WASM_ENABLED: true, 
-                                            WASM_URL: CONFIG.WASM_URL 
-                                        } 
-                                    }
-                                });
+
+                        // Fetch WASM once in main thread and share buffer with all workers
+                        // to avoid duplicate network requests
+                        try {
+                            if (!_state.wasmBuffer) {
+                                const resp = await fetch(CONFIG.WASM_URL);
+                                if (!resp.ok) {
+                                    throw new Error(`Failed to fetch WASM: ${resp.status} ${resp.statusText}`);
+                                }
+                                _state.wasmBuffer = await resp.arrayBuffer();
                             }
-                        });
-                        
+
+                            // Pass the pre-fetched buffer to all ready workers
+                            _state.workers.forEach(worker => {
+                                if (worker && worker.__ready) {
+                                    worker.postMessage({
+                                        type: 'wasm',
+                                        id: 0,
+                                        buffer: _state.wasmBuffer
+                                    });
+                                }
+                            });
+                        } catch (fetchErr) {
+                            console.warn('[ImageProcessor] Failed to fetch WASM buffer, falling back to URL-based loading:', fetchErr.message);
+                            // Fallback: let workers fetch individually
+                            _state.workers.forEach(worker => {
+                                if (worker && worker.__ready) {
+                                    worker.postMessage({
+                                        type: 'init',
+                                        id: 0,
+                                        data: {
+                                            config: {
+                                                WASM_ENABLED: true,
+                                                WASM_URL: CONFIG.WASM_URL
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                        }
+
                         console.log(`[ImageProcessor] Auto-enabling WASM for large image (${(totalPixels / 1000000).toFixed(1)}MP), waiting for workers to load...`);
-                        
+
                         // Wait for WASM to load (with timeout)
                         try {
                             await Promise.race([
                                 _state.wasmState.loadingPromise.promise,
-                                new Promise((_, reject) => 
+                                new Promise((_, reject) =>
                                     setTimeout(() => reject(new Error('WASM loading timeout')), 5000)
                                 )
                             ]);
@@ -1248,7 +1351,7 @@ const ImageProcessor = (function() {
                     try {
                         await Promise.race([
                             _state.wasmState.loadingPromise?.promise || Promise.resolve(),
-                            new Promise((_, reject) => 
+                            new Promise((_, reject) =>
                                 setTimeout(() => reject(new Error('WASM loading timeout')), 5000)
                             )
                         ]);
@@ -1333,13 +1436,13 @@ const ImageProcessor = (function() {
             // Main thread processing (fallback or primary)
             if (!blob) {
                 let canvas;
-                
+
                 // Choose processing strategy based on pixel count and scale factor
                 // This is more accurate than file size (8K images may be compressed <30MB)
                 const scaleFactorX = img.width / targetWidth;
                 const scaleFactorY = img.height / targetHeight;
                 const maxScaleFactor = Math.max(scaleFactorX, scaleFactorY);
-                
+
                 // Use multi-step scaling for large scale factors or large pixel counts
                 // Chunked processing has seam artifacts, so prefer multi-step
                 if (totalPixels > 20 * 1000 * 1000 || maxScaleFactor > 3) {
@@ -1358,11 +1461,11 @@ const ImageProcessor = (function() {
                     canvas = _processDirect(img, targetWidth, targetHeight);
                     onProgress(70);
                 }
-                
+
                 _revokeTrackedObjectUrl(img.src);
                 onProgress(75);
-                
-                blob = await _optimizeBlobSize(canvas, CONFIG.TARGET_OUTPUT_SIZE);
+
+                blob = await _optimizeBlobSize(canvas, CONFIG.TARGET_OUTPUT_SIZE, { nearLossless: options.nearLossless });
                 canvas.width = 0;
                 canvas.height = 0;
             }
@@ -1433,6 +1536,24 @@ const ImageProcessor = (function() {
         _cleanupAllObjectUrls();
         _cache.clear();
         _state.isProcessing = false;
+
+        // Clear all worker initialization timeouts
+        for (const [worker, timeoutId] of _state.workerInitTimeouts.entries()) {
+            clearTimeout(timeoutId);
+            try {
+                worker.terminate();
+            } catch (_) {
+                // ignore
+            }
+        }
+        _state.workerInitTimeouts.clear();
+
+        // Clear all callback timeouts
+        for (const [callbackId, timeoutId] of _state.callbackTimeouts.entries()) {
+            clearTimeout(timeoutId);
+            _state.workerCallbacks.delete(callbackId);
+        }
+        _state.callbackTimeouts.clear();
     }
 
     /**
@@ -1470,39 +1591,40 @@ const ImageProcessor = (function() {
             console.warn('[ImageProcessor] Invalid WASM URL provided');
             return;
         }
-        
+
         CONFIG.WASM_URL = wasmUrl;
         CONFIG.WASM_ENABLED = false; // Will be auto-enabled for large images
-        
+
         // Reset WASM state
         _state.wasmState.status = 'unloaded';
         _state.wasmState.workersLoaded = 0;
         _state.wasmState.totalWorkers = 0;
         _state.wasmState.loadingPromise = null;
-        
+        _state.wasmBuffer = null; // Clear cached buffer so new URL gets fetched
+
         // Reset worker WASM flags
         _state.workers.forEach(worker => {
             if (worker) {
                 worker.__wasmLoaded = false;
             }
         });
-        
+
         // Notify existing workers about WASM URL (but don't load yet)
         _state.workers.forEach(worker => {
             if (worker && worker.__ready) {
                 worker.postMessage({
                     type: 'init',
                     id: 0,
-                    data: { 
-                        config: { 
+                    data: {
+                        config: {
                             WASM_ENABLED: false, // Don't auto-load, wait for large image
-                            WASM_URL: wasmUrl 
-                        } 
+                            WASM_URL: wasmUrl
+                        }
                     }
                 });
             }
         });
-        
+
         console.log(`[ImageProcessor] WASM URL set: ${wasmUrl} (will auto-enable for images > ${CONFIG.WASM_AUTO_ENABLE_THRESHOLD / 1000000}MP)`);
     }
 

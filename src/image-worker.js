@@ -21,17 +21,19 @@ const ctx = self;
 let CONFIG = {
     MAX_WIDTH: 3840,
     MAX_HEIGHT: 2160,
-    QUALITY_HIGH: 0.95,      // Increased for better quality
-    QUALITY_MEDIUM: 0.88,    // Balanced quality/size
-    QUALITY_LOW: 0.75,       // Minimum acceptable quality
+    QUALITY_NEAR_LOSSLESS: 0.99,
+    QUALITY_HIGH: 0.98,
+    QUALITY_MEDIUM: 0.92,
+    QUALITY_LOW: 0.88,
     CHUNK_SIZE: 2048,
     OUTPUT_FORMAT: 'image/webp',
     FALLBACK_FORMAT: 'image/jpeg',
-    TARGET_OUTPUT_SIZE: 5 * 1024 * 1024,
+    OUTPUT_FORMAT_LOSSLESS: 'image/png',
+    TARGET_OUTPUT_SIZE: 8 * 1024 * 1024,
     WASM_URL: null,
     WASM_ENABLED: false,
-    WASM_AUTO_ENABLE_THRESHOLD: 20 * 1000 * 1000, // 20MP - auto-enable threshold
-    MAX_PIXELS: 80 * 1000 * 1000 // Keep for symmetry; enforced in main thread
+    WASM_AUTO_ENABLE_THRESHOLD: 20 * 1000 * 1000,
+    MAX_PIXELS: 80 * 1000 * 1000
 };
 
 // WASM state
@@ -45,6 +47,10 @@ const WASM = {
     hasLanczos: false,      // Whether Lanczos resampling is available
     hasGammaCorrect: false  // Whether gamma-correct resampling is available
 };
+
+// Message queue for WASM-dependent tasks
+let _wasmTaskQueue = [];
+let _wasmLoading = false;
 
 /**
  * Calculate optimal dimensions while maintaining aspect ratio
@@ -80,18 +86,25 @@ function calculateDimensions(width, height, maxWidth, maxHeight, screenWidth, sc
 async function processImageData(imageData, targetWidth, targetHeight, onProgress, options = {}) {
     const { width: srcWidth, height: srcHeight } = imageData;
     const totalPixels = srcWidth * srcHeight;
-    
+
     // Prefer WASM path for large images if enabled and ready
     // WASM is especially beneficial for images > 20MP where chunked Canvas processing is slow
     if (CONFIG.WASM_ENABLED) {
-        // If WASM is still loading, wait a bit (max 500ms) for it to become ready
-        if (!WASM.ready && CONFIG.WASM_URL) {
-            const startWait = Date.now();
-            while (!WASM.ready && (Date.now() - startWait) < 500) {
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
+        // If WASM is still loading, queue this task and return a promise that resolves when WASM is ready
+        if (!WASM.ready && CONFIG.WASM_URL && _wasmLoading) {
+            return new Promise((resolve, reject) => {
+                _wasmTaskQueue.push({
+                    imageData,
+                    targetWidth,
+                    targetHeight,
+                    onProgress,
+                    options,
+                    resolve,
+                    reject
+                });
+            });
         }
-        
+
         // Try WASM if ready
         if (WASM.ready) {
             // Extract processing options
@@ -99,7 +112,7 @@ async function processImageData(imageData, targetWidth, targetHeight, onProgress
                 gammaCorrect: options.gammaCorrect || false,
                 algorithm: options.algorithm || 'auto'
             };
-            
+
             console.log(`[Worker] Using WASM for image resize: ${srcWidth}x${srcHeight} -> ${targetWidth}x${targetHeight} (${(totalPixels / 1000000).toFixed(1)}MP, gammaCorrect: ${wasmOptions.gammaCorrect}, algorithm: ${wasmOptions.algorithm})`);
             const wasmCanvas = await processImageDataWithWasm(imageData, targetWidth, targetHeight, onProgress, wasmOptions);
             if (wasmCanvas) {
@@ -113,7 +126,16 @@ async function processImageData(imageData, targetWidth, targetHeight, onProgress
         }
     }
 
-    // Fallback to Canvas API processing
+    return processImageDataCanvasFallback(imageData, targetWidth, targetHeight, onProgress);
+}
+
+/**
+ * Canvas API fallback for processImageData (extracted for reuse by queue processing)
+ */
+async function processImageDataCanvasFallback(imageData, targetWidth, targetHeight, onProgress) {
+    const { width: srcWidth, height: srcHeight } = imageData;
+    const totalPixels = srcWidth * srcHeight;
+
     // Create OffscreenCanvas for processing
     const canvas = new OffscreenCanvas(targetWidth, targetHeight);
     const ctx = canvas.getContext('2d', {
@@ -219,47 +241,59 @@ function calculateImageComplexity(imageData) {
 }
 
 /**
- * Optimize blob size with intelligent quality selection and progressive compression
+ * Optimize blob size with near-lossless quality priority
+ * Favors perceptual quality over aggressive compression
  */
-async function optimizeBlobSize(canvas, targetSize, format) {
+async function optimizeBlobSize(canvas, targetSize, format, options = {}) {
+    const { nearLossless = false } = options;
+
+    // For near-lossless mode, try PNG first when size is reasonable
+    if (nearLossless) {
+        const losslessBlob = await canvas.convertToBlob({ type: CONFIG.OUTPUT_FORMAT_LOSSLESS });
+        if (losslessBlob.size <= 15 * 1024 * 1024) {
+            console.log(`[Worker] Lossless PNG: ${(losslessBlob.size / 1024 / 1024).toFixed(2)}MB`);
+            return losslessBlob;
+        }
+        console.log(`[Worker] PNG too large (${(losslessBlob.size / 1024 / 1024).toFixed(2)}MB), using near-lossless WebP`);
+    }
+
     // Get image data for complexity analysis
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const imageData = ctx.getImageData(0, 0, Math.min(canvas.width, 256), Math.min(canvas.height, 256));
     const complexity = calculateImageComplexity(imageData);
-    
-    // Adjust quality based on complexity
-    const baseQuality = CONFIG.QUALITY_HIGH + (complexity - 0.5) * 0.1;
-    const adjustedQuality = Math.max(0.7, Math.min(0.98, baseQuality));
-    
+
+    // High complexity needs higher quality to preserve detail
+    const baseQuality = CONFIG.QUALITY_HIGH + (complexity - 0.5) * 0.02;
+    const adjustedQuality = Math.max(CONFIG.QUALITY_LOW, Math.min(CONFIG.QUALITY_NEAR_LOSSLESS, baseQuality));
+
     let quality = adjustedQuality;
     let blob = await canvas.convertToBlob({ type: format, quality });
-    
-    if (blob.size <= targetSize) {
+
+    // Near-lossless: accept larger files to preserve quality
+    if (blob.size <= targetSize * 1.5) {
         return blob;
     }
-    
-    // Progressive compression steps
+
+    // Progressive compression with higher quality floor
     const qualitySteps = [
         adjustedQuality,
-        adjustedQuality * 0.9,
-        adjustedQuality * 0.8,
-        CONFIG.QUALITY_MEDIUM,
-        0.75,
-        0.7
+        adjustedQuality * 0.97,
+        adjustedQuality * 0.94,
+        CONFIG.QUALITY_HIGH,
+        CONFIG.QUALITY_MEDIUM
     ];
-    
-    let minQuality = 0.5;
+
+    let minQuality = CONFIG.QUALITY_LOW;
     let maxQuality = adjustedQuality;
     let bestBlob = blob;
     let bestQuality = quality;
-    const tolerance = 0.05; // 5% tolerance
-    
-    // Try progressive steps
+    const tolerance = 0.03;
+
     for (const stepQuality of qualitySteps) {
         if (stepQuality < minQuality || stepQuality > maxQuality) continue;
-        
+
         const testBlob = await canvas.convertToBlob({ type: format, quality: stepQuality });
-        
+
         if (testBlob.size <= targetSize * (1 + tolerance)) {
             if (stepQuality > bestQuality || bestBlob.size > targetSize) {
                 bestBlob = testBlob;
@@ -270,27 +304,29 @@ async function optimizeBlobSize(canvas, targetSize, format) {
             minQuality = stepQuality;
         }
     }
-    
-    // Fine-tune with binary search if needed
-    if (bestBlob.size > targetSize * (1 + tolerance)) {
-        for (let i = 0; i < 5; i++) {
-            quality = (minQuality + maxQuality) / 2;
-            blob = await canvas.convertToBlob({ type: format, quality });
-            
-            if (blob.size > targetSize * (1 + tolerance)) {
-                maxQuality = quality;
-            } else if (blob.size < targetSize * (1 - tolerance)) {
-                minQuality = quality;
-                if (quality > bestQuality) {
-                    bestBlob = blob;
-                    bestQuality = quality;
-                }
-            } else {
-                return blob;
+
+    if (bestBlob.size <= targetSize * (1 + tolerance)) {
+        return bestBlob;
+    }
+
+    // Fine-tune with binary search (limited iterations)
+    for (let i = 0; i < 4; i++) {
+        quality = (minQuality + maxQuality) / 2;
+        blob = await canvas.convertToBlob({ type: format, quality });
+
+        if (blob.size > targetSize * (1 + tolerance)) {
+            maxQuality = quality;
+        } else if (blob.size < targetSize * (1 - tolerance)) {
+            minQuality = quality;
+            if (quality > bestQuality) {
+                bestBlob = blob;
+                bestQuality = quality;
             }
+        } else {
+            return blob;
         }
     }
-    
+
     return bestBlob;
 }
 
@@ -299,39 +335,48 @@ async function optimizeBlobSize(canvas, targetSize, format) {
  * @param {string} url - URL to WASM file
  * @returns {Promise<void>}
  */
-async function loadWasm(url) {
+async function loadWasm(urlOrBuffer) {
     if (WASM.ready) {
         return; // Already loaded
     }
-    
+
+    _wasmLoading = true;
+
     try {
-        if (!url) {
-            throw new Error('WASM URL not provided');
+        if (!urlOrBuffer) {
+            throw new Error('WASM URL or buffer not provided');
         }
 
         let instance = null;
         let wasmBinary = null;
 
-        // Try instantiateStreaming first (more efficient, single network fetch)
-        try {
-            const resp = await fetch(url);
-            if (!resp.ok) {
-                throw new Error(`Failed to fetch WASM: ${resp.status} ${resp.statusText}`);
-            }
-            const streamingModule = await WebAssembly.instantiateStreaming(resp);
-            instance = streamingModule.instance;
-        } catch (streamErr) {
-            // Fallback for browsers that don't support streaming
-            const resp = await fetch(url);
-            if (!resp.ok) {
-                throw new Error(`Failed to fetch WASM (fallback): ${resp.status} ${resp.statusText}`);
-            }
-            wasmBinary = await resp.arrayBuffer();
-            if (!wasmBinary || wasmBinary.byteLength === 0) {
-                throw new Error('WASM file is empty');
-            }
+        if (urlOrBuffer instanceof ArrayBuffer) {
+            // Instantiate from pre-fetched buffer (passed from main thread)
+            wasmBinary = urlOrBuffer;
             const module = await WebAssembly.instantiate(wasmBinary, {});
             instance = module.instance;
+        } else {
+            // Try instantiateStreaming first (more efficient, single network fetch)
+            try {
+                const resp = await fetch(urlOrBuffer);
+                if (!resp.ok) {
+                    throw new Error(`Failed to fetch WASM: ${resp.status} ${resp.statusText}`);
+                }
+                const streamingModule = await WebAssembly.instantiateStreaming(resp);
+                instance = streamingModule.instance;
+            } catch (streamErr) {
+                // Fallback for browsers that don't support streaming
+                const resp = await fetch(urlOrBuffer);
+                if (!resp.ok) {
+                    throw new Error(`Failed to fetch WASM (fallback): ${resp.status} ${resp.statusText}`);
+                }
+                wasmBinary = await resp.arrayBuffer();
+                if (!wasmBinary || wasmBinary.byteLength === 0) {
+                    throw new Error('WASM file is empty');
+                }
+                const module = await WebAssembly.instantiate(wasmBinary, {});
+                instance = module.instance;
+            }
         }
         
         if (!instance?.exports) {
@@ -376,12 +421,61 @@ async function loadWasm(url) {
             `resize_rgba_gamma_bilinear=${!!WASM.exports.resize_rgba_gamma_bilinear}, ` +
             `get_last_error=${!!WASM.exports.get_last_error}`
         );
+
+        // Process any queued tasks that were waiting for WASM
+        const queue = _wasmTaskQueue.splice(0, _wasmTaskQueue.length);
+        for (const task of queue) {
+            try {
+                const wasmOptions = {
+                    gammaCorrect: task.options.gammaCorrect || false,
+                    algorithm: task.options.algorithm || 'auto'
+                };
+                const wasmCanvas = await processImageDataWithWasm(
+                    task.imageData,
+                    task.targetWidth,
+                    task.targetHeight,
+                    task.onProgress,
+                    wasmOptions
+                );
+                if (wasmCanvas) {
+                    task.resolve(wasmCanvas);
+                } else {
+                    // WASM returned null, fall back to Canvas
+                    const canvas = await processImageDataCanvasFallback(
+                        task.imageData,
+                        task.targetWidth,
+                        task.targetHeight,
+                        task.onProgress
+                    );
+                    task.resolve(canvas);
+                }
+            } catch (e) {
+                task.reject(e);
+            }
+        }
     } catch (err) {
         console.warn('[Worker] WASM load failed, will use Canvas fallback:', err.message);
         WASM.instance = null;
         WASM.exports = null;
         WASM.ready = false;
+        // Reject all queued tasks so they don't hang forever
+        const queue = _wasmTaskQueue.splice(0, _wasmTaskQueue.length);
+        for (const task of queue) {
+            try {
+                const canvas = await processImageDataCanvasFallback(
+                    task.imageData,
+                    task.targetWidth,
+                    task.targetHeight,
+                    task.onProgress
+                );
+                task.resolve(canvas);
+            } catch (e) {
+                task.reject(e);
+            }
+        }
         // Don't throw - allow fallback to Canvas processing
+    } finally {
+        _wasmLoading = false;
     }
 }
 
@@ -575,6 +669,23 @@ ctx.onmessage = async function(e) {
                 }
                 ctx.postMessage({ type: 'ready', id });
                 break;
+
+            case 'wasm':
+                // Receive pre-fetched WASM ArrayBuffer from main thread
+                if (data.buffer instanceof ArrayBuffer) {
+                    loadWasm(data.buffer)
+                        .then(() => {
+                            ctx.postMessage({ type: 'wasmLoaded', id });
+                        })
+                        .catch(err => {
+                            console.warn('[Worker] WASM buffer initialization failed, will use Canvas fallback:', err);
+                            ctx.postMessage({ type: 'wasmLoadFailed', id });
+                        });
+                } else {
+                    console.warn('[Worker] Invalid WASM buffer received');
+                    ctx.postMessage({ type: 'wasmLoadFailed', id });
+                }
+                break;
                 
             case 'process':
                 // Process image
@@ -658,7 +769,7 @@ ctx.onmessage = async function(e) {
                 
                 // Generate optimized blob
                 const outputFormat = format || CONFIG.OUTPUT_FORMAT;
-                const blob = await optimizeBlobSize(canvas, CONFIG.TARGET_OUTPUT_SIZE, outputFormat);
+                const blob = await optimizeBlobSize(canvas, CONFIG.TARGET_OUTPUT_SIZE, outputFormat, { nearLossless: data.nearLossless });
                 
                 ctx.postMessage({ type: 'progress', progress: 95, id });
                 
@@ -701,10 +812,10 @@ ctx.onmessage = async function(e) {
                 previewCtx.drawImage(previewBitmap, 0, 0, previewDims.width, previewDims.height);
                 previewBitmap.close();
                 
-                // Use lower quality for preview
-                const previewBlob = await previewCanvas.convertToBlob({ 
-                    type: 'image/jpeg', 
-                    quality: 0.5 
+                // Use moderate quality for preview (near-lossless philosophy)
+                const previewBlob = await previewCanvas.convertToBlob({
+                    type: 'image/jpeg',
+                    quality: 0.65
                 });
                 
                 ctx.postMessage({

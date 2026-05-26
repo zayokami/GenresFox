@@ -1,117 +1,33 @@
 {
-    "searchPlaceholder": {
-        "message": "搜索..."
-    },
-    "searchActionLabel": {
-        "message": "搜索"
-    },
-    "appTitle": {
-        "message": "GenresFox"
-    },
-    "settingsTitle": {
-        "message": "设置"
-    },
-    "tabWallpaper": {
-        "message": "壁纸"
-    },
-    "tabSearch": {
-        "message": "搜索与快捷方式"
-    },
-    "tabAccessibility": {
-        "message": "无障碍"
-    },
-    "tabAbout": {
-        "message": "关于"
-    },
-    "uploadWallpaper": {
-        "message": "上传壁纸"
-    },
-    "resetWallpaper": {
-        "message": "恢复默认"
-    },
-    "customEngines": {
-        "message": "自定义搜索引擎"
-    },
-    "shortcuts": {
-        "message": "快捷方式"
-    },
-    "add": {
-        "message": "添加"
-    },
-    "dragDropText": {
-        "message": "拖拽图片到此处或点击上传"
-    },
-    "wallpaperSettings": {
-        "message": "壁纸设置"
-    },
-    "blurAmount": {
-        "message": "模糊程度"
-    },
-    "vignetteAmount": {
-        "message": "暗角程度"
-    },
-    "resetShortcuts": {
-        "message": "重置快捷方式"
-    },
-    "shortcutOpenCurrent": {
-        "message": "当前页面打开"
-    },
-    "shortcutOpenNewTab": {
-        "message": "新标签页打开"
-    },
-    "searchBoxSettings": {
-        "message": "搜索框设置"
-    },
-    "searchBoxWidth": {
-        "message": "宽度"
-    },
-    "searchBoxScale": {
-        "message": "大小"
-    },
-    "searchBoxPosition": {
-        "message": "垂直位置"
-    },
-    "searchBoxRadius": {
-        "message": "圆角"
-    },
-    "searchBoxShadow": {
-        "message": "阴影强度"
-    },
-    "showShortcutNames": {
-        "message": "显示快捷方式名称"
-    },
-    "shortcutDragHint": {
-        "message": "💡 拖拽快捷方式可调整顺序"
-    },
-    "livePreview": {
-        "message": "实时预览"
+    "a11yAnimations": {
+        "message": "动画效果"
     },
     "a11yDisplay": {
         "message": "显示"
     },
-    "a11yTheme": {
-        "message": "主题"
+    "a11yFocus": {
+        "message": "焦点"
     },
-    "a11yThemeStandard": {
+    "a11yFocusEnhanced": {
+        "message": "增强"
+    },
+    "a11yFocusIndicator": {
+        "message": "焦点指示器"
+    },
+    "a11yFocusLarge": {
+        "message": "大型"
+    },
+    "a11yFocusStandard": {
         "message": "标准"
-    },
-    "a11yThemeHCDark": {
-        "message": "高对比度 (深色)"
-    },
-    "a11yThemeHCLight": {
-        "message": "高对比度 (浅色)"
-    },
-    "a11yThemeYellowBlack": {
-        "message": "黄底黑字"
-    },
-    "a11yFontSize": {
-        "message": "字体大小"
-    },
-    "a11yFontFamily": {
-        "message": "字体"
     },
     "a11yFontDefault": {
         "message": "默认"
+    },
+    "a11yFontDyslexic": {
+        "message": "阅读障碍友好"
+    },
+    "a11yFontFamily": {
+        "message": "字体"
     },
     "a11yFontSans": {
         "message": "无衬线"
@@ -119,11 +35,35 @@
     "a11yFontSerif": {
         "message": "衬线"
     },
-    "a11yFontDyslexic": {
-        "message": "阅读障碍友好"
+    "a11yFontSize": {
+        "message": "字体大小"
+    },
+    "a11yKeyboardShortcuts": {
+        "message": "键盘快捷键"
+    },
+    "a11yLetterSpacing": {
+        "message": "字母间距"
     },
     "a11yLineSpacing": {
         "message": "行间距"
+    },
+    "a11yMotion": {
+        "message": "动画"
+    },
+    "a11yMotionFull": {
+        "message": "完整"
+    },
+    "a11yMotionNone": {
+        "message": "无"
+    },
+    "a11yMotionReduced": {
+        "message": "减少"
+    },
+    "a11yReset": {
+        "message": "恢复默认设置"
+    },
+    "a11yShowShortcuts": {
+        "message": "显示键盘快捷键"
     },
     "a11ySpacingNormal": {
         "message": "正常"
@@ -134,38 +74,29 @@
     "a11ySpacingVeryRelaxed": {
         "message": "很宽松"
     },
-    "a11yMotion": {
-        "message": "动画"
+    "a11ySpacingWide": {
+        "message": "较宽"
     },
-    "a11yAnimations": {
-        "message": "动画效果"
+    "a11ySpacingWider": {
+        "message": "很宽"
     },
-    "a11yMotionFull": {
-        "message": "完整"
+    "a11yTheme": {
+        "message": "主题"
     },
-    "a11yMotionReduced": {
-        "message": "减少"
+    "a11yThemeHCDark": {
+        "message": "高对比度 (深色)"
     },
-    "a11yMotionNone": {
-        "message": "无"
+    "a11yThemeHCLight": {
+        "message": "高对比度 (浅色)"
     },
-    "a11yFocus": {
-        "message": "焦点"
-    },
-    "a11yFocusIndicator": {
-        "message": "焦点指示器"
-    },
-    "a11yFocusStandard": {
+    "a11yThemeStandard": {
         "message": "标准"
     },
-    "a11yFocusEnhanced": {
-        "message": "增强"
+    "a11yThemeYellowBlack": {
+        "message": "黄底黑字"
     },
-    "a11yFocusLarge": {
-        "message": "大型"
-    },
-    "a11yReset": {
-        "message": "恢复默认设置"
+    "a11yWordSpacing": {
+        "message": "单词间距"
     },
     "aboutDescription": {
         "message": "一个完全开源、高性能、极简的浏览器新标签页扩展。"
@@ -173,14 +104,164 @@
     "aboutOpenSource": {
         "message": "GenresFox 是一个开源项目，你可以在 GitHub 上找到源代码！"
     },
-    "viewOnGitHub": {
-        "message": "在 GitHub 上查看"
+    "accessibilitySettingsReset": {
+        "message": "无障碍设置已恢复默认"
+    },
+    "activate": {
+        "message": "激活按钮或链接"
+    },
+    "add": {
+        "message": "添加"
+    },
+    "addStickyNote": {
+        "message": "添加便签"
+    },
+    "appTitle": {
+        "message": "GenresFox"
+    },
+    "blurAmount": {
+        "message": "模糊程度"
+    },
+    "bringToFront": {
+        "message": "置于顶层"
+    },
+    "clearAllStickyNotes": {
+        "message": "清除全部"
+    },
+    "clearAllStickyNotesConfirm": {
+        "message": "清除所有便签？"
+    },
+    "closeModal": {
+        "message": "关闭对话框"
+    },
+    "createStickyNoteShortcut": {
+        "message": "创建便签"
+    },
+    "creditsBingWallpaper": {
+        "message": "默认壁纸由 Bing 每日壁纸提供。"
     },
     "creditsTitle": {
         "message": "致谢"
     },
-    "creditsBingWallpaper": {
-        "message": "默认壁纸由 Bing 每日壁纸提供。"
+    "customEngines": {
+        "message": "自定义搜索引擎"
+    },
+    "debugConsoleClear": {
+        "message": "清空控制台"
+    },
+    "debugConsoleClose": {
+        "message": "关闭"
+    },
+    "debugConsoleHelp": {
+        "message": "显示帮助"
+    },
+    "debugConsoleTitle": {
+        "message": "调试控制台"
+    },
+    "deleteEngineConfirm": {
+        "message": "确定要删除此搜索引擎吗？"
+    },
+    "deleteShortcutAriaLabel": {
+        "message": "删除快捷方式 %s"
+    },
+    "deleteShortcutConfirm": {
+        "message": "确认删除快捷方式“%s”？"
+    },
+    "deleteStickyNote": {
+        "message": "删除便签"
+    },
+    "dragDropText": {
+        "message": "拖拽图片到此处或点击上传"
+    },
+    "dragOverMerge": {
+        "message": "按住以合并到文件夹"
+    },
+    "enableStickyNotes": {
+        "message": "启用便签"
+    },
+    "errorImageTooLarge": {
+        "message": "图片文件过大（最大 50MB）"
+    },
+    "errorResolutionTooHigh": {
+        "message": "图片分辨率过高（最大 8000 万像素）"
+    },
+    "exportConfigButton": {
+        "message": "导出配置"
+    },
+    "exportConfigDescription": {
+        "message": "将所有设置、快捷方式和自定义项导出为 JSON 文件，用于备份或分享。"
+    },
+    "exportConfigError": {
+        "message": "配置导出失败。"
+    },
+    "exportConfigSuccess": {
+        "message": "配置导出成功！"
+    },
+    "exportConfigTitle": {
+        "message": "导出配置"
+    },
+    "focusIndicatorChanged": {
+        "message": "焦点指示器已更改为 %s"
+    },
+    "focusSearch": {
+        "message": "聚焦搜索框"
+    },
+    "folderDefault": {
+        "message": "文件夹"
+    },
+    "folderDisband": {
+        "message": "解散文件夹"
+    },
+    "folderExtract": {
+        "message": "提取"
+    },
+    "folderRemove": {
+        "message": "移除"
+    },
+    "fontFamilyChanged": {
+        "message": "字体已更改为 %s"
+    },
+    "fontSizeChanged": {
+        "message": "字体大小已设置为 %s 百分比"
+    },
+    "imageTooLarge": {
+        "message": "图片过大（最大 %s MB）"
+    },
+    "importConfigButton": {
+        "message": "导入配置"
+    },
+    "importConfigConfirm": {
+        "message": "这将替换您当前的所有设置。是否继续？"
+    },
+    "importConfigError": {
+        "message": "配置导入失败："
+    },
+    "importConfigSuccess": {
+        "message": "配置导入成功！"
+    },
+    "letterSpacingChanged": {
+        "message": "字母间距已更改为 %s"
+    },
+    "lineSpacingChanged": {
+        "message": "行间距已更改为 %s"
+    },
+    "livePreview": {
+        "message": "实时预览"
+    },
+    "motionPreferenceChanged": {
+        "message": "动画偏好已更改为 %s"
+    },
+    "navigate": {
+        "message": "在元素间导航"
+    },
+    "openSettings": {
+        "message": "打开设置"
+    },
+    "pleaseUploadImage": {
+        "message": "请上传图片文件"
+    },
+    "processingCompressing": {
+        "message": "压缩中..."
     },
     "processingImage": {
         "message": "正在处理图片..."
@@ -191,29 +272,47 @@
     "processingOptimizing": {
         "message": "优化中..."
     },
-    "processingCompressing": {
-        "message": "压缩中..."
-    },
     "processingSaving": {
         "message": "保存中..."
     },
     "processingStarting": {
         "message": "开始处理..."
     },
-    "errorImageTooLarge": {
-        "message": "图片文件过大（最大 50MB）"
+    "resetAccessibilityConfirm": {
+        "message": "是否将所有无障碍设置恢复为默认值？"
     },
-    "errorResolutionTooHigh": {
-        "message": "图片分辨率过高（最大 8000 万像素）"
+    "resetShortcuts": {
+        "message": "重置快捷方式"
     },
     "resetToBing": {
         "message": "已切换到 Bing 每日壁纸"
     },
-    "deleteShortcutConfirm": {
-        "message": "确认删除快捷方式“%s”？"
+    "resetWallpaper": {
+        "message": "恢复默认"
     },
-    "searchErrorUnsafeUrl": {
-        "message": "无法访问此网址，可能不安全。"
+    "resetWallpaperConfirm": {
+        "message": "确定要重置壁纸吗？"
+    },
+    "searchActionLabel": {
+        "message": "搜索"
+    },
+    "searchBoxPosition": {
+        "message": "垂直位置"
+    },
+    "searchBoxRadius": {
+        "message": "圆角"
+    },
+    "searchBoxScale": {
+        "message": "大小"
+    },
+    "searchBoxSettings": {
+        "message": "搜索框设置"
+    },
+    "searchBoxShadow": {
+        "message": "阴影强度"
+    },
+    "searchBoxWidth": {
+        "message": "宽度"
     },
     "searchErrorNavigationFailed": {
         "message": "链接打开失败。"
@@ -221,40 +320,100 @@
     "searchErrorNoEngine": {
         "message": "没有可用的搜索引擎。"
     },
+    "searchErrorUnsafeUrl": {
+        "message": "无法访问此网址，可能不安全。"
+    },
+    "searchPlaceholder": {
+        "message": "搜索..."
+    },
+    "settingsTitle": {
+        "message": "设置"
+    },
+    "shortcutDragHint": {
+        "message": "💡 拖拽快捷方式可调整顺序"
+    },
+    "shortcutOpenCurrent": {
+        "message": "当前页面打开"
+    },
+    "shortcutOpenNewTab": {
+        "message": "新标签页打开"
+    },
+    "shortcuts": {
+        "message": "快捷方式"
+    },
+    "shortcutsHelpClosed": {
+        "message": "键盘快捷键帮助已关闭"
+    },
+    "shortcutsHelpOpened": {
+        "message": "键盘快捷键帮助已打开"
+    },
+    "showShortcutNames": {
+        "message": "显示快捷方式名称"
+    },
+    "skipToMainContent": {
+        "message": "跳转到主要内容"
+    },
+    "snowEffectToggle": {
+        "message": "雪花效果"
+    },
+    "stickyNoteFontSettings": {
+        "message": "字体设置"
+    },
+    "stickyNoteFontSize": {
+        "message": "字号"
+    },
+    "stickyNoteLetterSpacing": {
+        "message": "字间距"
+    },
+    "stickyNoteLineHeight": {
+        "message": "行高"
+    },
+    "stickyNotePlaceholder": {
+        "message": "在此输入..."
+    },
+    "stickyNotes": {
+        "message": "便签"
+    },
+    "switchEngineNext": {
+        "message": "切换到下一个搜索引擎"
+    },
+    "switchEnginePrev": {
+        "message": "切换到上一个搜索引擎"
+    },
+    "tabAbout": {
+        "message": "关于"
+    },
+    "tabAccessibility": {
+        "message": "无障碍"
+    },
+    "tabSearch": {
+        "message": "搜索与快捷方式"
+    },
+    "tabWallpaper": {
+        "message": "壁纸"
+    },
+    "themeChanged": {
+        "message": "主题已更改为 %s"
+    },
     "themeSectionTitle": {
         "message": "主题"
     },
     "themeUseWallpaperAccent": {
         "message": "使用壁纸主色作为主题色"
     },
-    "snowEffectToggle": {
-        "message": "雪花效果"
+    "uploadWallpaper": {
+        "message": "上传壁纸"
     },
-    "exportConfigTitle": {
-        "message": "导出配置"
+    "viewOnGitHub": {
+        "message": "在 GitHub 上查看"
     },
-    "exportConfigDescription": {
-        "message": "将所有设置、快捷方式和自定义项导出为 JSON 文件，用于备份或分享。"
+    "vignetteAmount": {
+        "message": "暗角程度"
     },
-    "exportConfigButton": {
-        "message": "导出配置"
+    "wallpaperSettings": {
+        "message": "壁纸设置"
     },
-    "exportConfigSuccess": {
-        "message": "配置导出成功！"
-    },
-    "exportConfigError": {
-        "message": "配置导出失败。"
-    },
-    "importConfigButton": {
-        "message": "导入配置"
-    },
-    "importConfigConfirm": {
-        "message": "这将替换您当前的所有设置。是否继续？"
-    },
-    "importConfigSuccess": {
-        "message": "配置导入成功！"
-    },
-    "importConfigError": {
-        "message": "配置导入失败："
+    "wordSpacingChanged": {
+        "message": "单词间距已更改为 %s"
     }
 }

@@ -12,7 +12,12 @@
  */
 (function () {
     'use strict';
-    
+
+    // Guard against non-browser environments or missing DOM APIs
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+        return;
+    }
+
     // Constants
     var STORAGE_KEYS = {
         PREVIEW: 'wallpaperPreviewSmall',
@@ -143,6 +148,11 @@
      */
     function init() {
         try {
+            if (!window.localStorage) {
+                // localStorage is not available (e.g. privacy mode or disabled)
+                return;
+            }
+
             // Load wallpaper preview
             var previewRaw = localStorage.getItem(STORAGE_KEYS.PREVIEW);
             if (previewRaw) {
