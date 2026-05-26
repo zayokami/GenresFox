@@ -173,6 +173,9 @@
     "activate": {
         "message": "Schaltfläche oder Link aktivieren"
     },
+    "accessibilitySettingsReset": {
+        "message": "Barrierefreiheitseinstellungen auf Standardwerte zurückgesetzt"
+    },
     "a11yMotion": {
         "message": "Animationen"
     },
@@ -239,11 +242,44 @@
     "processingStarting": {
         "message": "Verarbeitung startet..."
     },
+    "deleteEngineConfirm": {
+        "message": "Sind Sie sicher, dass Sie diese Suchmaschine löschen möchten?"
+    },
+    "deleteShortcutAriaLabel": {
+        "message": "Schnellzugriff %s löschen"
+    },
     "errorImageTooLarge": {
         "message": "Bilddatei ist zu groß (max. 50 MB)"
     },
+    "focusIndicatorChanged": {
+        "message": "Fokusindikator geändert auf %s"
+    },
+    "fontFamilyChanged": {
+        "message": "Schriftart geändert auf %s"
+    },
+    "fontSizeChanged": {
+        "message": "Schriftgröße auf %s Prozent festgelegt"
+    },
     "errorResolutionTooHigh": {
         "message": "Bildauflösung ist zu hoch (max. 80 Megapixel)"
+    },
+    "imageTooLarge": {
+        "message": "Bild ist zu groß (max. %s MB)"
+    },
+    "letterSpacingChanged": {
+        "message": "Zeichenabstand geändert auf %s"
+    },
+    "lineSpacingChanged": {
+        "message": "Zeilenabstand geändert auf %s"
+    },
+    "motionPreferenceChanged": {
+        "message": "Animationseinstellung geändert auf %s"
+    },
+    "pleaseUploadImage": {
+        "message": "Bitte laden Sie eine Bilddatei hoch"
+    },
+    "resetAccessibilityConfirm": {
+        "message": "Alle Barrierefreiheitseinstellungen auf Standardwerte zurücksetzen?"
     },
     "resetToBing": {
         "message": "Wechsel zu Bing Tagesbild abgeschlossen"
@@ -310,5 +346,20 @@
     },
     "resetWallpaperConfirm": {
         "message": "Sind Sie sicher, dass Sie das Hintergrundbild zurücksetzen möchten?"
+    },
+    "shortcutsHelpClosed": {
+        "message": "Tastenkürzel-Hilfe geschlossen"
+    },
+    "shortcutsHelpOpened": {
+        "message": "Tastenkürzel-Hilfe geöffnet"
+    },
+    "skipToMainContent": {
+        "message": "Zum Hauptinhalt springen"
+    },
+    "themeChanged": {
+        "message": "Thema geändert auf %s"
+    },
+    "wordSpacingChanged": {
+        "message": "Wortabstand geändert auf %s"
     }
 }

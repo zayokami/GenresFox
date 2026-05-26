@@ -173,6 +173,9 @@
     "activate": {
         "message": "ボタンまたはリンクをアクティブ化"
     },
+    "accessibilitySettingsReset": {
+        "message": "アクセシビリティ設定をデフォルトに戻しました"
+    },
     "a11yMotion": {
         "message": "モーション"
     },
@@ -239,11 +242,44 @@
     "processingStarting": {
         "message": "開始中..."
     },
+    "deleteEngineConfirm": {
+        "message": "この検索エンジンを削除してもよろしいですか？"
+    },
+    "deleteShortcutAriaLabel": {
+        "message": "ショートカット %s を削除"
+    },
     "errorImageTooLarge": {
         "message": "画像ファイルが大きすぎます（最大 50MB）"
     },
+    "focusIndicatorChanged": {
+        "message": "フォーカスインジケーターを %s に変更しました"
+    },
+    "fontFamilyChanged": {
+        "message": "フォントを %s に変更しました"
+    },
+    "fontSizeChanged": {
+        "message": "フォントサイズを %s パーセントに設定しました"
+    },
     "errorResolutionTooHigh": {
         "message": "画像の解像度が高すぎます（最大 8000 万画素）"
+    },
+    "imageTooLarge": {
+        "message": "画像が大きすぎます（最大 %s MB）"
+    },
+    "letterSpacingChanged": {
+        "message": "文字間隔を %s に変更しました"
+    },
+    "lineSpacingChanged": {
+        "message": "行間を %s に変更しました"
+    },
+    "motionPreferenceChanged": {
+        "message": "アニメーション設定を %s に変更しました"
+    },
+    "pleaseUploadImage": {
+        "message": "画像ファイルをアップロードしてください"
+    },
+    "resetAccessibilityConfirm": {
+        "message": "すべてのアクセシビリティ設定をデフォルトに戻しますか？"
     },
     "resetToBing": {
         "message": "Bing 日替わり壁紙に切り替えました"
@@ -331,5 +367,20 @@
     },
     "resetWallpaperConfirm": {
         "message": "壁紙をリセットしてもよろしいですか？"
+    },
+    "shortcutsHelpClosed": {
+        "message": "キーボードショートカットのヘルプを閉じました"
+    },
+    "shortcutsHelpOpened": {
+        "message": "キーボードショートカットのヘルプを開きました"
+    },
+    "skipToMainContent": {
+        "message": "メインコンテンツへスキップ"
+    },
+    "themeChanged": {
+        "message": "テーマを %s に変更しました"
+    },
+    "wordSpacingChanged": {
+        "message": "単語間隔を %s に変更しました"
     }
 }

@@ -173,6 +173,9 @@
     "activate": {
         "message": "Активировать кнопку или ссылку"
     },
+    "accessibilitySettingsReset": {
+        "message": "Настройки доступности сброшены по умолчанию"
+    },
     "a11yMotion": {
         "message": "Анимации"
     },
@@ -239,11 +242,44 @@
     "processingStarting": {
         "message": "Начало обработки..."
     },
+    "deleteEngineConfirm": {
+        "message": "Вы уверены, что хотите удалить эту поисковую систему?"
+    },
+    "deleteShortcutAriaLabel": {
+        "message": "Удалить ярлык %s"
+    },
     "errorImageTooLarge": {
         "message": "Размер файла изображения слишком большой (максимум 50 МБ)"
     },
+    "focusIndicatorChanged": {
+        "message": "Индикатор фокуса изменён на %s"
+    },
+    "fontFamilyChanged": {
+        "message": "Шрифт изменён на %s"
+    },
+    "fontSizeChanged": {
+        "message": "Размер шрифта установлен на %s процентов"
+    },
     "errorResolutionTooHigh": {
         "message": "Разрешение изображения слишком высокое (максимум 80 мегапикселей)"
+    },
+    "imageTooLarge": {
+        "message": "Изображение слишком большое (максимум %s МБ)"
+    },
+    "letterSpacingChanged": {
+        "message": "Межбуквенный интервал изменён на %s"
+    },
+    "lineSpacingChanged": {
+        "message": "Межстрочный интервал изменён на %s"
+    },
+    "motionPreferenceChanged": {
+        "message": "Настройка анимации изменена на %s"
+    },
+    "pleaseUploadImage": {
+        "message": "Пожалуйста, загрузите файл изображения"
+    },
+    "resetAccessibilityConfirm": {
+        "message": "Сбросить все настройки доступности по умолчанию?"
     },
     "resetToBing": {
         "message": "Переключено на Bing Обои дня"
@@ -310,5 +346,20 @@
     },
     "resetWallpaperConfirm": {
         "message": "Вы уверены, что хотите сбросить обои?"
+    },
+    "shortcutsHelpClosed": {
+        "message": "Справка по горячим клавишам закрыта"
+    },
+    "shortcutsHelpOpened": {
+        "message": "Справка по горячим клавишам открыта"
+    },
+    "skipToMainContent": {
+        "message": "Перейти к основному содержимому"
+    },
+    "themeChanged": {
+        "message": "Тема изменена на %s"
+    },
+    "wordSpacingChanged": {
+        "message": "Межсловный интервал изменён на %s"
     }
 }

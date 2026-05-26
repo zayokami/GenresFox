@@ -173,6 +173,9 @@
     "activate": {
         "message": "Activate button or link"
     },
+    "accessibilitySettingsReset": {
+        "message": "Accessibility settings reset to defaults"
+    },
     "a11yMotion": {
         "message": "Motion"
     },
@@ -242,11 +245,44 @@
     "errorImageTooLarge": {
         "message": "Image file too large (max 50MB)"
     },
+    "focusIndicatorChanged": {
+        "message": "Focus indicator changed to %s"
+    },
+    "fontFamilyChanged": {
+        "message": "Font family changed to %s"
+    },
+    "fontSizeChanged": {
+        "message": "Font size set to %s percent"
+    },
     "errorResolutionTooHigh": {
         "message": "Image resolution too high (max 80 megapixels)"
     },
+    "imageTooLarge": {
+        "message": "Image too large (max %s MB)"
+    },
+    "letterSpacingChanged": {
+        "message": "Letter spacing changed to %s"
+    },
+    "lineSpacingChanged": {
+        "message": "Line spacing changed to %s"
+    },
+    "motionPreferenceChanged": {
+        "message": "Animation preference changed to %s"
+    },
+    "pleaseUploadImage": {
+        "message": "Please upload an image file"
+    },
+    "resetAccessibilityConfirm": {
+        "message": "Reset all accessibility settings to defaults?"
+    },
     "resetToBing": {
         "message": "Switched to Bing Daily Wallpaper"
+    },
+    "deleteEngineConfirm": {
+        "message": "Are you sure you want to delete this search engine?"
+    },
+    "deleteShortcutAriaLabel": {
+        "message": "Delete shortcut %s"
     },
     "deleteShortcutConfirm": {
         "message": "Delete shortcut \"%s\"?"
@@ -310,5 +346,20 @@
     },
     "resetWallpaperConfirm": {
         "message": "Are you sure you want to reset the wallpaper?"
+    },
+    "shortcutsHelpClosed": {
+        "message": "Keyboard shortcuts help closed"
+    },
+    "shortcutsHelpOpened": {
+        "message": "Keyboard shortcuts help opened"
+    },
+    "skipToMainContent": {
+        "message": "Skip to main content"
+    },
+    "themeChanged": {
+        "message": "Theme changed to %s"
+    },
+    "wordSpacingChanged": {
+        "message": "Word spacing changed to %s"
     }
 }

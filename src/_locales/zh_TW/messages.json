@@ -173,6 +173,9 @@
     "activate": {
         "message": "激活按鈕或鏈接"
     },
+    "accessibilitySettingsReset": {
+        "message": "無障礙設定已恢復預設"
+    },
     "a11yMotion": {
         "message": "動畫"
     },
@@ -239,11 +242,44 @@
     "processingStarting": {
         "message": "開始處理..."
     },
+    "deleteEngineConfirm": {
+        "message": "確定要刪除此搜尋引擎嗎？"
+    },
+    "deleteShortcutAriaLabel": {
+        "message": "刪除捷徑 %s"
+    },
     "errorImageTooLarge": {
         "message": "圖片檔案過大（最大 50MB）"
     },
+    "focusIndicatorChanged": {
+        "message": "焦點指示器已更改為 %s"
+    },
+    "fontFamilyChanged": {
+        "message": "字型已更改為 %s"
+    },
+    "fontSizeChanged": {
+        "message": "字型大小已設置為 %s 百分比"
+    },
     "errorResolutionTooHigh": {
         "message": "圖片解析度過高（最大 8000 萬像素）"
+    },
+    "imageTooLarge": {
+        "message": "圖片過大（最大 %s MB）"
+    },
+    "letterSpacingChanged": {
+        "message": "字母間距已更改為 %s"
+    },
+    "lineSpacingChanged": {
+        "message": "行距已更改為 %s"
+    },
+    "motionPreferenceChanged": {
+        "message": "動畫偏好已更改為 %s"
+    },
+    "pleaseUploadImage": {
+        "message": "請上傳圖片檔案"
+    },
+    "resetAccessibilityConfirm": {
+        "message": "是否將所有無障礙設定恢復為預設值？"
     },
     "resetToBing": {
         "message": "已切換到 Bing 每日桌布"
@@ -310,5 +346,20 @@
     },
     "resetWallpaperConfirm": {
         "message": "確定要重設壁紙嗎？"
+    },
+    "shortcutsHelpClosed": {
+        "message": "鍵盤快捷鍵說明已關閉"
+    },
+    "shortcutsHelpOpened": {
+        "message": "鍵盤快捷鍵說明已開啟"
+    },
+    "skipToMainContent": {
+        "message": "跳轉到主要內容"
+    },
+    "themeChanged": {
+        "message": "主題已更改為 %s"
+    },
+    "wordSpacingChanged": {
+        "message": "單詞間距已更改為 %s"
     }
 }
