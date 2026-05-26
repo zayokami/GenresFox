@@ -136,6 +136,8 @@ const CustomSelect = (function() {
                 customOption.classList.add('selected');
                 customOption.setAttribute('aria-selected', 'true');
                 trigger.textContent = option.textContent;
+            } else {
+                customOption.setAttribute('aria-selected', 'false');
             }
 
             customOption.addEventListener('click', (e) => {
@@ -396,7 +398,8 @@ try {
 
 let currentEngine = localStorage.getItem("preferredEngine") || "google";
 
-const FOLDER_FEATURE_ENABLED = false; // Temporarily disable folder feature
+// TODO: Folder feature is currently disabled. Re-enable when folder UI/UX design is finalized.
+const FOLDER_FEATURE_ENABLED = false;
 const SHORTCUT_TARGET_KEY = 'shortcutOpenTarget';
 
 // Image helpers are now in ShortcutManager

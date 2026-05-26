@@ -67,6 +67,15 @@ const SearchBar = (function () {
     }
 
     /**
+     * Announce message to screen readers via live region
+     * @param {string} message - Message to announce
+     */
+    function _announceToScreenReader(message) {
+        const liveRegion = document.getElementById('a11y-live-region');
+        if (liveRegion) liveRegion.textContent = message;
+    }
+
+    /**
      * Show error message to user (with improved UX)
      * @param {string} key - Error message key
      * @param {string} fallback - Fallback message
@@ -82,6 +91,9 @@ const SearchBar = (function () {
         } else {
             console.warn(`${CONFIG.ERROR_LOG_PREFIX} ${msg}`);
         }
+
+        // Announce error to screen readers
+        _announceToScreenReader(msg);
 
         // Show user-friendly error message
         try {

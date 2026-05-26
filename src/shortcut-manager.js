@@ -15,7 +15,8 @@ const ShortcutManager = (function() {
         { name: "Gmail", url: "https://mail.google.com", icon: "https://icons.duckduckgo.com/ip3/mail.google.com.ico" }
     ];
 
-    const FOLDER_FEATURE_ENABLED = false; // Temporarily disable folder feature
+    // TODO: Folder feature is currently disabled. Re-enable when folder UI/UX design is finalized.
+    const FOLDER_FEATURE_ENABLED = false;
     const SHORTCUT_TARGET_KEY = 'shortcutOpenTarget';
 
     // Icon cache configuration
@@ -149,8 +150,8 @@ const ShortcutManager = (function() {
             _resourceExistsCache.set(url, exists);
             return exists;
         } catch (e) {
-            _resourceExistsCache.set(url, true);
-            return true;
+            _resourceExistsCache.set(url, false);
+            return false;
         }
     }
 

@@ -378,6 +378,7 @@ const DebugConsole = (function() {
 
     /**
      * Benchmark WASM vs Canvas performance
+     * NOTE: This function is currently unused. Kept for future debugging.
      */
     async function _benchmarkWasmVsCanvas() {
         console.log('%c[Benchmark] Comparing WASM vs Canvas performance...', 'color: #4CAF50; font-weight: bold');

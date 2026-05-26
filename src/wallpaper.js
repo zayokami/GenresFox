@@ -184,6 +184,17 @@ const WallpaperManager = (function () {
      * @returns {Promise<void>}
      */
     async function _saveWallpaperToDB(file) {
+        // Check storage quota before attempting a large write
+        const quotaInfo = await _checkStorageQuota();
+        if (quotaInfo && quotaInfo.available < file.size + 2 * 1024 * 1024) {
+            const err = new Error(
+                `Insufficient storage space. Available: ${Math.round(quotaInfo.available / 1024 / 1024)}MB, ` +
+                `Required: ~${Math.round((file.size + 2 * 1024 * 1024) / 1024 / 1024)}MB`
+            );
+            err.name = 'QuotaExceededError';
+            throw err;
+        }
+
         const db = await _openDB();
         return new Promise((resolve, reject) => {
             const transaction = db.transaction([CONFIG.STORE_NAME], 'readwrite');
@@ -252,6 +263,84 @@ const WallpaperManager = (function () {
         });
     }
 
+    // ==================== Safe Storage Helpers ====================
+
+    /**
+     * Safely write to localStorage, catching QuotaExceededError and other failures.
+     * Prevents storage failures from breaking critical UI flows.
+     * @param {string} key
+     * @param {string} value
+     * @returns {boolean} Whether the write succeeded
+     */
+    function _safeLocalStorageSet(key, value) {
+        try {
+            localStorage.setItem(key, value);
+            return true;
+        } catch (e) {
+            if (e.name === 'QuotaExceededError' || e.code === 22 || e.number === 22) {
+                console.warn(`[WallpaperManager] localStorage quota exceeded writing key "${key}". Disk may be full.`);
+            } else {
+                console.warn(`[WallpaperManager] Failed to write localStorage key "${key}":`, e);
+            }
+            return false;
+        }
+    }
+
+    /**
+     * Safely remove a localStorage key.
+     * @param {string} key
+     * @returns {boolean}
+     */
+    function _safeLocalStorageRemove(key) {
+        try {
+            localStorage.removeItem(key);
+            return true;
+        } catch (e) {
+            console.warn(`[WallpaperManager] Failed to remove localStorage key "${key}":`, e);
+            return false;
+        }
+    }
+
+    /**
+     * Request persistent storage to prevent browser from clearing IndexedDB under storage pressure.
+     * This is critical for keeping wallpaper data when disk space is low.
+     */
+    async function _requestPersistentStorage() {
+        if (typeof navigator === 'undefined' || !navigator.storage) return;
+        try {
+            if (navigator.storage.persist) {
+                const isPersistent = await navigator.storage.persist();
+                if (isPersistent) {
+                    console.log('[WallpaperManager] Persistent storage granted. Wallpaper data will not be auto-cleared.');
+                } else {
+                    console.warn('[WallpaperManager] Persistent storage denied. Browser may clear wallpaper data under disk pressure.');
+                }
+            }
+        } catch (e) {
+            console.warn('[WallpaperManager] Failed to request persistent storage:', e);
+        }
+    }
+
+    /**
+     * Check if there is likely enough storage space before saving large blobs.
+     * Returns an estimate object or null if the API is unavailable.
+     * @returns {Promise<{quota: number, usage: number, available: number}|null>}
+     */
+    async function _checkStorageQuota() {
+        if (typeof navigator === 'undefined' || !navigator.storage || !navigator.storage.estimate) {
+            return null;
+        }
+        try {
+            const estimate = await navigator.storage.estimate();
+            const quota = estimate.quota || 0;
+            const usage = estimate.usage || 0;
+            return { quota, usage, available: Math.max(0, quota - usage) };
+        } catch (e) {
+            console.warn('[WallpaperManager] Failed to estimate storage:', e);
+            return null;
+        }
+    }
+
     // ==================== CSS Variable Operations ====================
 
     /**
@@ -267,11 +356,7 @@ const WallpaperManager = (function () {
      * Save theme settings to localStorage
      */
     function _saveThemeSettings() {
-        try {
-            localStorage.setItem(CONFIG.STORAGE_KEYS.THEME_SETTINGS, JSON.stringify(_state.themeSettings));
-        } catch (e) {
-            console.warn('Failed to save theme settings:', e);
-        }
+        _safeLocalStorageSet(CONFIG.STORAGE_KEYS.THEME_SETTINGS, JSON.stringify(_state.themeSettings));
     }
 
     /**
@@ -325,10 +410,13 @@ const WallpaperManager = (function () {
             const sampleHeight = Math.max(1, Math.floor(height / step));
             const imageData = ctx.getImageData(0, 0, width, height).data;
 
-            let r = 0, g = 0, b = 0, count = 0;
+            let r = 0, g = 0, b = 0, count = 0, sampled = 0;
+            const MAX_SAMPLES = 10000; // Cap sampling to prevent blocking
 
             for (let y = 0; y < height; y += step) {
                 for (let x = 0; x < width; x += step) {
+                    if (sampled >= MAX_SAMPLES) break;
+                    sampled++;
                     const idx = (y * width + x) * 4;
                     const alpha = imageData[idx + 3];
                     if (alpha < 128) continue;
@@ -432,11 +520,7 @@ const WallpaperManager = (function () {
                     ts: Date.now(),
                     accentColor: accentColor || null
                 };
-                try {
-                    localStorage.setItem(CONFIG.STORAGE_KEYS.WALLPAPER_PREVIEW_SMALL, JSON.stringify(payload));
-                } catch (_) {
-                    // Ignore quota errors
-                }
+                _safeLocalStorageSet(CONFIG.STORAGE_KEYS.WALLPAPER_PREVIEW_SMALL, JSON.stringify(payload));
             } catch (_) {
                 // Silent failure. Preview is purely best-effort.
             }
@@ -643,52 +727,6 @@ const WallpaperManager = (function () {
         });
     }
 
-    async function _enforceBingCacheLimits(db) {
-        const maxEntries = CONFIG.BING_CACHE.LRU_MAX_ENTRIES;
-        const maxBytes = CONFIG.BING_CACHE.LRU_MAX_BYTES;
-        const entries = [];
-        await new Promise((resolve) => {
-            const tx = db.transaction([CONFIG.BING_CACHE.DB_STORE_NAME], 'readonly');
-            const store = tx.objectStore(CONFIG.BING_CACHE.DB_STORE_NAME);
-            const req = store.openCursor();
-            req.onsuccess = (event) => {
-                const cursor = event.target.result;
-                if (cursor) {
-                    const value = cursor.value;
-                    entries.push({
-                        id: value.id,
-                        size: value.size ?? value.blob?.size ?? 0,
-                        lastAccess: value.lastAccess ?? value.timestamp ?? 0
-                    });
-                    cursor.continue();
-                } else {
-                    resolve();
-                }
-            };
-            req.onerror = () => resolve();
-        });
-
-        let totalBytes = entries.reduce((sum, e) => sum + (e.size || 0), 0);
-        if (entries.length <= maxEntries && totalBytes <= maxBytes) return;
-
-        entries.sort((a, b) => (a.lastAccess || 0) - (b.lastAccess || 0)); // oldest first
-        const toDelete = [];
-        for (const entry of entries) {
-            if (entries.length - toDelete.length <= maxEntries && totalBytes <= maxBytes) break;
-            toDelete.push(entry.id);
-            totalBytes -= entry.size || 0;
-        }
-
-        if (toDelete.length === 0) return;
-        await new Promise((resolve) => {
-            const tx = db.transaction([CONFIG.BING_CACHE.DB_STORE_NAME], 'readwrite');
-            const store = tx.objectStore(CONFIG.BING_CACHE.DB_STORE_NAME);
-            toDelete.forEach(id => store.delete(id));
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => resolve();
-        });
-    }
-
     async function _removeBingCacheEntry(key) {
         try {
             const db = await _openDB();
@@ -847,44 +885,71 @@ const WallpaperManager = (function () {
                 request.onerror = () => reject(request.error);
             });
             
-            // Memory cache + LRU enforcement
+            // Memory cache + unified cleanup (size, age, and count limits in one pass)
             _putBingMem(key, blob);
-            await _enforceBingCacheLimits(db);
-
-            // Clean up old cache entries
-            await _cleanupOldBingCache();
+            await _cleanupBingCache(db);
         } catch (e) {
             console.warn('Failed to save Bing image to cache:', e);
         }
     }
 
     /**
-     * Clean up old Bing wallpaper cache entries
+     * Unified Bing cache cleanup: enforces age, entry count, and byte limits in a single pass
      */
-    async function _cleanupOldBingCache() {
+    async function _cleanupBingCache(db) {
         try {
-            const db = await _openDB();
+            const maxEntries = CONFIG.BING_CACHE.LRU_MAX_ENTRIES;
+            const maxBytes = CONFIG.BING_CACHE.LRU_MAX_BYTES;
             const cutoffDate = _getDateString(-CONFIG.BING_CACHE.MAX_CACHED_DAYS);
-            
+            const entries = [];
+
             await new Promise((resolve) => {
-                const transaction = db.transaction([CONFIG.BING_CACHE.DB_STORE_NAME], 'readwrite');
-                const store = transaction.objectStore(CONFIG.BING_CACHE.DB_STORE_NAME);
-                const request = store.openCursor();
-                
-                request.onsuccess = (event) => {
+                const tx = db.transaction([CONFIG.BING_CACHE.DB_STORE_NAME], 'readonly');
+                const store = tx.objectStore(CONFIG.BING_CACHE.DB_STORE_NAME);
+                const req = store.openCursor();
+                req.onsuccess = (event) => {
                     const cursor = event.target.result;
                     if (cursor) {
-                        const entry = cursor.value;
-                        if (entry.date && entry.date < cutoffDate) {
-                            console.log(`Removing old Bing cache: ${entry.date}`);
-                            cursor.delete();
-                        }
+                        const value = cursor.value;
+                        entries.push({
+                            id: value.id,
+                            size: value.size ?? value.blob?.size ?? 0,
+                            lastAccess: value.lastAccess ?? value.timestamp ?? 0,
+                            date: value.date
+                        });
                         cursor.continue();
                     } else {
                         resolve();
                     }
                 };
-                request.onerror = () => resolve();
+                req.onerror = () => resolve();
+            });
+
+            // Mark stale entries by age
+            const toDelete = new Set();
+            for (const entry of entries) {
+                if (entry.date && entry.date < cutoffDate) {
+                    toDelete.add(entry.id);
+                }
+            }
+
+            // Enforce size/count limits on remaining entries (oldest first)
+            let totalBytes = entries.reduce((sum, e) => sum + (e.size || 0), 0);
+            const remaining = entries.filter(e => !toDelete.has(e.id));
+            remaining.sort((a, b) => (a.lastAccess || 0) - (b.lastAccess || 0));
+            for (const entry of remaining) {
+                if (entries.length - toDelete.size <= maxEntries && totalBytes <= maxBytes) break;
+                toDelete.add(entry.id);
+                totalBytes -= entry.size || 0;
+            }
+
+            if (toDelete.size === 0) return;
+            await new Promise((resolve) => {
+                const tx = db.transaction([CONFIG.BING_CACHE.DB_STORE_NAME], 'readwrite');
+                const store = tx.objectStore(CONFIG.BING_CACHE.DB_STORE_NAME);
+                toDelete.forEach(id => store.delete(id));
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => resolve();
             });
         } catch (e) {
             // Ignore cleanup errors
@@ -1171,7 +1236,7 @@ const WallpaperManager = (function () {
             const startOfToday = _getStartOfTodayTs();
             const cacheTs = data.timestamp || 0;
             if (cacheTs < startOfToday) {
-                localStorage.removeItem(CONFIG.STORAGE_KEYS.BING_WALLPAPER_CACHE);
+                _safeLocalStorageRemove(CONFIG.STORAGE_KEYS.BING_WALLPAPER_CACHE);
                 return null;
             }
             if (data.info && _isBingCacheValid(data.info.date)) {
@@ -1194,7 +1259,7 @@ const WallpaperManager = (function () {
                 info: info,
                 timestamp: Date.now()
             };
-            localStorage.setItem(CONFIG.STORAGE_KEYS.BING_WALLPAPER_CACHE, JSON.stringify(cacheData));
+            _safeLocalStorageSet(CONFIG.STORAGE_KEYS.BING_WALLPAPER_CACHE, JSON.stringify(cacheData));
         } catch (e) {
             console.warn('Failed to cache Bing wallpaper info:', e);
         }
@@ -1312,7 +1377,7 @@ const WallpaperManager = (function () {
             _saveWallpaperPreviewSmall(blob, CONFIG.WALLPAPER_SOURCES.BING);
             
             _state.wallpaperSource = CONFIG.WALLPAPER_SOURCES.BING;
-            localStorage.setItem(CONFIG.STORAGE_KEYS.WALLPAPER_SOURCE, CONFIG.WALLPAPER_SOURCES.BING);
+            _safeLocalStorageSet(CONFIG.STORAGE_KEYS.WALLPAPER_SOURCE, CONFIG.WALLPAPER_SOURCES.BING);
             _updateResetButtonState();
             
             // Schedule preload of tomorrow's wallpaper
@@ -1351,16 +1416,32 @@ const WallpaperManager = (function () {
         if (!progressOverlay) {
             progressOverlay = document.createElement('div');
             progressOverlay.id = 'wallpaper-progress-overlay';
-            progressOverlay.innerHTML = `
-                <div class="progress-content">
-                    <div class="progress-spinner"></div>
-                    <div class="progress-text">${processingText}</div>
-                    <div class="progress-bar-container">
-                        <div class="progress-bar-fill"></div>
-                    </div>
-                    <div class="progress-status"></div>
-                </div>
-            `;
+
+            const progressContent = document.createElement('div');
+            progressContent.className = 'progress-content';
+
+            const progressSpinner = document.createElement('div');
+            progressSpinner.className = 'progress-spinner';
+
+            const progressText = document.createElement('div');
+            progressText.className = 'progress-text';
+            progressText.textContent = processingText;
+
+            const progressBarContainer = document.createElement('div');
+            progressBarContainer.className = 'progress-bar-container';
+
+            const progressBarFill = document.createElement('div');
+            progressBarFill.className = 'progress-bar-fill';
+            progressBarContainer.appendChild(progressBarFill);
+
+            const progressStatus = document.createElement('div');
+            progressStatus.className = 'progress-status';
+
+            progressContent.appendChild(progressSpinner);
+            progressContent.appendChild(progressText);
+            progressContent.appendChild(progressBarContainer);
+            progressContent.appendChild(progressStatus);
+            progressOverlay.appendChild(progressContent);
             progressOverlay.style.cssText = `
                 position: fixed;
                 top: 0;
@@ -1510,8 +1591,8 @@ const WallpaperManager = (function () {
                 await _saveWallpaperToDB(result.blob);
                 
                 // Clear legacy localStorage wallpaper
-                localStorage.removeItem(CONFIG.STORAGE_KEYS.LEGACY_WALLPAPER);
-                
+                _safeLocalStorageRemove(CONFIG.STORAGE_KEYS.LEGACY_WALLPAPER);
+
                 // Create URL from optimized blob
                 const objectUrl = URL.createObjectURL(result.blob);
                 _setWallpaper(objectUrl);
@@ -1525,10 +1606,10 @@ const WallpaperManager = (function () {
                 // Fallback: direct save without optimization (original behavior)
                 console.warn('ImageProcessor not available, using direct save');
                 await _saveWallpaperToDB(file);
-                
+
                 // Clear legacy localStorage wallpaper
-                localStorage.removeItem(CONFIG.STORAGE_KEYS.LEGACY_WALLPAPER);
-                
+                _safeLocalStorageRemove(CONFIG.STORAGE_KEYS.LEGACY_WALLPAPER);
+
                 const objectUrl = URL.createObjectURL(file);
                 _setWallpaper(objectUrl);
                 _updatePreview(objectUrl);
@@ -1538,7 +1619,7 @@ const WallpaperManager = (function () {
 
             // Mark as custom wallpaper
             _state.wallpaperSource = CONFIG.WALLPAPER_SOURCES.CUSTOM;
-            localStorage.setItem(CONFIG.STORAGE_KEYS.WALLPAPER_SOURCE, CONFIG.WALLPAPER_SOURCES.CUSTOM);
+            _safeLocalStorageSet(CONFIG.STORAGE_KEYS.WALLPAPER_SOURCE, CONFIG.WALLPAPER_SOURCES.CUSTOM);
 
             _updateResetButtonState();
 
@@ -1546,7 +1627,11 @@ const WallpaperManager = (function () {
         } catch (err) {
             _hideProcessingProgress();
             console.error('Failed to save wallpaper:', err);
-            alert('Failed to save wallpaper: ' + (err.message || 'Unknown error'));
+            const isQuotaError = err && (err.name === 'QuotaExceededError' || /quota|exceeded|storage/i.test(err.message || ''));
+            const msg = isQuotaError
+                ? 'Storage space exceeded. Free up disk space and try again.'
+                : 'Failed to save wallpaper: ' + (err.message || 'Unknown error');
+            alert(msg);
             return false;
         }
     }
@@ -1556,6 +1641,11 @@ const WallpaperManager = (function () {
      * @returns {Promise<void>}
      */
     async function _resetWallpaper() {
+        const confirmMessage = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? I18n.getMessage('resetWallpaperConfirm', 'Are you sure you want to reset the wallpaper?')
+            : 'Are you sure you want to reset the wallpaper?';
+        if (!confirm(confirmMessage)) return;
+
         try {
             await _deleteWallpaperFromDB();
         } catch (e) {
@@ -1563,9 +1653,9 @@ const WallpaperManager = (function () {
         }
 
         // Clear all storage
-        localStorage.removeItem(CONFIG.STORAGE_KEYS.LEGACY_WALLPAPER);
-        localStorage.removeItem(CONFIG.STORAGE_KEYS.WALLPAPER_SETTINGS);
-        localStorage.removeItem(CONFIG.STORAGE_KEYS.WALLPAPER_SOURCE);
+        _safeLocalStorageRemove(CONFIG.STORAGE_KEYS.LEGACY_WALLPAPER);
+        _safeLocalStorageRemove(CONFIG.STORAGE_KEYS.WALLPAPER_SETTINGS);
+        _safeLocalStorageRemove(CONFIG.STORAGE_KEYS.WALLPAPER_SOURCE);
 
         // Reset state
         _state.wallpaperSettings = { blur: 0, vignette: 0 };
@@ -1636,7 +1726,7 @@ const WallpaperManager = (function () {
             _elements.blurValue.textContent = value;
         }
 
-        localStorage.setItem(
+        _safeLocalStorageSet(
             CONFIG.STORAGE_KEYS.WALLPAPER_SETTINGS,
             JSON.stringify(_state.wallpaperSettings)
         );
@@ -1661,7 +1751,7 @@ const WallpaperManager = (function () {
             _elements.vignetteValue.textContent = value;
         }
 
-        localStorage.setItem(
+        _safeLocalStorageSet(
             CONFIG.STORAGE_KEYS.WALLPAPER_SETTINGS,
             JSON.stringify(_state.wallpaperSettings)
         );
@@ -1690,7 +1780,7 @@ const WallpaperManager = (function () {
             _elements.searchWidthValue.textContent = `${value}px`;
         }
 
-        localStorage.setItem(
+        _safeLocalStorageSet(
             CONFIG.STORAGE_KEYS.SEARCH_BOX_SETTINGS,
             JSON.stringify(_state.searchBoxSettings)
         );
@@ -1711,7 +1801,7 @@ const WallpaperManager = (function () {
             _elements.searchPositionValue.textContent = `${value}%`;
         }
 
-        localStorage.setItem(
+        _safeLocalStorageSet(
             CONFIG.STORAGE_KEYS.SEARCH_BOX_SETTINGS,
             JSON.stringify(_state.searchBoxSettings)
         );
@@ -1732,7 +1822,7 @@ const WallpaperManager = (function () {
             _elements.searchScaleValue.textContent = `${value}%`;
         }
 
-        localStorage.setItem(
+        _safeLocalStorageSet(
             CONFIG.STORAGE_KEYS.SEARCH_BOX_SETTINGS,
             JSON.stringify(_state.searchBoxSettings)
         );
@@ -1753,7 +1843,7 @@ const WallpaperManager = (function () {
             _elements.searchRadiusValue.textContent = `${value}px`;
         }
 
-        localStorage.setItem(
+        _safeLocalStorageSet(
             CONFIG.STORAGE_KEYS.SEARCH_BOX_SETTINGS,
             JSON.stringify(_state.searchBoxSettings)
         );
@@ -1774,7 +1864,7 @@ const WallpaperManager = (function () {
             _elements.searchShadowValue.textContent = `${value}%`;
         }
 
-        localStorage.setItem(
+        _safeLocalStorageSet(
             CONFIG.STORAGE_KEYS.SEARCH_BOX_SETTINGS,
             JSON.stringify(_state.searchBoxSettings)
         );
@@ -2075,7 +2165,7 @@ const WallpaperManager = (function () {
         let savedSource = localStorage.getItem(CONFIG.STORAGE_KEYS.WALLPAPER_SOURCE);
         if (savedSource && savedSource !== CONFIG.WALLPAPER_SOURCES.BING && savedSource !== CONFIG.WALLPAPER_SOURCES.CUSTOM) {
             savedSource = CONFIG.WALLPAPER_SOURCES.BING;
-            localStorage.setItem(CONFIG.STORAGE_KEYS.WALLPAPER_SOURCE, savedSource);
+            _safeLocalStorageSet(CONFIG.STORAGE_KEYS.WALLPAPER_SOURCE, savedSource);
         }
 
         // Try loading custom wallpaper from IndexedDB first
@@ -2099,6 +2189,7 @@ const WallpaperManager = (function () {
             }
         } catch (e) {
             console.error('Error loading wallpaper from IndexedDB:', e);
+            _showStatusMessage('Storage unavailable. Check browser privacy settings.', 5000);
         }
 
         // Fallback to localStorage (legacy)
@@ -2127,7 +2218,7 @@ const WallpaperManager = (function () {
 
         // Update source state
         if (wallpaperLoaded) {
-            localStorage.setItem(CONFIG.STORAGE_KEYS.WALLPAPER_SOURCE, _state.wallpaperSource);
+            _safeLocalStorageSet(CONFIG.STORAGE_KEYS.WALLPAPER_SOURCE, _state.wallpaperSource);
         }
 
         _updateResetButtonState();
@@ -2146,6 +2237,9 @@ const WallpaperManager = (function () {
             console.warn('WallpaperManager already initialized');
             return;
         }
+
+        // 0. Request persistent storage so wallpaper data survives disk pressure
+        _requestPersistentStorage();
 
         // 1. Cache DOM elements
         _cacheElements();
