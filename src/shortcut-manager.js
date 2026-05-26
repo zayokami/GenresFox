@@ -38,6 +38,28 @@ const ShortcutManager = (function() {
     const _resourceExistsCache = new Map();
     let _iconCacheDbPromise = null;
 
+    // LRU eviction limit for in-memory caches
+    const _ICON_CACHE_MAX_SIZE = 100;
+
+    /**
+     * Set a value in an LRU Map with size cap.
+     * Evicts the oldest entry when the limit is exceeded.
+     * @param {Map} map - Target Map
+     * @param {string} key - Cache key
+     * @param {*} value - Value to store
+     */
+    function _setLruMap(map, key, value) {
+        if (map.has(key)) {
+            map.delete(key);
+        } else if (map.size >= _ICON_CACHE_MAX_SIZE) {
+            const oldest = map.keys().next().value;
+            if (oldest !== undefined) {
+                map.delete(oldest);
+            }
+        }
+        map.set(key, value);
+    }
+
     // Shortcut settings
     const SHORTCUT_SETTINGS_KEY = 'shortcutSettings';
     const DEFAULT_SHORTCUT_SETTINGS = {
@@ -129,7 +151,7 @@ const ShortcutManager = (function() {
         }
         
         if (_isNonCorsService(url)) {
-            _resourceExistsCache.set(url, true);
+            _setLruMap(_resourceExistsCache, url, true);
             return true;
         }
         
@@ -147,10 +169,10 @@ const ShortcutManager = (function() {
                 }
             });
             const exists = response.ok;
-            _resourceExistsCache.set(url, exists);
+            _setLruMap(_resourceExistsCache, url, exists);
             return exists;
         } catch (e) {
-            _resourceExistsCache.set(url, false);
+            _setLruMap(_resourceExistsCache, url, false);
             return false;
         }
     }
@@ -430,6 +452,49 @@ const ShortcutManager = (function() {
     }
 
     /**
+     * Clean up expired entries from the IndexedDB icon cache.
+     * Runs as a best-effort background task on init.
+     */
+    async function _cleanupExpiredIconCache() {
+        try {
+            const db = await _openIconCacheDB();
+            const now = Date.now();
+            const expiredKeys = [];
+
+            await new Promise((resolve) => {
+                const tx = db.transaction(ICON_CACHE_STORE, 'readonly');
+                const store = tx.objectStore(ICON_CACHE_STORE);
+                const req = store.openCursor();
+                req.onsuccess = (event) => {
+                    const cursor = event.target.result;
+                    if (cursor) {
+                        const entry = cursor.value;
+                        if (!entry || (entry.updatedAt && (now - entry.updatedAt) > ICON_CACHE_TTL)) {
+                            expiredKeys.push(cursor.key);
+                        }
+                        cursor.continue();
+                    } else {
+                        resolve();
+                    }
+                };
+                req.onerror = () => resolve();
+            });
+
+            if (expiredKeys.length === 0) return;
+
+            await new Promise((resolve) => {
+                const tx = db.transaction(ICON_CACHE_STORE, 'readwrite');
+                const store = tx.objectStore(ICON_CACHE_STORE);
+                expiredKeys.forEach(key => store.delete(key));
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => resolve();
+            });
+        } catch (_) {
+            // Silent failure: cleanup is best-effort
+        }
+    }
+
+    /**
      * Get icon from IndexedDB
      * @param {string} key - Cache key
      * @returns {Promise<Object|null>}
@@ -496,7 +561,7 @@ const ShortcutManager = (function() {
                 try {
                     if (_isNonCorsService(candidate)) {
                         const result = await _loadIconViaImage(candidate);
-                        _iconCacheInMemory.set(key, { data: result, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
+                        _setLruMap(_iconCacheInMemory, key, { data: result, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
                         if (result.startsWith('data:')) {
                             await _putIconToDB(key, result);
                             localStorage.setItem(`icon_cache_${key}`, result);
@@ -506,7 +571,7 @@ const ShortcutManager = (function() {
                     }
                     
                     const dataUrl = await _fetchIconAsDataUrl(candidate);
-                    _iconCacheInMemory.set(key, { data: dataUrl, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
+                    _setLruMap(_iconCacheInMemory, key, { data: dataUrl, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
                     await _putIconToDB(key, dataUrl);
                     _updateImagesForKey(key, dataUrl);
                     localStorage.setItem(`icon_cache_${key}`, dataUrl);
@@ -514,7 +579,7 @@ const ShortcutManager = (function() {
                 } catch (fetchErr) {
                     try {
                         const result = await _loadIconViaImage(candidate);
-                        _iconCacheInMemory.set(key, { data: result, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
+                        _setLruMap(_iconCacheInMemory, key, { data: result, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
                         if (result.startsWith('data:')) {
                             await _putIconToDB(key, result);
                             localStorage.setItem(`icon_cache_${key}`, result);
@@ -545,7 +610,7 @@ const ShortcutManager = (function() {
             _iconCacheInFlight.delete(key);
         });
 
-        _iconCacheInFlight.set(key, task);
+        _setLruMap(_iconCacheInFlight, key, task);
         return task;
     }
 
@@ -918,15 +983,18 @@ const ShortcutManager = (function() {
             shortcutsListElement = options.listElement || document.getElementById('shortcutsList');
             shortcutsGridElement = options.gridElement || document.getElementById('shortcuts');
             onShortcutsChange = options.onChange || null;
-            
+
             // Load settings
             _loadShortcutSettings();
-            
+
             shortcuts = _loadShortcuts();
             if (shortcuts.length === 0) {
                 shortcuts = JSON.parse(JSON.stringify(DEFAULT_SHORTCUTS));
                 _saveShortcuts();
             }
+
+            // Periodic cleanup of expired IndexedDB icon cache entries
+            _cleanupExpiredIconCache().catch(() => {});
         },
 
         /**

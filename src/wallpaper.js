@@ -539,6 +539,25 @@ const WallpaperManager = (function () {
         }, 2000);
     }
 
+    // Track pending Object URL revoke timers to prevent leaks on rapid changes
+    let _pendingRevokeTimers = [];
+
+    /**
+     * Clear all pending Object URL revoke timers and revoke URLs immediately.
+     */
+    function _clearPendingRevokes() {
+        for (const entry of _pendingRevokeTimers) {
+            clearTimeout(entry.timer);
+            if (entry.url && entry.url.startsWith('blob:')) {
+                URL.revokeObjectURL(entry.url);
+            }
+        }
+        _pendingRevokeTimers = [];
+    }
+
+    // Ensure pending revokes are cleared before page unload to prevent leaks
+    window.addEventListener('beforeunload', _clearPendingRevokes, { passive: true });
+
     /**
      * Set wallpaper URL
      * @param {string} url - Wallpaper URL (can be blob URL or data URL)
@@ -548,7 +567,18 @@ const WallpaperManager = (function () {
         const oldUrl = _state.currentWallpaperUrl;
         _state.currentWallpaperUrl = url;
         _setCSSVar(CONFIG.CSS_VARS.WALLPAPER_IMAGE, url === 'none' ? 'none' : `url(${url})`);
-        
+
+        // Cancel any pending revocations for the old URL to avoid double-revoke or leak
+        if (oldUrl) {
+            _pendingRevokeTimers = _pendingRevokeTimers.filter(entry => {
+                if (entry.url === oldUrl) {
+                    clearTimeout(entry.timer);
+                    return false;
+                }
+                return true;
+            });
+        }
+
         // Delay revoking old blob URL to prevent flickering
         // Wait for new image to load before revoking old one
         if (oldUrl &&
@@ -558,21 +588,26 @@ const WallpaperManager = (function () {
             url.startsWith('blob:')) {
             if (skipPreload) {
                 // Image already preloaded, revoke old URL after a short delay
-                setTimeout(() => {
+                const timer = setTimeout(() => {
                     URL.revokeObjectURL(oldUrl);
+                    _pendingRevokeTimers = _pendingRevokeTimers.filter(e => e.url !== oldUrl);
                 }, 100);
+                _pendingRevokeTimers.push({ url: oldUrl, timer });
             } else {
                 // Preload new image, then revoke old URL
                 const img = new Image();
-                img.onload = () => {
-                    // New image loaded, safe to revoke old URL
+                let revoked = false;
+                const doRevoke = () => {
+                    if (revoked) return;
+                    revoked = true;
                     URL.revokeObjectURL(oldUrl);
+                    _pendingRevokeTimers = _pendingRevokeTimers.filter(e => e.url !== oldUrl);
                 };
+                img.onload = doRevoke;
                 img.onerror = () => {
                     // Even if load fails, revoke after a delay to prevent memory leak
-                    setTimeout(() => {
-                        URL.revokeObjectURL(oldUrl);
-                    }, 1000);
+                    const timer = setTimeout(doRevoke, 1000);
+                    _pendingRevokeTimers.push({ url: oldUrl, timer });
                 };
                 img.src = url;
             }
@@ -2023,27 +2058,39 @@ const WallpaperManager = (function () {
             _elements.dropZone.addEventListener('drop', _handleDrop);
         }
 
-        // Slider events
+        // Debounce helper for slider events to reduce localStorage writes and layout thrashing
+        function _debounceSlider(handler) {
+            let timeout = null;
+            return function (e) {
+                if (timeout) clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    timeout = null;
+                    handler(e);
+                }, 100);
+            };
+        }
+
+        // Slider events (debounced to avoid excessive localStorage writes and layout)
         if (_elements.blurSlider) {
-            _elements.blurSlider.addEventListener('input', _handleBlurChange);
+            _elements.blurSlider.addEventListener('input', _debounceSlider(_handleBlurChange));
         }
         if (_elements.vignetteSlider) {
-            _elements.vignetteSlider.addEventListener('input', _handleVignetteChange);
+            _elements.vignetteSlider.addEventListener('input', _debounceSlider(_handleVignetteChange));
         }
         if (_elements.searchWidthSlider) {
-            _elements.searchWidthSlider.addEventListener('input', _handleSearchWidthChange);
+            _elements.searchWidthSlider.addEventListener('input', _debounceSlider(_handleSearchWidthChange));
         }
         if (_elements.searchPositionSlider) {
-            _elements.searchPositionSlider.addEventListener('input', _handleSearchPositionChange);
+            _elements.searchPositionSlider.addEventListener('input', _debounceSlider(_handleSearchPositionChange));
         }
         if (_elements.searchScaleSlider) {
-            _elements.searchScaleSlider.addEventListener('input', _handleSearchScaleChange);
+            _elements.searchScaleSlider.addEventListener('input', _debounceSlider(_handleSearchScaleChange));
         }
         if (_elements.searchRadiusSlider) {
-            _elements.searchRadiusSlider.addEventListener('input', _handleSearchRadiusChange);
+            _elements.searchRadiusSlider.addEventListener('input', _debounceSlider(_handleSearchRadiusChange));
         }
         if (_elements.searchShadowSlider) {
-            _elements.searchShadowSlider.addEventListener('input', _handleSearchShadowChange);
+            _elements.searchShadowSlider.addEventListener('input', _debounceSlider(_handleSearchShadowChange));
         }
 
         // Reset button

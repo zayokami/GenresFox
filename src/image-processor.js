@@ -189,6 +189,191 @@ const ImageProcessor = (function() {
     // ==================== Web Worker ====================
     
     /**
+     * Create a shared worker onmessage handler to avoid duplicating logic
+     * @param {Worker} worker - The worker instance to bind to
+     * @returns {Function} onmessage handler
+     */
+    function _createWorkerMessageHandler(worker) {
+        return (e) => {
+            const { type, id, result, error, progress } = e.data;
+
+            const deliver = () => {
+                switch (type) {
+                    case 'loaded': {
+                        const timeoutId = _state.workerInitTimeouts.get(worker);
+                        if (timeoutId) {
+                            clearTimeout(timeoutId);
+                            _state.workerInitTimeouts.delete(worker);
+                        }
+
+                        try {
+                            worker.postMessage({
+                                type: 'init',
+                                id: 0,
+                                data: {
+                                    config: {
+                                        ...CONFIG,
+                                        WASM_ENABLED: CONFIG.WASM_URL ? CONFIG.WASM_ENABLED : false,
+                                        WASM_URL: CONFIG.WASM_URL || null
+                                    }
+                                }
+                            });
+                        } catch (err) {
+                            console.error('Failed to send init message to worker:', err);
+                            const idx = _state.workers.indexOf(worker);
+                            if (idx > -1) {
+                                _state.workers.splice(idx, 1);
+                            }
+                            try {
+                                worker.terminate();
+                            } catch (_) {
+                                // Ignore termination errors
+                            }
+                        }
+                        return true;
+                    }
+                    case 'ready':
+                        if (!worker.__ready) {
+                            worker.__ready = true;
+                            _state.workerReadyCount++;
+                            const timeoutId = _state.workerInitTimeouts.get(worker);
+                            if (timeoutId) {
+                                clearTimeout(timeoutId);
+                                _state.workerInitTimeouts.delete(worker);
+                            }
+                        }
+                        return true;
+                    case 'wasmLoaded': {
+                        if (!worker.__wasmLoaded) {
+                            worker.__wasmLoaded = true;
+                            _state.wasmState.workersLoaded++;
+                            if (_state.wasmState.workersLoaded >= _state.wasmState.totalWorkers) {
+                                _state.wasmState.status = 'loaded';
+                                if (_state.wasmState.loadingPromise) {
+                                    _state.wasmState.loadingPromise.resolve();
+                                    _state.wasmState.loadingPromise = null;
+                                }
+                            }
+                        }
+                        return true;
+                    }
+                    case 'wasmLoadFailed': {
+                        _state.wasmState.workersLoaded++;
+                        if (_state.wasmState.workersLoaded >= _state.wasmState.totalWorkers) {
+                            if (_state.wasmState.workersLoaded === _state.wasmState.totalWorkers &&
+                                _state.workers.filter(w => w?.__wasmLoaded).length === 0) {
+                                _state.wasmState.status = 'failed';
+                            } else {
+                                _state.wasmState.status = 'loaded';
+                            }
+                            if (_state.wasmState.loadingPromise) {
+                                _state.wasmState.loadingPromise.resolve();
+                                _state.wasmState.loadingPromise = null;
+                            }
+                        }
+                        return true;
+                    }
+                    case 'progress': {
+                        const progressCb = _state.workerCallbacks.get(id);
+                        if (progressCb?.onProgress) {
+                            progressCb.onProgress(progress);
+                            return true;
+                        }
+                        return false;
+                    }
+                    case 'complete':
+                    case 'previewComplete': {
+                        const cb = _state.workerCallbacks.get(id);
+                        if (cb?.resolve) {
+                            cb.resolve(result);
+                            _state.workerCallbacks.delete(id);
+                            const timeoutId = _state.callbackTimeouts.get(id);
+                            if (timeoutId) {
+                                clearTimeout(timeoutId);
+                                _state.callbackTimeouts.delete(id);
+                            }
+                        }
+                        worker.__busy = false;
+                        _dispatchAllPendingTasks();
+                        return true;
+                    }
+                    case 'error': {
+                        const errCb = _state.workerCallbacks.get(id);
+                        if (errCb?.reject) {
+                            errCb.reject(new Error(error));
+                            _state.workerCallbacks.delete(id);
+                            const timeoutId = _state.callbackTimeouts.get(id);
+                            if (timeoutId) {
+                                clearTimeout(timeoutId);
+                                _state.callbackTimeouts.delete(id);
+                            }
+                        }
+                        worker.__busy = false;
+                        _dispatchAllPendingTasks();
+                        return true;
+                    }
+                }
+                return true;
+            };
+
+            if (!deliver()) {
+                queueMicrotask(() => {
+                    if (!deliver()) {
+                        console.warn(`Worker message without callback (id=${id}, type=${type})`);
+                        _state.workerCallbacks.delete(id);
+                        const timeoutId = _state.callbackTimeouts.get(id);
+                        if (timeoutId) {
+                            clearTimeout(timeoutId);
+                            _state.callbackTimeouts.delete(id);
+                        }
+                    }
+                });
+            }
+        };
+    }
+
+    /**
+     * Create a shared worker onerror handler
+     * @param {Worker} worker - The worker instance to bind to
+     * @returns {Function} onerror handler
+     */
+    function _createWorkerErrorHandler(worker) {
+        return (e) => {
+            console.error('Worker error:', e);
+            const crashedIndex = _state.workers.indexOf(worker);
+
+            const initTimeoutId = _state.workerInitTimeouts.get(worker);
+            if (initTimeoutId) {
+                clearTimeout(initTimeoutId);
+                _state.workerInitTimeouts.delete(worker);
+            }
+
+            for (const [callbackId, callback] of _state.workerCallbacks.entries()) {
+                if (callback.reject) {
+                    callback.reject(new Error('Worker crashed or failed'));
+                }
+                _state.workerCallbacks.delete(callbackId);
+                const timeoutId = _state.callbackTimeouts.get(callbackId);
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    _state.callbackTimeouts.delete(callbackId);
+                }
+            }
+
+            if (worker.__ready) {
+                worker.__ready = false;
+                _state.workerReadyCount = Math.max(0, _state.workerReadyCount - 1);
+            }
+            worker.__busy = false;
+
+            if (crashedIndex > -1) {
+                _replaceWorker(crashedIndex);
+            }
+            _dispatchAllPendingTasks();
+        };
+    }
+
+    /**
      * Initialize Web Worker pool
      */
     function _initWorkers() {
@@ -203,235 +388,37 @@ const ImageProcessor = (function() {
             try {
                 const worker = new Worker('image-worker.js');
 
-                worker.onmessage = (e) => {
-                    const { type, id, result, error, progress } = e.data;
-
-                    const deliver = () => {
-                        switch (type) {
-                            case 'loaded': {
-                                // Worker script is loaded, now safe to send init message
-                                // Clear initialization timeout
-                                const timeoutId = _state.workerInitTimeouts.get(worker);
-                                if (timeoutId) {
-                                    clearTimeout(timeoutId);
-                                    _state.workerInitTimeouts.delete(worker);
-                                }
-                                
-                                // Send init message now that worker is ready
-                                try {
-                                    worker.postMessage({
-                                        type: 'init',
-                                        id: 0,
-                                        data: { 
-                                            config: {
-                                                ...CONFIG,
-                                                // Only pass WASM config if URL is available
-                                                WASM_ENABLED: CONFIG.WASM_URL ? CONFIG.WASM_ENABLED : false,
-                                                WASM_URL: CONFIG.WASM_URL || null
-                                            }
-                                        }
-                                    });
-                                } catch (err) {
-                                    console.error('Failed to send init message to worker:', err);
-                                    // Remove worker on init failure
-                                    const index = _state.workers.indexOf(worker);
-                                    if (index > -1) {
-                                        _state.workers.splice(index, 1);
-                                    }
-                                    try {
-                                        worker.terminate();
-                                    } catch (e) {
-                                        // Ignore termination errors
-                                    }
-                                }
-                                return true;
-                            }
-                            case 'ready':
-                                if (!worker.__ready) {
-                                    worker.__ready = true;
-                                    _state.workerReadyCount++;
-                                    // Clear initialization timeout on successful ready
-                                    const timeoutId = _state.workerInitTimeouts.get(worker);
-                                    if (timeoutId) {
-                                        clearTimeout(timeoutId);
-                                        _state.workerInitTimeouts.delete(worker);
-                                    }
-                                }
-                                return true;
-                            case 'wasmLoaded': {
-                                // Worker successfully loaded WASM
-                                if (!worker.__wasmLoaded) {
-                                    worker.__wasmLoaded = true;
-                                    _state.wasmState.workersLoaded++;
-                                    // Check if all workers have loaded
-                                    if (_state.wasmState.workersLoaded >= _state.wasmState.totalWorkers) {
-                                        _state.wasmState.status = 'loaded';
-                                        if (_state.wasmState.loadingPromise) {
-                                            _state.wasmState.loadingPromise.resolve();
-                                            _state.wasmState.loadingPromise = null;
-                                        }
-                                    }
-                                }
-                                return true;
-                            }
-                            case 'wasmLoadFailed': {
-                                // Worker failed to load WASM
-                                _state.wasmState.workersLoaded++;
-                                // Check if all workers have attempted (even if failed)
-                                if (_state.wasmState.workersLoaded >= _state.wasmState.totalWorkers) {
-                                    if (_state.wasmState.workersLoaded === _state.wasmState.totalWorkers && 
-                                        _state.workers.filter(w => w?.__wasmLoaded).length === 0) {
-                                        // All workers failed
-                                        _state.wasmState.status = 'failed';
-                                    } else {
-                                        // Some workers succeeded
-                                        _state.wasmState.status = 'loaded';
-                                    }
-                                    if (_state.wasmState.loadingPromise) {
-                                        _state.wasmState.loadingPromise.resolve();
-                                        _state.wasmState.loadingPromise = null;
-                                    }
-                                }
-                                return true;
-                            }
-                            case 'progress': {
-                                const progressCb = _state.workerCallbacks.get(id);
-                                if (progressCb?.onProgress) {
-                                    progressCb.onProgress(progress);
-                                    return true;
-                                }
-                                return false;
-                            }
-                            case 'complete':
-                            case 'previewComplete': {
-                                const cb = _state.workerCallbacks.get(id);
-                                if (cb?.resolve) {
-                                    cb.resolve(result);
-                                    _state.workerCallbacks.delete(id);
-                                    // Clear timeout
-                                    const timeoutId = _state.callbackTimeouts.get(id);
-                                    if (timeoutId) {
-                                        clearTimeout(timeoutId);
-                                        _state.callbackTimeouts.delete(id);
-                                    }
-                                }
-                                worker.__busy = false;
-                                _dispatchAllPendingTasks();
-                                return true;
-                            }
-                            case 'error': {
-                                const errCb = _state.workerCallbacks.get(id);
-                                if (errCb?.reject) {
-                                    errCb.reject(new Error(error));
-                                    _state.workerCallbacks.delete(id);
-                                    // Clear timeout
-                                    const timeoutId = _state.callbackTimeouts.get(id);
-                                    if (timeoutId) {
-                                        clearTimeout(timeoutId);
-                                        _state.callbackTimeouts.delete(id);
-                                    }
-                                }
-                                worker.__busy = false;
-                                _dispatchAllPendingTasks();
-                                return true;
-                            }
-                        }
-                        return true;
-                    };
-
-                    if (!deliver()) {
-                        queueMicrotask(() => {
-                            if (!deliver()) {
-                                console.warn(`Worker message without callback (id=${id}, type=${type})`);
-                                // Clean up callback to prevent memory leak
-                                _state.workerCallbacks.delete(id);
-                                // Clear timeout if exists
-                                const timeoutId = _state.callbackTimeouts.get(id);
-                                if (timeoutId) {
-                                    clearTimeout(timeoutId);
-                                    _state.callbackTimeouts.delete(id);
-                                }
-                            }
-                        });
-                    }
-                };
-
-                worker.onerror = (e) => {
-                    console.error('Worker error:', e);
-                    const crashedIndex = _state.workers.indexOf(worker);
-
-                    // Clean up initialization timeout if exists
-                    const initTimeoutId = _state.workerInitTimeouts.get(worker);
-                    if (initTimeoutId) {
-                        clearTimeout(initTimeoutId);
-                        _state.workerInitTimeouts.delete(worker);
-                    }
-
-                    // Clean up all callbacks for this worker to prevent memory leaks
-                    // Find callbacks that might be waiting on this worker
-                    for (const [callbackId, callback] of _state.workerCallbacks.entries()) {
-                        // Reject pending callbacks
-                        if (callback.reject) {
-                            callback.reject(new Error('Worker crashed or failed'));
-                        }
-                        _state.workerCallbacks.delete(callbackId);
-                        // Clear timeout
-                        const timeoutId = _state.callbackTimeouts.get(callbackId);
-                        if (timeoutId) {
-                            clearTimeout(timeoutId);
-                            _state.callbackTimeouts.delete(callbackId);
-                        }
-                    }
-
-                    if (worker.__ready) {
-                        worker.__ready = false;
-                        _state.workerReadyCount = Math.max(0, _state.workerReadyCount - 1);
-                    }
-                    worker.__busy = false;
-
-                    // Replace the crashed worker with a fresh one
-                    if (crashedIndex > -1) {
-                        _replaceWorker(crashedIndex);
-                    }
-                    _dispatchAllPendingTasks();
-                };
+                worker.onmessage = _createWorkerMessageHandler(worker);
+                worker.onerror = _createWorkerErrorHandler(worker);
 
                 worker.__ready = false;
                 worker.__busy = false;
                 worker.__wasmLoaded = false;
-                worker.__initStartTime = Date.now(); // Track initialization start time
+                worker.__initStartTime = Date.now();
                 _state.workers.push(worker);
 
-                // Set up initialization timeout (10 seconds)
-                // If worker doesn't respond with 'ready' within timeout, mark as failed
                 const initTimeoutId = setTimeout(() => {
                     if (!worker.__ready) {
                         console.warn(`Worker initialization timeout after 10s, removing worker`);
-                        // Remove worker from pool
                         const index = _state.workers.indexOf(worker);
                         if (index > -1) {
                             _state.workers.splice(index, 1);
                         }
-                        // Clean up
                         try {
                             worker.terminate();
-                        } catch (e) {
+                        } catch (_) {
                             // Ignore termination errors
                         }
                         _state.workerInitTimeouts.delete(worker);
                     }
-                }, 10000); // 10 second timeout
+                }, 10000);
                 _state.workerInitTimeouts.set(worker, initTimeoutId);
-
-                // Note: We don't send init message here anymore
-                // Instead, we wait for 'loaded' message from worker (handled in onmessage handler above)
-                // This avoids race condition where init message is sent before worker script is ready
             } catch (e) {
                 console.warn('Failed to create Worker:', e);
             }
         }
     }
-    
+
     /**
      * Replace a crashed or terminated worker with a fresh one
      * @param {number} index - The index of the worker to replace
@@ -441,7 +428,7 @@ const ImageProcessor = (function() {
         if (oldWorker) {
             try {
                 oldWorker.terminate();
-            } catch (e) {
+            } catch (_) {
                 // Ignore termination errors
             }
         }
@@ -449,171 +436,8 @@ const ImageProcessor = (function() {
         try {
             const worker = new Worker('image-worker.js');
 
-            worker.onmessage = (e) => {
-                const { type, id, result, error, progress } = e.data;
-
-                const deliver = () => {
-                    switch (type) {
-                        case 'loaded': {
-                            const timeoutId = _state.workerInitTimeouts.get(worker);
-                            if (timeoutId) {
-                                clearTimeout(timeoutId);
-                                _state.workerInitTimeouts.delete(worker);
-                            }
-
-                            try {
-                                worker.postMessage({
-                                    type: 'init',
-                                    id: 0,
-                                    data: {
-                                        config: {
-                                            ...CONFIG,
-                                            WASM_ENABLED: CONFIG.WASM_URL ? CONFIG.WASM_ENABLED : false,
-                                            WASM_URL: CONFIG.WASM_URL || null
-                                        }
-                                    }
-                                });
-                            } catch (err) {
-                                console.error('Failed to send init message to replacement worker:', err);
-                                const idx = _state.workers.indexOf(worker);
-                                if (idx > -1) {
-                                    _state.workers.splice(idx, 1);
-                                }
-                                try {
-                                    worker.terminate();
-                                } catch (e) {
-                                    // Ignore
-                                }
-                            }
-                            return true;
-                        }
-                        case 'ready':
-                            if (!worker.__ready) {
-                                worker.__ready = true;
-                                _state.workerReadyCount++;
-                                const timeoutId = _state.workerInitTimeouts.get(worker);
-                                if (timeoutId) {
-                                    clearTimeout(timeoutId);
-                                    _state.workerInitTimeouts.delete(worker);
-                                }
-                            }
-                            return true;
-                        case 'wasmLoaded': {
-                            if (!worker.__wasmLoaded) {
-                                worker.__wasmLoaded = true;
-                                _state.wasmState.workersLoaded++;
-                                if (_state.wasmState.workersLoaded >= _state.wasmState.totalWorkers) {
-                                    _state.wasmState.status = 'loaded';
-                                    if (_state.wasmState.loadingPromise) {
-                                        _state.wasmState.loadingPromise.resolve();
-                                        _state.wasmState.loadingPromise = null;
-                                    }
-                                }
-                            }
-                            return true;
-                        }
-                        case 'wasmLoadFailed': {
-                            _state.wasmState.workersLoaded++;
-                            if (_state.wasmState.workersLoaded >= _state.wasmState.totalWorkers) {
-                                if (_state.wasmState.workersLoaded === _state.wasmState.totalWorkers &&
-                                    _state.workers.filter(w => w?.__wasmLoaded).length === 0) {
-                                    _state.wasmState.status = 'failed';
-                                } else {
-                                    _state.wasmState.status = 'loaded';
-                                }
-                                if (_state.wasmState.loadingPromise) {
-                                    _state.wasmState.loadingPromise.resolve();
-                                    _state.wasmState.loadingPromise = null;
-                                }
-                            }
-                            return true;
-                        }
-                        case 'progress': {
-                            const progressCb = _state.workerCallbacks.get(id);
-                            if (progressCb?.onProgress) {
-                                progressCb.onProgress(progress);
-                                return true;
-                            }
-                            return false;
-                        }
-                        case 'complete':
-                        case 'previewComplete': {
-                            const cb = _state.workerCallbacks.get(id);
-                            if (cb?.resolve) {
-                                cb.resolve(result);
-                                _state.workerCallbacks.delete(id);
-                                const timeoutId = _state.callbackTimeouts.get(id);
-                                if (timeoutId) {
-                                    clearTimeout(timeoutId);
-                                    _state.callbackTimeouts.delete(id);
-                                }
-                            }
-                            worker.__busy = false;
-                            _dispatchAllPendingTasks();
-                            return true;
-                        }
-                        case 'error': {
-                            const errCb = _state.workerCallbacks.get(id);
-                            if (errCb?.reject) {
-                                errCb.reject(new Error(error));
-                                _state.workerCallbacks.delete(id);
-                                const timeoutId = _state.callbackTimeouts.get(id);
-                                if (timeoutId) {
-                                    clearTimeout(timeoutId);
-                                    _state.callbackTimeouts.delete(id);
-                                }
-                            }
-                            worker.__busy = false;
-                            _dispatchAllPendingTasks();
-                            return true;
-                        }
-                    }
-                    return true;
-                };
-
-                if (!deliver()) {
-                    queueMicrotask(() => {
-                        if (!deliver()) {
-                            console.warn(`Worker message without callback (id=${id}, type=${type})`);
-                            _state.workerCallbacks.delete(id);
-                            const timeoutId = _state.callbackTimeouts.get(id);
-                            if (timeoutId) {
-                                clearTimeout(timeoutId);
-                                _state.callbackTimeouts.delete(id);
-                            }
-                        }
-                    });
-                }
-            };
-
-            worker.onerror = (e) => {
-                console.error('Replacement worker error:', e);
-                const initTimeoutId = _state.workerInitTimeouts.get(worker);
-                if (initTimeoutId) {
-                    clearTimeout(initTimeoutId);
-                    _state.workerInitTimeouts.delete(worker);
-                }
-                for (const [callbackId, callback] of _state.workerCallbacks.entries()) {
-                    if (callback.reject) {
-                        callback.reject(new Error('Worker crashed or failed'));
-                    }
-                    _state.workerCallbacks.delete(callbackId);
-                    const timeoutId = _state.callbackTimeouts.get(callbackId);
-                    if (timeoutId) {
-                        clearTimeout(timeoutId);
-                        _state.callbackTimeouts.delete(callbackId);
-                    }
-                }
-                if (worker.__ready) {
-                    worker.__ready = false;
-                    _state.workerReadyCount = Math.max(0, _state.workerReadyCount - 1);
-                }
-                worker.__busy = false;
-                const idx = _state.workers.indexOf(worker);
-                if (idx > -1) {
-                    _replaceWorker(idx);
-                }
-            };
+            worker.onmessage = _createWorkerMessageHandler(worker);
+            worker.onerror = _createWorkerErrorHandler(worker);
 
             worker.__ready = false;
             worker.__busy = false;
@@ -630,7 +454,7 @@ const ImageProcessor = (function() {
                     }
                     try {
                         worker.terminate();
-                    } catch (e) {
+                    } catch (_) {
                         // Ignore
                     }
                     _state.workerInitTimeouts.delete(worker);
@@ -1689,6 +1513,24 @@ const ImageProcessor = (function() {
         _cleanupAllObjectUrls();
         _cache.clear();
         _state.isProcessing = false;
+
+        // Clear all worker initialization timeouts
+        for (const [worker, timeoutId] of _state.workerInitTimeouts.entries()) {
+            clearTimeout(timeoutId);
+            try {
+                worker.terminate();
+            } catch (_) {
+                // ignore
+            }
+        }
+        _state.workerInitTimeouts.clear();
+
+        // Clear all callback timeouts
+        for (const [callbackId, timeoutId] of _state.callbackTimeouts.entries()) {
+            clearTimeout(timeoutId);
+            _state.workerCallbacks.delete(callbackId);
+        }
+        _state.callbackTimeouts.clear();
     }
 
     /**

@@ -427,9 +427,9 @@ const SnowEffect = (function () {
             }
 
             // Batch draw by opacity groups (minimizes state changes)
-            const opacityKeys = Array.from(_opacityGroups.keys()).sort((a, b) => b - a);
-            for (let keyIdx = 0; keyIdx < opacityKeys.length; keyIdx++) {
-                const opacity = opacityKeys[keyIdx];
+            // No sort needed: all flakes are opaque white, order doesn't matter
+            const opacityKeys = _opacityGroups.keys();
+            for (const opacity of opacityKeys) {
                 const flakes = _opacityGroups.get(opacity);
                 
                 // Set opacity once per group
@@ -565,16 +565,15 @@ const SnowEffect = (function () {
                 return;
             }
 
-            // Throttle to target FPS
-            if (deltaTime >= _frameInterval) {
-                _updateFlakes(deltaTime);
-                _checkPerformance(currentTime);
-                _lastFrameTime = currentTime;
-                
-                // Reset error count on successful frame
-                if (_errorCount > 0) {
-                    _errorCount = Math.max(0, _errorCount - 1);
-                }
+            // Always update with clamped deltaTime for smooth animation on high refresh displays
+            const clampedDelta = Math.max(0, Math.min(deltaTime, CONFIG.MAX_DELTA_TIME));
+            _updateFlakes(clampedDelta);
+            _checkPerformance(currentTime);
+            _lastFrameTime = currentTime;
+
+            // Reset error count on successful frame
+            if (_errorCount > 0) {
+                _errorCount = Math.max(0, _errorCount - 1);
             }
 
             _animationId = requestAnimationFrame(_animate);

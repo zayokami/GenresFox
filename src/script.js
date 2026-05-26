@@ -513,36 +513,29 @@ const cacheIcon = (typeof ShortcutManager !== 'undefined' && ShortcutManager.cac
 // --- UI Rendering ---
 function _updateSearchActionWidth() {
     if (!searchActionBtn || !searchActionLabel) return;
-    
-    // Temporarily show label to measure its actual width
-    const originalMaxWidth = searchActionLabel.style.maxWidth;
-    const originalOpacity = searchActionLabel.style.opacity;
-    const originalVisibility = searchActionLabel.style.visibility;
-    
-    // Make label visible for measurement
-    searchActionLabel.style.maxWidth = 'none';
-    searchActionLabel.style.opacity = '1';
-    searchActionLabel.style.visibility = 'hidden'; // Hidden but still measurable
-    searchActionLabel.style.position = 'absolute';
-    searchActionLabel.style.whiteSpace = 'nowrap';
-    
-    // Measure the actual width
-    const labelWidth = searchActionLabel.scrollWidth || searchActionLabel.offsetWidth;
-    
-    // Restore original styles
-    searchActionLabel.style.maxWidth = originalMaxWidth;
-    searchActionLabel.style.opacity = originalOpacity;
-    searchActionLabel.style.visibility = originalVisibility;
-    searchActionLabel.style.position = '';
-    
-        // Calculate expanded width: icon (16px) + gap (8px) + label + padding (32px total)
-        // Expanded = icon(16) + gap(8) + labelWidth + padding(32) = 56 + labelWidth
-        const iconWidth = 16;
-        const gap = 8;
-        const paddingTotal = 32; // 16px left + 16px right
-        const minExpanded = 120; // Minimum expanded width for short texts
-        const expanded = Math.max(iconWidth + gap + labelWidth + paddingTotal, minExpanded);
-    
+
+    // Clone off-screen for measurement to avoid DOM thrashing on the live element
+    const clone = searchActionLabel.cloneNode(true);
+    clone.style.maxWidth = 'none';
+    clone.style.opacity = '1';
+    clone.style.visibility = 'hidden';
+    clone.style.position = 'absolute';
+    clone.style.whiteSpace = 'nowrap';
+    clone.style.left = '-9999px';
+    clone.style.top = '-9999px';
+    document.body.appendChild(clone);
+
+    const labelWidth = clone.scrollWidth || clone.offsetWidth || 0;
+    document.body.removeChild(clone);
+
+    // Calculate expanded width: icon (16px) + gap (8px) + label + padding (32px total)
+    // Expanded = icon(16) + gap(8) + labelWidth + padding(32) = 56 + labelWidth
+    const iconWidth = 16;
+    const gap = 8;
+    const paddingTotal = 32; // 16px left + 16px right
+    const minExpanded = 120; // Minimum expanded width for short texts
+    const expanded = Math.max(iconWidth + gap + labelWidth + paddingTotal, minExpanded);
+
     searchActionBtn.style.setProperty('--search-action-expand', `${expanded}px`);
 }
 
@@ -1831,19 +1824,27 @@ function closeFolderOverlay() {
 }
 
 // ==================== Settings List Drag & Drop ====================
+let _settingsListDragDropObserver = null;
+
 function initSettingsListDragDrop() {
     const shortcutsList = document.getElementById('shortcutsList');
     if (!shortcutsList) return;
-    
+
+    // Disconnect any existing observer to prevent duplicates
+    if (_settingsListDragDropObserver) {
+        _settingsListDragDropObserver.disconnect();
+        _settingsListDragDropObserver = null;
+    }
+
     // Use MutationObserver to add drag handlers to new items
-    const observer = new MutationObserver(() => {
+    _settingsListDragDropObserver = new MutationObserver(() => {
         const items = shortcutsList.querySelectorAll('.list-item');
         items.forEach((item, index) => {
             if (!item.dataset.dragInit) {
                 item.draggable = true;
                 item.dataset.index = index;
                 item.dataset.dragInit = 'true';
-                
+
                 // Add drag handle icon
                 if (!item.querySelector('.drag-handle')) {
                     const handle = document.createElement('span');
@@ -1851,7 +1852,7 @@ function initSettingsListDragDrop() {
                     handle.innerHTML = '⋮⋮';
                     item.insertBefore(handle, item.firstChild);
                 }
-                
+
                 item.addEventListener('dragstart', handleListDragStart);
                 item.addEventListener('dragend', handleListDragEnd);
                 item.addEventListener('dragover', handleListDragOver);
@@ -1860,8 +1861,8 @@ function initSettingsListDragDrop() {
             }
         });
     });
-    
-    observer.observe(shortcutsList, { childList: true });
+
+    _settingsListDragDropObserver.observe(shortcutsList, { childList: true });
 }
 
 let draggedListIndex = null;
@@ -2004,66 +2005,6 @@ function _removeChromeCustomizeButton() {
             }
         }
 
-        // Fallback: search all elements for customize text and hide their containers
-        // BUT: Exclude critical app containers to prevent false positives
-        const criticalContainers = [
-            '.container',
-            '.search-container',
-            '.search-box',
-            '.shortcuts-grid',
-            '.modal',
-            '.modal-overlay',
-            '#settingsModal',
-            'body',
-            'html'
-        ];
-        
-        const allElements = document.querySelectorAll('*');
-        allElements.forEach(el => {
-            if (el.hasAttribute('data-genresfox-hidden')) return;
-            
-            // Skip critical app containers
-            let isCritical = false;
-            for (const selector of criticalContainers) {
-                if (el.matches && el.matches(selector)) {
-                    isCritical = true;
-                    break;
-                }
-                // Also check if element is inside a critical container
-                if (el.closest && el.closest(selector)) {
-                    isCritical = true;
-                    break;
-                }
-            }
-            if (isCritical) return;
-            
-            const text = (el.textContent || el.getAttribute('aria-label') || '').trim();
-            // More specific regex: must contain "Chrome" or be a button/link
-            const isCustomize = /(自定义\s*Chrome|Customize\s*Chrome|カスタマイズ\s*Chrome)/i.test(text) ||
-                               ((el.tagName === 'BUTTON' || el.tagName === 'A') && 
-                                /(自定义|Customize|カスタマイズ)/i.test(text));
-            
-            if (isCustomize) {
-                // Hide the element
-                el.style.display = 'none';
-                el.setAttribute('data-genresfox-hidden', 'true');
-                
-                // Also try to hide parent container if it looks like a footer
-                let parent = el.parentElement;
-                if (parent) {
-                    // Don't hide body or html
-                    if (parent === document.body || parent === document.documentElement) {
-                        return;
-                    }
-                    const parentStyle = window.getComputedStyle(parent);
-                    if (parentStyle.position === 'fixed' && 
-                        (parentStyle.bottom === '0px' || parentStyle.bottom === '0')) {
-                        parent.style.display = 'none';
-                        parent.setAttribute('data-genresfox-hidden', 'true');
-                    }
-                }
-            }
-        });
     }
 
     // Initial attempt
@@ -2092,14 +2033,9 @@ function _removeChromeCustomizeButton() {
         });
     }
 
-    // Periodic check as fallback (in case MutationObserver misses something)
-    const intervalId = setInterval(() => {
-        hideChromeFooter();
-    }, 500);
-
     // Stop checking after 15 seconds (Chrome usually adds it quickly)
     setTimeout(() => {
-        clearInterval(intervalId);
+        observer.disconnect();
     }, 15000);
 }
 
@@ -2690,16 +2626,21 @@ function initRippleEffects() {
     }
     
     initRippleEffects();
-    
+
     // Re-init ripples when dynamic content is added
     const observer = new MutationObserver(() => {
         initRippleEffects();
     });
-    
+
     observer.observe(document.body, {
         childList: true,
         subtree: true
     });
+
+    // Disconnect ripple observer after initial scan to avoid perpetual overhead
+    setTimeout(() => {
+        observer.disconnect();
+    }, 5000);
 })();
 
 // Expose for global use

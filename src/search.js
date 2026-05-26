@@ -422,55 +422,44 @@ const SearchBar = (function () {
         }
 
         try {
-            // Temporarily show label to measure its actual width
-            const originalMaxWidth = actionLabel.style.maxWidth;
-            const originalOpacity = actionLabel.style.opacity;
-            const originalVisibility = actionLabel.style.visibility;
-            const originalPosition = actionLabel.style.position;
-            
-            // Make label visible for measurement
-            actionLabel.style.maxWidth = 'none';
-            actionLabel.style.opacity = '1';
-            actionLabel.style.visibility = 'hidden'; // Hidden but still measurable
-            actionLabel.style.position = 'absolute';
-            actionLabel.style.whiteSpace = 'nowrap';
-            
-            // Force reflow to ensure measurement accuracy
-            void actionLabel.offsetWidth;
-            
-            // Measure the actual width
-            const labelWidth = actionLabel.scrollWidth || actionLabel.offsetWidth || 0;
-            
-            // Restore original styles
-            actionLabel.style.maxWidth = originalMaxWidth;
-            actionLabel.style.opacity = originalOpacity;
-            actionLabel.style.visibility = originalVisibility;
-            actionLabel.style.position = originalPosition;
-            
+            // Clone off-screen for measurement to avoid DOM thrashing on the live element
+            const clone = actionLabel.cloneNode(true);
+            clone.style.maxWidth = 'none';
+            clone.style.opacity = '1';
+            clone.style.visibility = 'hidden';
+            clone.style.position = 'absolute';
+            clone.style.whiteSpace = 'nowrap';
+            clone.style.left = '-9999px';
+            clone.style.top = '-9999px';
+            document.body.appendChild(clone);
+
+            const labelWidth = clone.scrollWidth || clone.offsetWidth || 0;
+            document.body.removeChild(clone);
+
             // Validate measurement
             if (isNaN(labelWidth) || labelWidth < 0) {
                 _logError('Invalid label width measurement', null, { labelWidth });
                 return;
             }
-            
+
             // Calculate expanded width: icon (16px) + gap (8px) + label + padding (32px total)
             const iconWidth = 16;
             const gap = 8;
             const paddingTotal = 32; // 16px left + 16px right
             const minExpanded = 120; // Minimum expanded width for short texts
             const expanded = Math.max(iconWidth + gap + labelWidth + paddingTotal, minExpanded);
-            
+
             // Validate calculated width
             if (isNaN(expanded) || expanded < 0 || expanded > 10000) {
                 _logError('Invalid expanded width calculation', null, { expanded, labelWidth });
                 return;
             }
-            
+
             actionBtn.style.setProperty('--search-action-expand', `${expanded}px`);
         } catch (e) {
-            _logError('Failed to update button width', e, { 
-                hasActionBtn: !!actionBtn, 
-                hasActionLabel: !!actionLabel 
+            _logError('Failed to update button width', e, {
+                hasActionBtn: !!actionBtn,
+                hasActionLabel: !!actionLabel
             });
         }
     }

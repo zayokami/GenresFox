@@ -361,21 +361,36 @@ const AccessibilityManager = (function () {
         _applyTheme(e.target.value);
     }
 
+    // Debounce timer for font size slider to avoid layout thrashing on every pixel
+    let _fontSizeDebounceTimer = null;
+
     /**
      * Handle font size change
      * @param {Event} e
      */
     function _handleFontSizeChange(e) {
         const value = parseInt(e.target.value, 10);
-        _applyFontSize(value);
-        
+
+        // Update displayed value immediately for responsiveness
         if (_elements.fontSizeValue) {
             _elements.fontSizeValue.textContent = `${value}%`;
-            const fontSizeAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
-                ? (I18n.getMessage('fontSizeChanged', value.toString()) || `Font size set to ${value} percent`)
-                : `Font size set to ${value} percent`;
-            _announceToScreenReader(fontSizeAnnouncement);
         }
+
+        // Debounce the expensive apply + save + announce work
+        if (_fontSizeDebounceTimer) {
+            clearTimeout(_fontSizeDebounceTimer);
+        }
+        _fontSizeDebounceTimer = setTimeout(() => {
+            _fontSizeDebounceTimer = null;
+            _applyFontSize(value);
+
+            if (_elements.fontSizeValue) {
+                const fontSizeAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+                    ? (I18n.getMessage('fontSizeChanged', value.toString()) || `Font size set to ${value} percent`)
+                    : `Font size set to ${value} percent`;
+                _announceToScreenReader(fontSizeAnnouncement);
+            }
+        }, 50);
     }
 
     /**
