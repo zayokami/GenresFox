@@ -14,7 +14,7 @@ const ConfigManager = (function () {
 
     // ==================== Configuration Constants ====================
     const CONFIG = {
-        VERSION: '0.4.6',
+        VERSION: '0.4.7',
         MAX_AGE_DAYS: 365, // Maximum age of config file (1 year)
         MIN_AGE_MS: 1000, // Minimum age to prevent replay attacks (1 second)
         // NOTE: This hardcoded key is for accidental corruption detection only,
