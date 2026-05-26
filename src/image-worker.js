@@ -46,6 +46,10 @@ const WASM = {
     hasGammaCorrect: false  // Whether gamma-correct resampling is available
 };
 
+// Message queue for WASM-dependent tasks
+let _wasmTaskQueue = [];
+let _wasmLoading = false;
+
 /**
  * Calculate optimal dimensions while maintaining aspect ratio
  */
@@ -80,18 +84,25 @@ function calculateDimensions(width, height, maxWidth, maxHeight, screenWidth, sc
 async function processImageData(imageData, targetWidth, targetHeight, onProgress, options = {}) {
     const { width: srcWidth, height: srcHeight } = imageData;
     const totalPixels = srcWidth * srcHeight;
-    
+
     // Prefer WASM path for large images if enabled and ready
     // WASM is especially beneficial for images > 20MP where chunked Canvas processing is slow
     if (CONFIG.WASM_ENABLED) {
-        // If WASM is still loading, wait a bit (max 500ms) for it to become ready
-        if (!WASM.ready && CONFIG.WASM_URL) {
-            const startWait = Date.now();
-            while (!WASM.ready && (Date.now() - startWait) < 500) {
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
+        // If WASM is still loading, queue this task and return a promise that resolves when WASM is ready
+        if (!WASM.ready && CONFIG.WASM_URL && _wasmLoading) {
+            return new Promise((resolve, reject) => {
+                _wasmTaskQueue.push({
+                    imageData,
+                    targetWidth,
+                    targetHeight,
+                    onProgress,
+                    options,
+                    resolve,
+                    reject
+                });
+            });
         }
-        
+
         // Try WASM if ready
         if (WASM.ready) {
             // Extract processing options
@@ -99,7 +110,7 @@ async function processImageData(imageData, targetWidth, targetHeight, onProgress
                 gammaCorrect: options.gammaCorrect || false,
                 algorithm: options.algorithm || 'auto'
             };
-            
+
             console.log(`[Worker] Using WASM for image resize: ${srcWidth}x${srcHeight} -> ${targetWidth}x${targetHeight} (${(totalPixels / 1000000).toFixed(1)}MP, gammaCorrect: ${wasmOptions.gammaCorrect}, algorithm: ${wasmOptions.algorithm})`);
             const wasmCanvas = await processImageDataWithWasm(imageData, targetWidth, targetHeight, onProgress, wasmOptions);
             if (wasmCanvas) {
@@ -113,7 +124,16 @@ async function processImageData(imageData, targetWidth, targetHeight, onProgress
         }
     }
 
-    // Fallback to Canvas API processing
+    return processImageDataCanvasFallback(imageData, targetWidth, targetHeight, onProgress);
+}
+
+/**
+ * Canvas API fallback for processImageData (extracted for reuse by queue processing)
+ */
+async function processImageDataCanvasFallback(imageData, targetWidth, targetHeight, onProgress) {
+    const { width: srcWidth, height: srcHeight } = imageData;
+    const totalPixels = srcWidth * srcHeight;
+
     // Create OffscreenCanvas for processing
     const canvas = new OffscreenCanvas(targetWidth, targetHeight);
     const ctx = canvas.getContext('2d', {
@@ -299,39 +319,48 @@ async function optimizeBlobSize(canvas, targetSize, format) {
  * @param {string} url - URL to WASM file
  * @returns {Promise<void>}
  */
-async function loadWasm(url) {
+async function loadWasm(urlOrBuffer) {
     if (WASM.ready) {
         return; // Already loaded
     }
-    
+
+    _wasmLoading = true;
+
     try {
-        if (!url) {
-            throw new Error('WASM URL not provided');
+        if (!urlOrBuffer) {
+            throw new Error('WASM URL or buffer not provided');
         }
 
         let instance = null;
         let wasmBinary = null;
 
-        // Try instantiateStreaming first (more efficient, single network fetch)
-        try {
-            const resp = await fetch(url);
-            if (!resp.ok) {
-                throw new Error(`Failed to fetch WASM: ${resp.status} ${resp.statusText}`);
-            }
-            const streamingModule = await WebAssembly.instantiateStreaming(resp);
-            instance = streamingModule.instance;
-        } catch (streamErr) {
-            // Fallback for browsers that don't support streaming
-            const resp = await fetch(url);
-            if (!resp.ok) {
-                throw new Error(`Failed to fetch WASM (fallback): ${resp.status} ${resp.statusText}`);
-            }
-            wasmBinary = await resp.arrayBuffer();
-            if (!wasmBinary || wasmBinary.byteLength === 0) {
-                throw new Error('WASM file is empty');
-            }
+        if (urlOrBuffer instanceof ArrayBuffer) {
+            // Instantiate from pre-fetched buffer (passed from main thread)
+            wasmBinary = urlOrBuffer;
             const module = await WebAssembly.instantiate(wasmBinary, {});
             instance = module.instance;
+        } else {
+            // Try instantiateStreaming first (more efficient, single network fetch)
+            try {
+                const resp = await fetch(urlOrBuffer);
+                if (!resp.ok) {
+                    throw new Error(`Failed to fetch WASM: ${resp.status} ${resp.statusText}`);
+                }
+                const streamingModule = await WebAssembly.instantiateStreaming(resp);
+                instance = streamingModule.instance;
+            } catch (streamErr) {
+                // Fallback for browsers that don't support streaming
+                const resp = await fetch(urlOrBuffer);
+                if (!resp.ok) {
+                    throw new Error(`Failed to fetch WASM (fallback): ${resp.status} ${resp.statusText}`);
+                }
+                wasmBinary = await resp.arrayBuffer();
+                if (!wasmBinary || wasmBinary.byteLength === 0) {
+                    throw new Error('WASM file is empty');
+                }
+                const module = await WebAssembly.instantiate(wasmBinary, {});
+                instance = module.instance;
+            }
         }
         
         if (!instance?.exports) {
@@ -376,12 +405,61 @@ async function loadWasm(url) {
             `resize_rgba_gamma_bilinear=${!!WASM.exports.resize_rgba_gamma_bilinear}, ` +
             `get_last_error=${!!WASM.exports.get_last_error}`
         );
+
+        // Process any queued tasks that were waiting for WASM
+        const queue = _wasmTaskQueue.splice(0, _wasmTaskQueue.length);
+        for (const task of queue) {
+            try {
+                const wasmOptions = {
+                    gammaCorrect: task.options.gammaCorrect || false,
+                    algorithm: task.options.algorithm || 'auto'
+                };
+                const wasmCanvas = await processImageDataWithWasm(
+                    task.imageData,
+                    task.targetWidth,
+                    task.targetHeight,
+                    task.onProgress,
+                    wasmOptions
+                );
+                if (wasmCanvas) {
+                    task.resolve(wasmCanvas);
+                } else {
+                    // WASM returned null, fall back to Canvas
+                    const canvas = await processImageDataCanvasFallback(
+                        task.imageData,
+                        task.targetWidth,
+                        task.targetHeight,
+                        task.onProgress
+                    );
+                    task.resolve(canvas);
+                }
+            } catch (e) {
+                task.reject(e);
+            }
+        }
     } catch (err) {
         console.warn('[Worker] WASM load failed, will use Canvas fallback:', err.message);
         WASM.instance = null;
         WASM.exports = null;
         WASM.ready = false;
+        // Reject all queued tasks so they don't hang forever
+        const queue = _wasmTaskQueue.splice(0, _wasmTaskQueue.length);
+        for (const task of queue) {
+            try {
+                const canvas = await processImageDataCanvasFallback(
+                    task.imageData,
+                    task.targetWidth,
+                    task.targetHeight,
+                    task.onProgress
+                );
+                task.resolve(canvas);
+            } catch (e) {
+                task.reject(e);
+            }
+        }
         // Don't throw - allow fallback to Canvas processing
+    } finally {
+        _wasmLoading = false;
     }
 }
 
@@ -574,6 +652,23 @@ ctx.onmessage = async function(e) {
                         });
                 }
                 ctx.postMessage({ type: 'ready', id });
+                break;
+
+            case 'wasm':
+                // Receive pre-fetched WASM ArrayBuffer from main thread
+                if (data.buffer instanceof ArrayBuffer) {
+                    loadWasm(data.buffer)
+                        .then(() => {
+                            ctx.postMessage({ type: 'wasmLoaded', id });
+                        })
+                        .catch(err => {
+                            console.warn('[Worker] WASM buffer initialization failed, will use Canvas fallback:', err);
+                            ctx.postMessage({ type: 'wasmLoadFailed', id });
+                        });
+                } else {
+                    console.warn('[Worker] Invalid WASM buffer received');
+                    ctx.postMessage({ type: 'wasmLoadFailed', id });
+                }
                 break;
                 
             case 'process':

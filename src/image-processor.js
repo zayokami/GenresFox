@@ -87,7 +87,9 @@ const ImageProcessor = (function() {
             loadingPromise: null, // Promise that resolves when all workers have loaded WASM
             workersLoaded: 0, // Count of workers that have successfully loaded WASM
             totalWorkers: 0 // Total number of workers that should load WASM
-        }
+        },
+        // Shared WASM buffer fetched once in main thread
+        wasmBuffer: null
     };
 
     // ==================== Cache ====================
@@ -356,14 +358,15 @@ const ImageProcessor = (function() {
 
                 worker.onerror = (e) => {
                     console.error('Worker error:', e);
-                    
+                    const crashedIndex = _state.workers.indexOf(worker);
+
                     // Clean up initialization timeout if exists
                     const initTimeoutId = _state.workerInitTimeouts.get(worker);
                     if (initTimeoutId) {
                         clearTimeout(initTimeoutId);
                         _state.workerInitTimeouts.delete(worker);
                     }
-                    
+
                     // Clean up all callbacks for this worker to prevent memory leaks
                     // Find callbacks that might be waiting on this worker
                     for (const [callbackId, callback] of _state.workerCallbacks.entries()) {
@@ -379,12 +382,17 @@ const ImageProcessor = (function() {
                             _state.callbackTimeouts.delete(callbackId);
                         }
                     }
-                    
+
                     if (worker.__ready) {
                         worker.__ready = false;
                         _state.workerReadyCount = Math.max(0, _state.workerReadyCount - 1);
                     }
                     worker.__busy = false;
+
+                    // Replace the crashed worker with a fresh one
+                    if (crashedIndex > -1) {
+                        _replaceWorker(crashedIndex);
+                    }
                     _dispatchAllPendingTasks();
                 };
 
@@ -425,12 +433,224 @@ const ImageProcessor = (function() {
     }
     
     /**
+     * Replace a crashed or terminated worker with a fresh one
+     * @param {number} index - The index of the worker to replace
+     */
+    function _replaceWorker(index) {
+        const oldWorker = _state.workers[index];
+        if (oldWorker) {
+            try {
+                oldWorker.terminate();
+            } catch (e) {
+                // Ignore termination errors
+            }
+        }
+
+        try {
+            const worker = new Worker('image-worker.js');
+
+            worker.onmessage = (e) => {
+                const { type, id, result, error, progress } = e.data;
+
+                const deliver = () => {
+                    switch (type) {
+                        case 'loaded': {
+                            const timeoutId = _state.workerInitTimeouts.get(worker);
+                            if (timeoutId) {
+                                clearTimeout(timeoutId);
+                                _state.workerInitTimeouts.delete(worker);
+                            }
+
+                            try {
+                                worker.postMessage({
+                                    type: 'init',
+                                    id: 0,
+                                    data: {
+                                        config: {
+                                            ...CONFIG,
+                                            WASM_ENABLED: CONFIG.WASM_URL ? CONFIG.WASM_ENABLED : false,
+                                            WASM_URL: CONFIG.WASM_URL || null
+                                        }
+                                    }
+                                });
+                            } catch (err) {
+                                console.error('Failed to send init message to replacement worker:', err);
+                                const idx = _state.workers.indexOf(worker);
+                                if (idx > -1) {
+                                    _state.workers.splice(idx, 1);
+                                }
+                                try {
+                                    worker.terminate();
+                                } catch (e) {
+                                    // Ignore
+                                }
+                            }
+                            return true;
+                        }
+                        case 'ready':
+                            if (!worker.__ready) {
+                                worker.__ready = true;
+                                _state.workerReadyCount++;
+                                const timeoutId = _state.workerInitTimeouts.get(worker);
+                                if (timeoutId) {
+                                    clearTimeout(timeoutId);
+                                    _state.workerInitTimeouts.delete(worker);
+                                }
+                            }
+                            return true;
+                        case 'wasmLoaded': {
+                            if (!worker.__wasmLoaded) {
+                                worker.__wasmLoaded = true;
+                                _state.wasmState.workersLoaded++;
+                                if (_state.wasmState.workersLoaded >= _state.wasmState.totalWorkers) {
+                                    _state.wasmState.status = 'loaded';
+                                    if (_state.wasmState.loadingPromise) {
+                                        _state.wasmState.loadingPromise.resolve();
+                                        _state.wasmState.loadingPromise = null;
+                                    }
+                                }
+                            }
+                            return true;
+                        }
+                        case 'wasmLoadFailed': {
+                            _state.wasmState.workersLoaded++;
+                            if (_state.wasmState.workersLoaded >= _state.wasmState.totalWorkers) {
+                                if (_state.wasmState.workersLoaded === _state.wasmState.totalWorkers &&
+                                    _state.workers.filter(w => w?.__wasmLoaded).length === 0) {
+                                    _state.wasmState.status = 'failed';
+                                } else {
+                                    _state.wasmState.status = 'loaded';
+                                }
+                                if (_state.wasmState.loadingPromise) {
+                                    _state.wasmState.loadingPromise.resolve();
+                                    _state.wasmState.loadingPromise = null;
+                                }
+                            }
+                            return true;
+                        }
+                        case 'progress': {
+                            const progressCb = _state.workerCallbacks.get(id);
+                            if (progressCb?.onProgress) {
+                                progressCb.onProgress(progress);
+                                return true;
+                            }
+                            return false;
+                        }
+                        case 'complete':
+                        case 'previewComplete': {
+                            const cb = _state.workerCallbacks.get(id);
+                            if (cb?.resolve) {
+                                cb.resolve(result);
+                                _state.workerCallbacks.delete(id);
+                                const timeoutId = _state.callbackTimeouts.get(id);
+                                if (timeoutId) {
+                                    clearTimeout(timeoutId);
+                                    _state.callbackTimeouts.delete(id);
+                                }
+                            }
+                            worker.__busy = false;
+                            _dispatchAllPendingTasks();
+                            return true;
+                        }
+                        case 'error': {
+                            const errCb = _state.workerCallbacks.get(id);
+                            if (errCb?.reject) {
+                                errCb.reject(new Error(error));
+                                _state.workerCallbacks.delete(id);
+                                const timeoutId = _state.callbackTimeouts.get(id);
+                                if (timeoutId) {
+                                    clearTimeout(timeoutId);
+                                    _state.callbackTimeouts.delete(id);
+                                }
+                            }
+                            worker.__busy = false;
+                            _dispatchAllPendingTasks();
+                            return true;
+                        }
+                    }
+                    return true;
+                };
+
+                if (!deliver()) {
+                    queueMicrotask(() => {
+                        if (!deliver()) {
+                            console.warn(`Worker message without callback (id=${id}, type=${type})`);
+                            _state.workerCallbacks.delete(id);
+                            const timeoutId = _state.callbackTimeouts.get(id);
+                            if (timeoutId) {
+                                clearTimeout(timeoutId);
+                                _state.callbackTimeouts.delete(id);
+                            }
+                        }
+                    });
+                }
+            };
+
+            worker.onerror = (e) => {
+                console.error('Replacement worker error:', e);
+                const initTimeoutId = _state.workerInitTimeouts.get(worker);
+                if (initTimeoutId) {
+                    clearTimeout(initTimeoutId);
+                    _state.workerInitTimeouts.delete(worker);
+                }
+                for (const [callbackId, callback] of _state.workerCallbacks.entries()) {
+                    if (callback.reject) {
+                        callback.reject(new Error('Worker crashed or failed'));
+                    }
+                    _state.workerCallbacks.delete(callbackId);
+                    const timeoutId = _state.callbackTimeouts.get(callbackId);
+                    if (timeoutId) {
+                        clearTimeout(timeoutId);
+                        _state.callbackTimeouts.delete(callbackId);
+                    }
+                }
+                if (worker.__ready) {
+                    worker.__ready = false;
+                    _state.workerReadyCount = Math.max(0, _state.workerReadyCount - 1);
+                }
+                worker.__busy = false;
+                const idx = _state.workers.indexOf(worker);
+                if (idx > -1) {
+                    _replaceWorker(idx);
+                }
+            };
+
+            worker.__ready = false;
+            worker.__busy = false;
+            worker.__wasmLoaded = false;
+            worker.__initStartTime = Date.now();
+            _state.workers[index] = worker;
+
+            const initTimeoutId = setTimeout(() => {
+                if (!worker.__ready) {
+                    console.warn(`Replacement worker initialization timeout after 10s, removing worker`);
+                    const idx = _state.workers.indexOf(worker);
+                    if (idx > -1) {
+                        _state.workers.splice(idx, 1);
+                    }
+                    try {
+                        worker.terminate();
+                    } catch (e) {
+                        // Ignore
+                    }
+                    _state.workerInitTimeouts.delete(worker);
+                }
+            }, 10000);
+            _state.workerInitTimeouts.set(worker, initTimeoutId);
+        } catch (e) {
+            console.warn('Failed to create replacement Worker:', e);
+            _state.workers.splice(index, 1);
+        }
+    }
+
+    /**
      * Assign a task to a specific worker
      * @param {Worker} worker - The worker to assign the task to
      * @param {Object} task - The task object
      */
     function _assignTaskToWorker(worker, task) {
         const { type, data, onProgress, resolve, reject, transfers } = task;
+        const workerIndex = _state.workers.indexOf(worker);
 
         const id = ++_state.callbackId;
         _state.workerCallbacks.set(id, { resolve, reject, onProgress });
@@ -447,6 +667,15 @@ const ImageProcessor = (function() {
                 }
                 _state.workerCallbacks.delete(id);
                 worker.__busy = false;
+                // Terminate hung worker and replace it
+                try {
+                    worker.terminate();
+                } catch (e) {
+                    // Ignore termination errors
+                }
+                if (workerIndex > -1) {
+                    _replaceWorker(workerIndex);
+                }
                 _dispatchAllPendingTasks();
             }
             _state.callbackTimeouts.delete(id);
@@ -624,17 +853,20 @@ const ImageProcessor = (function() {
         return new Promise((resolve, reject) => {
             const url = _createTrackedObjectUrl(file);
             const img = new Image();
-            
+
             img.onload = () => {
                 if (onProgress) onProgress(30);
+                // Revoke the blob URL immediately after the image has loaded
+                // to prevent object URL leaks
+                _revokeTrackedObjectUrl(url);
                 resolve(img);
             };
-            
+
             img.onerror = () => {
                 _revokeTrackedObjectUrl(url);
                 reject(new Error('Failed to load image'));
             };
-            
+
             img.src = url;
         });
     }
@@ -1195,13 +1427,13 @@ const ImageProcessor = (function() {
                     _state.wasmState.status = 'loading';
                     _state.wasmState.workersLoaded = 0;
                     _state.wasmState.totalWorkers = _state.workers.filter(w => w && w.__ready).length;
-                    
+
                     if (_state.wasmState.totalWorkers === 0) {
                         console.warn('[ImageProcessor] No ready workers available for WASM loading');
                         _state.wasmState.status = 'failed';
                     } else {
                         CONFIG.WASM_ENABLED = true;
-                        
+
                         // Create promise to wait for WASM loading
                         let resolvePromise;
                         _state.wasmState.loadingPromise = {
@@ -1210,30 +1442,54 @@ const ImageProcessor = (function() {
                             }),
                             resolve: resolvePromise
                         };
-                        
-                        // Notify all ready workers to load WASM
-                        _state.workers.forEach(worker => {
-                            if (worker && worker.__ready) {
-                                worker.postMessage({
-                                    type: 'init',
-                                    id: 0,
-                                    data: { 
-                                        config: { 
-                                            WASM_ENABLED: true, 
-                                            WASM_URL: CONFIG.WASM_URL 
-                                        } 
-                                    }
-                                });
+
+                        // Fetch WASM once in main thread and share buffer with all workers
+                        // to avoid duplicate network requests
+                        try {
+                            if (!_state.wasmBuffer) {
+                                const resp = await fetch(CONFIG.WASM_URL);
+                                if (!resp.ok) {
+                                    throw new Error(`Failed to fetch WASM: ${resp.status} ${resp.statusText}`);
+                                }
+                                _state.wasmBuffer = await resp.arrayBuffer();
                             }
-                        });
-                        
+
+                            // Pass the pre-fetched buffer to all ready workers
+                            _state.workers.forEach(worker => {
+                                if (worker && worker.__ready) {
+                                    worker.postMessage({
+                                        type: 'wasm',
+                                        id: 0,
+                                        buffer: _state.wasmBuffer
+                                    });
+                                }
+                            });
+                        } catch (fetchErr) {
+                            console.warn('[ImageProcessor] Failed to fetch WASM buffer, falling back to URL-based loading:', fetchErr.message);
+                            // Fallback: let workers fetch individually
+                            _state.workers.forEach(worker => {
+                                if (worker && worker.__ready) {
+                                    worker.postMessage({
+                                        type: 'init',
+                                        id: 0,
+                                        data: {
+                                            config: {
+                                                WASM_ENABLED: true,
+                                                WASM_URL: CONFIG.WASM_URL
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                        }
+
                         console.log(`[ImageProcessor] Auto-enabling WASM for large image (${(totalPixels / 1000000).toFixed(1)}MP), waiting for workers to load...`);
-                        
+
                         // Wait for WASM to load (with timeout)
                         try {
                             await Promise.race([
                                 _state.wasmState.loadingPromise.promise,
-                                new Promise((_, reject) => 
+                                new Promise((_, reject) =>
                                     setTimeout(() => reject(new Error('WASM loading timeout')), 5000)
                                 )
                             ]);
@@ -1248,7 +1504,7 @@ const ImageProcessor = (function() {
                     try {
                         await Promise.race([
                             _state.wasmState.loadingPromise?.promise || Promise.resolve(),
-                            new Promise((_, reject) => 
+                            new Promise((_, reject) =>
                                 setTimeout(() => reject(new Error('WASM loading timeout')), 5000)
                             )
                         ]);
@@ -1470,39 +1726,40 @@ const ImageProcessor = (function() {
             console.warn('[ImageProcessor] Invalid WASM URL provided');
             return;
         }
-        
+
         CONFIG.WASM_URL = wasmUrl;
         CONFIG.WASM_ENABLED = false; // Will be auto-enabled for large images
-        
+
         // Reset WASM state
         _state.wasmState.status = 'unloaded';
         _state.wasmState.workersLoaded = 0;
         _state.wasmState.totalWorkers = 0;
         _state.wasmState.loadingPromise = null;
-        
+        _state.wasmBuffer = null; // Clear cached buffer so new URL gets fetched
+
         // Reset worker WASM flags
         _state.workers.forEach(worker => {
             if (worker) {
                 worker.__wasmLoaded = false;
             }
         });
-        
+
         // Notify existing workers about WASM URL (but don't load yet)
         _state.workers.forEach(worker => {
             if (worker && worker.__ready) {
                 worker.postMessage({
                     type: 'init',
                     id: 0,
-                    data: { 
-                        config: { 
+                    data: {
+                        config: {
                             WASM_ENABLED: false, // Don't auto-load, wait for large image
-                            WASM_URL: wasmUrl 
-                        } 
+                            WASM_URL: wasmUrl
+                        }
                     }
                 });
             }
         });
-        
+
         console.log(`[ImageProcessor] WASM URL set: ${wasmUrl} (will auto-enable for images > ${CONFIG.WASM_AUTO_ENABLE_THRESHOLD / 1000000}MP)`);
     }
 
