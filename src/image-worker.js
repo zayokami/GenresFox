@@ -21,17 +21,19 @@ const ctx = self;
 let CONFIG = {
     MAX_WIDTH: 3840,
     MAX_HEIGHT: 2160,
-    QUALITY_HIGH: 0.95,      // Increased for better quality
-    QUALITY_MEDIUM: 0.88,    // Balanced quality/size
-    QUALITY_LOW: 0.75,       // Minimum acceptable quality
+    QUALITY_NEAR_LOSSLESS: 0.99,
+    QUALITY_HIGH: 0.98,
+    QUALITY_MEDIUM: 0.92,
+    QUALITY_LOW: 0.88,
     CHUNK_SIZE: 2048,
     OUTPUT_FORMAT: 'image/webp',
     FALLBACK_FORMAT: 'image/jpeg',
-    TARGET_OUTPUT_SIZE: 5 * 1024 * 1024,
+    OUTPUT_FORMAT_LOSSLESS: 'image/png',
+    TARGET_OUTPUT_SIZE: 8 * 1024 * 1024,
     WASM_URL: null,
     WASM_ENABLED: false,
-    WASM_AUTO_ENABLE_THRESHOLD: 20 * 1000 * 1000, // 20MP - auto-enable threshold
-    MAX_PIXELS: 80 * 1000 * 1000 // Keep for symmetry; enforced in main thread
+    WASM_AUTO_ENABLE_THRESHOLD: 20 * 1000 * 1000,
+    MAX_PIXELS: 80 * 1000 * 1000
 };
 
 // WASM state
@@ -239,47 +241,59 @@ function calculateImageComplexity(imageData) {
 }
 
 /**
- * Optimize blob size with intelligent quality selection and progressive compression
+ * Optimize blob size with near-lossless quality priority
+ * Favors perceptual quality over aggressive compression
  */
-async function optimizeBlobSize(canvas, targetSize, format) {
+async function optimizeBlobSize(canvas, targetSize, format, options = {}) {
+    const { nearLossless = false } = options;
+
+    // For near-lossless mode, try PNG first when size is reasonable
+    if (nearLossless) {
+        const losslessBlob = await canvas.convertToBlob({ type: CONFIG.OUTPUT_FORMAT_LOSSLESS });
+        if (losslessBlob.size <= 15 * 1024 * 1024) {
+            console.log(`[Worker] Lossless PNG: ${(losslessBlob.size / 1024 / 1024).toFixed(2)}MB`);
+            return losslessBlob;
+        }
+        console.log(`[Worker] PNG too large (${(losslessBlob.size / 1024 / 1024).toFixed(2)}MB), using near-lossless WebP`);
+    }
+
     // Get image data for complexity analysis
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const imageData = ctx.getImageData(0, 0, Math.min(canvas.width, 256), Math.min(canvas.height, 256));
     const complexity = calculateImageComplexity(imageData);
-    
-    // Adjust quality based on complexity
-    const baseQuality = CONFIG.QUALITY_HIGH + (complexity - 0.5) * 0.1;
-    const adjustedQuality = Math.max(0.7, Math.min(0.98, baseQuality));
-    
+
+    // High complexity needs higher quality to preserve detail
+    const baseQuality = CONFIG.QUALITY_HIGH + (complexity - 0.5) * 0.02;
+    const adjustedQuality = Math.max(CONFIG.QUALITY_LOW, Math.min(CONFIG.QUALITY_NEAR_LOSSLESS, baseQuality));
+
     let quality = adjustedQuality;
     let blob = await canvas.convertToBlob({ type: format, quality });
-    
-    if (blob.size <= targetSize) {
+
+    // Near-lossless: accept larger files to preserve quality
+    if (blob.size <= targetSize * 1.5) {
         return blob;
     }
-    
-    // Progressive compression steps
+
+    // Progressive compression with higher quality floor
     const qualitySteps = [
         adjustedQuality,
-        adjustedQuality * 0.9,
-        adjustedQuality * 0.8,
-        CONFIG.QUALITY_MEDIUM,
-        0.75,
-        0.7
+        adjustedQuality * 0.97,
+        adjustedQuality * 0.94,
+        CONFIG.QUALITY_HIGH,
+        CONFIG.QUALITY_MEDIUM
     ];
-    
-    let minQuality = 0.5;
+
+    let minQuality = CONFIG.QUALITY_LOW;
     let maxQuality = adjustedQuality;
     let bestBlob = blob;
     let bestQuality = quality;
-    const tolerance = 0.05; // 5% tolerance
-    
-    // Try progressive steps
+    const tolerance = 0.03;
+
     for (const stepQuality of qualitySteps) {
         if (stepQuality < minQuality || stepQuality > maxQuality) continue;
-        
+
         const testBlob = await canvas.convertToBlob({ type: format, quality: stepQuality });
-        
+
         if (testBlob.size <= targetSize * (1 + tolerance)) {
             if (stepQuality > bestQuality || bestBlob.size > targetSize) {
                 bestBlob = testBlob;
@@ -290,27 +304,29 @@ async function optimizeBlobSize(canvas, targetSize, format) {
             minQuality = stepQuality;
         }
     }
-    
-    // Fine-tune with binary search if needed
-    if (bestBlob.size > targetSize * (1 + tolerance)) {
-        for (let i = 0; i < 5; i++) {
-            quality = (minQuality + maxQuality) / 2;
-            blob = await canvas.convertToBlob({ type: format, quality });
-            
-            if (blob.size > targetSize * (1 + tolerance)) {
-                maxQuality = quality;
-            } else if (blob.size < targetSize * (1 - tolerance)) {
-                minQuality = quality;
-                if (quality > bestQuality) {
-                    bestBlob = blob;
-                    bestQuality = quality;
-                }
-            } else {
-                return blob;
+
+    if (bestBlob.size <= targetSize * (1 + tolerance)) {
+        return bestBlob;
+    }
+
+    // Fine-tune with binary search (limited iterations)
+    for (let i = 0; i < 4; i++) {
+        quality = (minQuality + maxQuality) / 2;
+        blob = await canvas.convertToBlob({ type: format, quality });
+
+        if (blob.size > targetSize * (1 + tolerance)) {
+            maxQuality = quality;
+        } else if (blob.size < targetSize * (1 - tolerance)) {
+            minQuality = quality;
+            if (quality > bestQuality) {
+                bestBlob = blob;
+                bestQuality = quality;
             }
+        } else {
+            return blob;
         }
     }
-    
+
     return bestBlob;
 }
 
@@ -753,7 +769,7 @@ ctx.onmessage = async function(e) {
                 
                 // Generate optimized blob
                 const outputFormat = format || CONFIG.OUTPUT_FORMAT;
-                const blob = await optimizeBlobSize(canvas, CONFIG.TARGET_OUTPUT_SIZE, outputFormat);
+                const blob = await optimizeBlobSize(canvas, CONFIG.TARGET_OUTPUT_SIZE, outputFormat, { nearLossless: data.nearLossless });
                 
                 ctx.postMessage({ type: 'progress', progress: 95, id });
                 
@@ -796,10 +812,10 @@ ctx.onmessage = async function(e) {
                 previewCtx.drawImage(previewBitmap, 0, 0, previewDims.width, previewDims.height);
                 previewBitmap.close();
                 
-                // Use lower quality for preview
-                const previewBlob = await previewCanvas.convertToBlob({ 
-                    type: 'image/jpeg', 
-                    quality: 0.5 
+                // Use moderate quality for preview (near-lossless philosophy)
+                const previewBlob = await previewCanvas.convertToBlob({
+                    type: 'image/jpeg',
+                    quality: 0.65
                 });
                 
                 ctx.postMessage({

@@ -20,39 +20,41 @@ const ImageProcessor = (function() {
         MAX_WIDTH: 3840,
         MAX_HEIGHT: 2160,
         
-        // Quality settings (optimized for perceptual quality)
-        QUALITY_HIGH: 0.95,      // Increased for better quality
-        QUALITY_MEDIUM: 0.88,   // Balanced quality/size
-        QUALITY_LOW: 0.75,      // Minimum acceptable quality
-        QUALITY_PREVIEW: 0.4,
-        
+        // Quality settings (near-lossless for maximum fidelity)
+        QUALITY_NEAR_LOSSLESS: 0.99,
+        QUALITY_HIGH: 0.98,
+        QUALITY_MEDIUM: 0.92,
+        QUALITY_LOW: 0.88,
+        QUALITY_PREVIEW: 0.65,
+
         // Progressive compression settings
-        PROGRESSIVE_STEPS: 3,   // Number of quality steps to try
-        QUALITY_TOLERANCE: 0.05, // Acceptable size deviation (5%)
-        
+        PROGRESSIVE_STEPS: 3,
+        QUALITY_TOLERANCE: 0.03,
+
         // Preview settings - aggressive downsampling for speed
-        PREVIEW_TINY: 100,      // Ultra-fast first preview
-        PREVIEW_SMALL: 400,     // Quick preview
-        PREVIEW_MEDIUM: 800,    // Better preview
-        
+        PREVIEW_TINY: 100,
+        PREVIEW_SMALL: 400,
+        PREVIEW_MEDIUM: 800,
+
         // Processing thresholds
-        LARGE_IMAGE_THRESHOLD: 10 * 1024 * 1024,  // 10MB
-        HUGE_IMAGE_THRESHOLD: 30 * 1024 * 1024,   // 30MB
-        
+        LARGE_IMAGE_THRESHOLD: 10 * 1024 * 1024,
+        HUGE_IMAGE_THRESHOLD: 30 * 1024 * 1024,
+
         // Pixel count limits
-        MAX_PIXELS: 80 * 1000 * 1000,  // 80 megapixels max
-        
+        MAX_PIXELS: 80 * 1000 * 1000,
+
         // Memory management
         CHUNK_SIZE: 2048,
         GC_DELAY: 100,
-        
+
         // Output formats
         OUTPUT_FORMAT: 'image/webp',
         FALLBACK_FORMAT: 'image/jpeg',
-        
+        OUTPUT_FORMAT_LOSSLESS: 'image/png',
+
         // File size limits
-        MAX_FILE_SIZE: 50 * 1024 * 1024,  // 50MB
-        TARGET_OUTPUT_SIZE: 5 * 1024 * 1024, // 5MB target
+        MAX_FILE_SIZE: 50 * 1024 * 1024,
+        TARGET_OUTPUT_SIZE: 8 * 1024 * 1024,
         
         // Cache settings
         CACHE_MAX_ENTRIES: 10,
@@ -944,10 +946,21 @@ const ImageProcessor = (function() {
 
     /**
      * Convert canvas to blob
+     * @param {HTMLCanvasElement} canvas - Source canvas
+     * @param {number} quality - Compression quality (0-1), ignored for lossless PNG
+     * @param {boolean} useLossless - Use PNG lossless encoding instead of WebP/JPEG
      */
-    async function _canvasToBlob(canvas, quality) {
+    async function _canvasToBlob(canvas, quality, useLossless = false) {
+        if (useLossless) {
+            return new Promise((resolve, reject) => {
+                canvas.toBlob(
+                    blob => blob ? resolve(blob) : reject(new Error('PNG blob conversion failed')),
+                    CONFIG.OUTPUT_FORMAT_LOSSLESS
+                );
+            });
+        }
         const format = await _getOutputFormat();
-        
+
         return new Promise((resolve, reject) => {
             canvas.toBlob(
                 blob => blob ? resolve(blob) : reject(new Error('Blob conversion failed')),
@@ -992,71 +1005,81 @@ const ImageProcessor = (function() {
     }
     
     /**
-     * Optimize blob size with intelligent quality selection
-     * Uses progressive compression and perceptual quality optimization
+     * Optimize blob size with near-lossless quality priority
+     * Favors perceptual quality over aggressive compression
+     * @param {HTMLCanvasElement} canvas - Source canvas
+     * @param {number} targetSize - Target file size
+     * @param {Object} options - Optimization options
+     * @param {boolean} options.nearLossless - Prefer PNG lossless if size permits
      */
-    async function _optimizeBlobSize(canvas, targetSize) {
+    async function _optimizeBlobSize(canvas, targetSize, options = {}) {
+        const { nearLossless = false } = options;
+
+        // For near-lossless mode, try PNG first when size is reasonable
+        if (nearLossless) {
+            const losslessBlob = await _canvasToBlob(canvas, null, true);
+            if (losslessBlob.size <= 15 * 1024 * 1024) {
+                console.log(`[ImageProcessor] Lossless PNG: ${(losslessBlob.size / 1024 / 1024).toFixed(2)}MB`);
+                return losslessBlob;
+            }
+            console.log(`[ImageProcessor] PNG too large (${(losslessBlob.size / 1024 / 1024).toFixed(2)}MB), using near-lossless WebP`);
+        }
+
         // Calculate image complexity to adjust quality baseline
         const complexity = await _calculateImageComplexity(canvas);
-        
-        // Adjust quality based on complexity:
+
         // High complexity (detailed images) -> higher quality needed
-        // Low complexity (simple images) -> can use lower quality
-        const baseQuality = CONFIG.QUALITY_HIGH + (complexity - 0.5) * 0.1;
-        const adjustedQuality = Math.max(CONFIG.QUALITY_LOW, Math.min(0.98, baseQuality));
-        
+        // Low complexity (simple images) -> can still use high quality (near-lossless)
+        const baseQuality = CONFIG.QUALITY_HIGH + (complexity - 0.5) * 0.02;
+        const adjustedQuality = Math.max(CONFIG.QUALITY_LOW, Math.min(CONFIG.QUALITY_NEAR_LOSSLESS, baseQuality));
+
         let quality = adjustedQuality;
         let blob = await _canvasToBlob(canvas, quality);
-        
-        // If already within target, return immediately
-        if (blob.size <= targetSize) {
+
+        // Near-lossless: accept larger files to preserve quality
+        if (blob.size <= targetSize * 1.5) {
             return blob;
         }
-        
-        // Progressive compression: try multiple quality levels
+
+        // Progressive compression with higher quality floor
         const qualitySteps = [
             adjustedQuality,
-            adjustedQuality * 0.9,
-            adjustedQuality * 0.8,
-            CONFIG.QUALITY_MEDIUM,
-            CONFIG.QUALITY_LOW
+            adjustedQuality * 0.97,
+            adjustedQuality * 0.94,
+            CONFIG.QUALITY_HIGH,
+            CONFIG.QUALITY_MEDIUM
         ];
-        
-        // Binary search with quality tolerance
+
         let minQuality = CONFIG.QUALITY_LOW;
         let maxQuality = adjustedQuality;
         let bestBlob = blob;
         let bestQuality = quality;
-        
-        // Try progressive steps first (faster for most cases)
+
         for (const stepQuality of qualitySteps) {
             if (stepQuality < minQuality || stepQuality > maxQuality) continue;
-            
+
             const testBlob = await _canvasToBlob(canvas, stepQuality);
-            
-            if (testBlob.size <= targetSize) {
-                // Within target, try to maximize quality
+
+            if (testBlob.size <= targetSize * (1 + CONFIG.QUALITY_TOLERANCE)) {
                 if (stepQuality > bestQuality || bestBlob.size > targetSize) {
                     bestBlob = testBlob;
                     bestQuality = stepQuality;
                     maxQuality = stepQuality;
                 }
             } else {
-                // Too large, need lower quality
                 minQuality = stepQuality;
             }
         }
-        
-        // If we found a good match, use it
+
         if (bestBlob.size <= targetSize * (1 + CONFIG.QUALITY_TOLERANCE)) {
             return bestBlob;
         }
-        
-        // Fine-tune with binary search
-        for (let i = 0; i < 5; i++) {
+
+        // Fine-tune with binary search (limited iterations)
+        for (let i = 0; i < 4; i++) {
             quality = (minQuality + maxQuality) / 2;
             blob = await _canvasToBlob(canvas, quality);
-            
+
             if (blob.size > targetSize * (1 + CONFIG.QUALITY_TOLERANCE)) {
                 maxQuality = quality;
             } else if (blob.size < targetSize * (1 - CONFIG.QUALITY_TOLERANCE)) {
@@ -1066,11 +1089,10 @@ const ImageProcessor = (function() {
                     bestQuality = quality;
                 }
             } else {
-                // Within tolerance, use this
                 return blob;
             }
         }
-        
+
         return bestBlob;
     }
 
@@ -1087,7 +1109,7 @@ const ImageProcessor = (function() {
         // Stage 1: Tiny preview (instant)
         const tinyDims = _calculateDimensions(img.width, img.height, CONFIG.PREVIEW_TINY, CONFIG.PREVIEW_TINY);
         const tinyCanvas = _processDirect(img, tinyDims.width, tinyDims.height);
-        const tinyBlob = await _canvasToBlob(tinyCanvas, 0.3);
+        const tinyBlob = await _canvasToBlob(tinyCanvas, 0.5);
         tinyCanvas.width = 0;
         tinyCanvas.height = 0;
         
@@ -1103,7 +1125,7 @@ const ImageProcessor = (function() {
         
         const smallDims = _calculateDimensions(img.width, img.height, CONFIG.PREVIEW_SMALL, CONFIG.PREVIEW_SMALL);
         const smallCanvas = _processDirect(img, smallDims.width, smallDims.height);
-        const smallBlob = await _canvasToBlob(smallCanvas, 0.5);
+        const smallBlob = await _canvasToBlob(smallCanvas, 0.65);
         smallCanvas.width = 0;
         smallCanvas.height = 0;
         
@@ -1186,7 +1208,8 @@ const ImageProcessor = (function() {
             useCache = true,
             useWorker = true,
             gammaCorrect = false,  // Use gamma-correct resampling
-            algorithm = 'auto'      // Resize algorithm: 'auto', 'nearest', 'bilinear', 'lanczos'
+            algorithm = 'auto',    // Resize algorithm: 'auto', 'nearest', 'bilinear', 'lanczos'
+            nearLossless = false   // Prefer near-lossless encoding (PNG or high-quality WebP)
         } = options;
 
         try {
@@ -1413,13 +1436,13 @@ const ImageProcessor = (function() {
             // Main thread processing (fallback or primary)
             if (!blob) {
                 let canvas;
-                
+
                 // Choose processing strategy based on pixel count and scale factor
                 // This is more accurate than file size (8K images may be compressed <30MB)
                 const scaleFactorX = img.width / targetWidth;
                 const scaleFactorY = img.height / targetHeight;
                 const maxScaleFactor = Math.max(scaleFactorX, scaleFactorY);
-                
+
                 // Use multi-step scaling for large scale factors or large pixel counts
                 // Chunked processing has seam artifacts, so prefer multi-step
                 if (totalPixels > 20 * 1000 * 1000 || maxScaleFactor > 3) {
@@ -1438,11 +1461,11 @@ const ImageProcessor = (function() {
                     canvas = _processDirect(img, targetWidth, targetHeight);
                     onProgress(70);
                 }
-                
+
                 _revokeTrackedObjectUrl(img.src);
                 onProgress(75);
-                
-                blob = await _optimizeBlobSize(canvas, CONFIG.TARGET_OUTPUT_SIZE);
+
+                blob = await _optimizeBlobSize(canvas, CONFIG.TARGET_OUTPUT_SIZE, { nearLossless: options.nearLossless });
                 canvas.width = 0;
                 canvas.height = 0;
             }

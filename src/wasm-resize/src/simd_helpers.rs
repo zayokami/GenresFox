@@ -88,7 +88,7 @@ pub unsafe fn bilinear_interp_4_pixels(
     fy: f32,
 ) -> [u8; 4] {
     let lerp = |a: u8, b: u8, t: f32| -> u8 {
-        let result = a as f32 * (1.0 - t) + b as f32 * t;
+        let result = a as f32 + t * (b as f32 - a as f32);
         result.max(0.0).min(255.0) as u8
     };
     
