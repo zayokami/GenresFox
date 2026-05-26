@@ -165,10 +165,16 @@ const ConfigManager = (function () {
      * @returns {number} -1 if v1 < v2, 0 if v1 === v2, 1 if v1 > v2
      */
     function _compareVersions(v1, v2) {
-        const parts1 = v1.split('.').map(Number);
-        const parts2 = v2.split('.').map(Number);
+        const parts1 = v1.split('.').map(p => {
+            const n = parseInt(p, 10);
+            return Number.isNaN(n) ? 0 : n;
+        });
+        const parts2 = v2.split('.').map(p => {
+            const n = parseInt(p, 10);
+            return Number.isNaN(n) ? 0 : n;
+        });
         const maxLength = Math.max(parts1.length, parts2.length);
-        
+
         for (let i = 0; i < maxLength; i++) {
             const part1 = parts1[i] || 0;
             const part2 = parts2[i] || 0;
@@ -257,6 +263,10 @@ const ConfigManager = (function () {
                 }
                 if (typeof shortcut.name !== 'string' || typeof shortcut.url !== 'string') {
                     return { valid: false, reason: `Invalid shortcut fields at index ${i}` };
+                }
+                const dangerousProtocols = /^(javascript:|data:|vbscript:)/i;
+                if (dangerousProtocols.test(shortcut.url.trim())) {
+                    return { valid: false, reason: `Unsafe shortcut URL at index ${i}` };
                 }
             }
         }

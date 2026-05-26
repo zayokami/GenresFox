@@ -151,10 +151,11 @@ const SearchBar = (function () {
             // Fast heuristics: only treat as URL when it has a clear URL shape
             const hasProtocol = /^[a-z][a-z0-9+.-]*:\/\//i.test(sanitized);
             const isIp = /^(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?(\/|$)/.test(sanitized);
+            const isIpv6 = /^\[?[0-9a-fA-F:]+\]?(?::\d+)?(\/|$)/.test(sanitized);
             const isLocalhost = /^localhost(:\d+)?(\/|$)/i.test(sanitized);
             const hasDotDomain = /[a-z0-9-]+\.[a-z0-9.-]{2,}/i.test(sanitized);
 
-            if (!hasProtocol && !isIp && !isLocalhost && !hasDotDomain) {
+            if (!hasProtocol && !isIp && !isIpv6 && !isLocalhost && !hasDotDomain) {
                 // Looks more like a query (e.g., 单个词/短语无点号)
                 return false;
             }
@@ -344,16 +345,15 @@ const SearchBar = (function () {
                     try {
                         if (retryCount < CONFIG.MAX_RETRY_ATTEMPTS) {
                             setTimeout(() => {
-                                window.location.href = url;
-                                resolve(true);
+                                _navigateTo(url, retryCount + 1).then(resolve);
                             }, CONFIG.RETRY_DELAY * (retryCount + 1));
                         } else {
                             throw new Error('All navigation methods failed');
                         }
                     } catch (fallbackError) {
-                        _logError('Navigation failed after retries', fallbackError, { 
-                            url: url.substring(0, 100), 
-                            retryCount 
+                        _logError('Navigation failed after retries', fallbackError, {
+                            url: url.substring(0, 100),
+                            retryCount
                         });
                         _showError('searchErrorNavigationFailed', 'Failed to open the link.', fallbackError);
                         resolve(false);

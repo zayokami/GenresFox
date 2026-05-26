@@ -180,7 +180,10 @@ const AccessibilityManager = (function () {
         _saveSettings();
         
         // Announce theme change to screen readers
-        _announceToScreenReader(`Theme changed to ${theme}`);
+        const themeAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('themeChanged', theme) || `Theme changed to ${theme}`)
+            : `Theme changed to ${theme}`;
+        _announceToScreenReader(themeAnnouncement);
     }
 
     // ==================== Font Management ====================
@@ -368,7 +371,10 @@ const AccessibilityManager = (function () {
         
         if (_elements.fontSizeValue) {
             _elements.fontSizeValue.textContent = `${value}%`;
-            _announceToScreenReader(`Font size set to ${value} percent`);
+            const fontSizeAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+                ? (I18n.getMessage('fontSizeChanged', value.toString()) || `Font size set to ${value} percent`)
+                : `Font size set to ${value} percent`;
+            _announceToScreenReader(fontSizeAnnouncement);
         }
     }
 
@@ -378,7 +384,10 @@ const AccessibilityManager = (function () {
      */
     function _handleFontFamilyChange(e) {
         _applyFontFamily(e.target.value);
-        _announceToScreenReader(`Font family changed to ${e.target.value}`);
+        const fontFamilyAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('fontFamilyChanged', e.target.value) || `Font family changed to ${e.target.value}`)
+            : `Font family changed to ${e.target.value}`;
+        _announceToScreenReader(fontFamilyAnnouncement);
     }
 
     /**
@@ -387,7 +396,10 @@ const AccessibilityManager = (function () {
      */
     function _handleLineSpacingChange(e) {
         _applyLineSpacing(e.target.value);
-        _announceToScreenReader(`Line spacing changed to ${e.target.value}`);
+        const lineSpacingAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('lineSpacingChanged', e.target.value) || `Line spacing changed to ${e.target.value}`)
+            : `Line spacing changed to ${e.target.value}`;
+        _announceToScreenReader(lineSpacingAnnouncement);
     }
 
     /**
@@ -396,7 +408,10 @@ const AccessibilityManager = (function () {
      */
     function _handleLetterSpacingChange(e) {
         _applyLetterSpacing(e.target.value);
-        _announceToScreenReader(`Letter spacing changed to ${e.target.value}`);
+        const letterSpacingAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('letterSpacingChanged', e.target.value) || `Letter spacing changed to ${e.target.value}`)
+            : `Letter spacing changed to ${e.target.value}`;
+        _announceToScreenReader(letterSpacingAnnouncement);
     }
 
     /**
@@ -405,7 +420,10 @@ const AccessibilityManager = (function () {
      */
     function _handleWordSpacingChange(e) {
         _applyWordSpacing(e.target.value);
-        _announceToScreenReader(`Word spacing changed to ${e.target.value}`);
+        const wordSpacingAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('wordSpacingChanged', e.target.value) || `Word spacing changed to ${e.target.value}`)
+            : `Word spacing changed to ${e.target.value}`;
+        _announceToScreenReader(wordSpacingAnnouncement);
     }
 
     /**
@@ -414,7 +432,10 @@ const AccessibilityManager = (function () {
      */
     function _handleMotionChange(e) {
         _applyMotion(e.target.value);
-        _announceToScreenReader(`Animation preference changed to ${e.target.value}`);
+        const motionAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('motionPreferenceChanged', e.target.value) || `Animation preference changed to ${e.target.value}`)
+            : `Animation preference changed to ${e.target.value}`;
+        _announceToScreenReader(motionAnnouncement);
     }
 
     /**
@@ -423,7 +444,10 @@ const AccessibilityManager = (function () {
      */
     function _handleFocusStyleChange(e) {
         _applyFocusStyle(e.target.value);
-        _announceToScreenReader(`Focus indicator changed to ${e.target.value}`);
+        const focusAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('focusIndicatorChanged', e.target.value) || `Focus indicator changed to ${e.target.value}`)
+            : `Focus indicator changed to ${e.target.value}`;
+        _announceToScreenReader(focusAnnouncement);
     }
 
     /**
@@ -488,7 +512,10 @@ const AccessibilityManager = (function () {
         _elements.shortcutsModal.style.display = 'flex';
         _elements.shortcutsModal.classList.add('active');
         document.body.style.overflow = 'hidden'; // Prevent background scrolling
-        _announceToScreenReader('Keyboard shortcuts help opened');
+        const openAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('shortcutsHelpOpened') || 'Keyboard shortcuts help opened')
+            : 'Keyboard shortcuts help opened';
+        _announceToScreenReader(openAnnouncement);
         
         // Focus close button
         if (!_elements.closeShortcutsBtn) {
@@ -511,7 +538,10 @@ const AccessibilityManager = (function () {
         _elements.shortcutsModal.style.display = 'none';
         _elements.shortcutsModal.classList.remove('active');
         document.body.style.overflow = ''; // Restore scrolling
-        _announceToScreenReader('Keyboard shortcuts help closed');
+        const closeAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('shortcutsHelpClosed') || 'Keyboard shortcuts help closed')
+            : 'Keyboard shortcuts help closed';
+        _announceToScreenReader(closeAnnouncement);
         
         // Return focus to show shortcuts button
         if (!_elements.showShortcutsBtn) {
@@ -526,11 +556,19 @@ const AccessibilityManager = (function () {
      * Handle reset button click
      */
     function _handleReset() {
+        const confirmMessage = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('resetAccessibilityConfirm') || 'Reset all accessibility settings to defaults?')
+            : 'Reset all accessibility settings to defaults?';
+        if (!confirm(confirmMessage)) return;
+
         _state.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
         _saveSettings();
         _applyAllSettings();
         _syncUI();
-        _announceToScreenReader('Accessibility settings reset to defaults');
+        const resetAnnouncement = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('accessibilitySettingsReset') || 'Accessibility settings reset to defaults')
+            : 'Accessibility settings reset to defaults';
+        _announceToScreenReader(resetAnnouncement);
     }
 
     // ==================== UI Synchronization ====================
@@ -668,7 +706,10 @@ const AccessibilityManager = (function () {
         const skipLink = document.createElement('a');
         skipLink.href = '#search';
         skipLink.className = 'skip-link';
-        skipLink.textContent = 'Skip to main content';
+        const skipText = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? (I18n.getMessage('skipToMainContent') || 'Skip to main content')
+            : 'Skip to main content';
+        skipLink.textContent = skipText;
         skipLink.style.cssText = `
             position: absolute;
             top: -40px;

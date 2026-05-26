@@ -6,7 +6,6 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Chrome](https://img.shields.io/badge/chrome-manifest%20v3-orange.svg)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/zayokami/GenresFox)
-[![Greptile](https://img.shields.io/badge/Greptile-Indexed-brightgreen.svg)](https://app.greptile.com)
 
 **A completely open-source, high-performance, and extremely minimalist browser new tab page extension.**
 
@@ -103,16 +102,6 @@ The output will be a `.crx` file ready for distribution.
 5. Click "Reset to Default" to restore the original background
 
 ### Development
-
-#### Greptile Integration
-
-This project is indexed by [Greptile](https://app.greptile.com) for AI-powered code understanding and querying. The `.greptileignore` file specifies which files should be excluded from indexing (build artifacts, dependencies, etc.).
-
-To connect this repository to Greptile:
-1. Visit [app.greptile.com](https://app.greptile.com)
-2. Connect your GitHub account
-3. Select this repository
-4. Greptile will automatically index the codebase according to `.greptileignore` rules
 
 #### Project Structure
 ```
@@ -237,21 +226,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - GitHub: [@KafuuChino](https://github.com/lian5727557)
 
-### Security & Transparency
-
-The WASM module (`resize.wasm`) is **100% open source and auditable**:
-
-- ✅ **No backdoors** - All source code is available in `src/wasm-resize/src/lib.rs`
-- ✅ **Zero external dependencies** - Verified: `cargo tree` shows only the project itself, no third-party crates
-- ✅ **No build-time dependencies** - No `cargo fetch` needed, uses only Rust standard library (already included with Rust)
-- ✅ **Fully auditable** - You can review, compile, and verify the code yourself
-- ✅ **No network requests** - The WASM module only performs image resizing, no data transmission
-- ✅ **No file system access** - Operates entirely in memory
-- 📄 See `src/wasm-resize/SECURITY.md` for complete security statement and dependency list
-
-**For end users**: Pre-compiled WASM is included - no Rust or compilation needed!
-
-**For developers**: After installing Rust, you can build immediately - zero dependencies to download.
 
 ### Acknowledgments
 
@@ -348,16 +322,6 @@ The WASM module (`resize.wasm`) is **100% open source and auditable**:
 5. 点击"恢复默认"可还原原始背景
 
 ### 开发
-
-#### Greptile
-
-本项目已接入 [Greptile](https://app.greptile.com)，支持 AI 驱动的代码理解和查询。`.greptileignore` 文件指定了需要从索引中排除的文件（构建产物、依赖等）。
-
-若要将此仓库连接到 Greptile：
-1. 访问 [app.greptile.com](https://app.greptile.com)
-2. 连接您的 GitHub 账户
-3. 选择此仓库
-4. Greptile 将根据 `.greptileignore` 规则自动索引代码库
 
 #### 项目结构
 ```
@@ -481,22 +445,6 @@ GenresFox.debug.cache()
 **KafuuChino**
 
 - GitHub: [@KafuuChino](https://github.com/lian5727557)
-
-### 安全与透明度
-
-WASM 模块 (`resize.wasm`) **100% 开源且可审计**：
-
-- ✅ **无后门** - 所有源代码位于 `src/wasm-resize/src/lib.rs`
-- ✅ **零外部依赖** - 已验证：`cargo tree` 仅显示项目本身，无第三方依赖
-- ✅ **无构建时依赖** - 无需 `cargo fetch`，仅使用 Rust 标准库（已随 Rust 安装包含）
-- ✅ **完全可审计** - 您可以审查、编译和验证代码
-- ✅ **无网络请求** - WASM 模块仅执行图片缩放，不传输任何数据
-- ✅ **无文件系统访问** - 完全在内存中运行
-- 📄 完整安全声明和依赖列表请查看 `src/wasm-resize/SECURITY.md`
-
-**对于最终用户**：已包含预编译的 WASM 文件 - 无需 Rust 或编译！
-
-**对于开发者**：安装 Rust 后即可立即构建 - 无需任何依赖需要下载。
 
 > 【注意】**WASM 构建请使用 release 模式**  
 > - 推荐命令：`cargo build --release --target wasm32-unknown-unknown`（或运行项目自带的 `build.sh` / `build.bat`）  

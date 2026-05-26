@@ -10,6 +10,7 @@ CLAUDE.md
 *.njsproj
 *.sln
 *.sw?
+zip/
 
 # OS files
 .DS_Store

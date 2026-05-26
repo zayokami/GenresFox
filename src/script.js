@@ -574,6 +574,8 @@ function renderEngineDropdown() {
         const div = document.createElement("div");
         div.className = "engine-option";
         div.dataset.engine = key;
+        div.setAttribute('role', 'option');
+        div.setAttribute('aria-selected', key === currentEngine ? 'true' : 'false');
         
         const img = document.createElement('img');
         img.src = getIconSrc(key, engine.icon);
@@ -665,6 +667,11 @@ window.engines = engines;
 
 window.deleteEngine = (key) => {
     if (defaultEngines[key]) return;
+    const engineName = engines[key]?.name || key;
+    const confirmMessage = (window.I18n && I18n.t)
+        ? I18n.t('deleteEngineConfirm', 'Delete search engine "{name}"?').replace('{name}', engineName)
+        : `Delete search engine "${engineName}"?`;
+    if (!confirm(confirmMessage)) return;
     delete engines[key];
     if (currentEngine === key) setEngine("google");
     saveEngines();
@@ -689,14 +696,74 @@ window.deleteShortcut = (index, options = {}) => {
 
 // Settings Modal
 settingsBtn.addEventListener("click", () => {
-    settingsModal.classList.add("active");
-    // Sync snow effect toggle state when opening settings
-    _updateSnowToggleVisibility();
+    openSettingsModal();
 });
-closeSettings.addEventListener("click", () => settingsModal.classList.remove("active"));
+settingsBtn.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openSettingsModal();
+    }
+});
+closeSettings.addEventListener("click", () => closeSettingsModal());
 settingsModal.addEventListener("click", (e) => {
-    if (e.target === settingsModal) settingsModal.classList.remove("active");
+    if (e.target === settingsModal) closeSettingsModal();
 });
+
+function closeSettingsModal() {
+    settingsModal.classList.remove("active");
+    document.removeEventListener("keydown", _handleSettingsModalKeydown);
+}
+
+function openSettingsModal() {
+    settingsModal.classList.add("active");
+    _updateSnowToggleVisibility();
+    document.addEventListener("keydown", _handleSettingsModalKeydown);
+}
+
+function _handleSettingsModalKeydown(e) {
+    if (e.key === "Escape") {
+        e.preventDefault();
+        closeSettingsModal();
+        return;
+    }
+    if (e.key === "Tab") {
+        _trapFocusInModal(e);
+    }
+}
+
+function _trapFocusInModal(e) {
+    const focusableSelectors = [
+        'button:not([disabled])',
+        'a[href]',
+        'input:not([disabled])',
+        'select:not([disabled])',
+        'textarea:not([disabled])',
+        '[tabindex]:not([tabindex="-1"])'
+    ];
+    const focusables = Array.from(
+        settingsModal.querySelectorAll(focusableSelectors.join(','))
+    ).filter(el => {
+        const style = window.getComputedStyle(el);
+        return style.display !== 'none' && style.visibility !== 'hidden';
+    });
+    if (focusables.length === 0) {
+        e.preventDefault();
+        return;
+    }
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey) {
+        if (document.activeElement === first || !settingsModal.contains(document.activeElement)) {
+            e.preventDefault();
+            last.focus();
+        }
+    } else {
+        if (document.activeElement === last || !settingsModal.contains(document.activeElement)) {
+            e.preventDefault();
+            first.focus();
+        }
+    }
+}
 
 // Tabs
 tabBtns.forEach(btn => {
@@ -1005,7 +1072,12 @@ function _applyImportedConfiguration(config) {
 /**
  * Import configuration from file
  */
+let _importInProgress = false;
+
 async function importConfiguration() {
+    if (_importInProgress) return;
+    _importInProgress = true;
+
     try {
         if (typeof ConfigManager === 'undefined' || !ConfigManager.importFromFile) {
             throw new Error('ConfigManager not available');
@@ -1021,7 +1093,7 @@ async function importConfiguration() {
 
         // Wait for file selection
         await new Promise((resolve, reject) => {
-            fileInput.onchange = async (e) => {
+            fileInput.addEventListener('change', async (e) => {
                 const file = e.target.files?.[0];
                 if (!file) {
                     resolve(null);
@@ -1144,14 +1216,16 @@ async function importConfiguration() {
                     fileInput.value = '';
                     resolve(null);
                 }
-            };
+            }, { once: true });
         });
     } catch (e) {
         console.error('Failed to import configuration:', e);
-        const errorMessage = I18n && I18n.t ? 
-            I18n.t('importConfigError', 'Failed to import configuration: ') + e.message : 
+        const errorMessage = I18n && I18n.t ?
+            I18n.t('importConfigError', 'Failed to import configuration: ') + e.message :
             'Failed to import configuration: ' + e.message;
         alert(errorMessage);
+    } finally {
+        _importInProgress = false;
     }
 }
 
@@ -1169,8 +1243,6 @@ function isDangerousUrl(url) {
     if (/^(javascript|data|vbscript|file|blob|about|chrome):/i.test(trimmed)) return true;
     // Block control characters
     if (/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(trimmed)) return true;
-    // Reject other non-printable chars
-    if (/[^\x20-\x7E]/.test(trimmed)) return true;
 
     try {
         // If protocol missing, assume https for validation only
@@ -1243,6 +1315,14 @@ selectedEngineIcon.addEventListener("click", (e) => {
 });
 document.addEventListener("click", (e) => {
     if (!engineSelector.contains(e.target)) engineSelector.classList.remove("active");
+});
+
+// Engine Dropdown Escape key handler
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && engineSelector.classList.contains("active")) {
+        engineSelector.classList.remove("active");
+        selectedEngineIcon.focus();
+    }
 });
 
 // ==================== Shortcut Name Display Toggle ====================
@@ -1512,6 +1592,7 @@ function handleShortcutDrop(e) {
         const first = shortcutsList[lower];
         const second = shortcutsList[higher];
         if (typeof ShortcutManager !== 'undefined' && ShortcutManager.delete && ShortcutManager.add) {
+            // Delete highest index first to avoid shifting issues
             ShortcutManager.delete(higher, { silent: true });
             ShortcutManager.delete(lower, { silent: true });
             _ensureShortcutId(first);
@@ -1530,6 +1611,7 @@ function handleShortcutDrop(e) {
             }
             shortcuts = ShortcutManager.getAll();
         } else {
+            // Delete highest index first to avoid shifting issues
             shortcuts.splice(higher, 1);
             shortcuts.splice(lower, 1);
             _ensureShortcutId(first);
@@ -1562,19 +1644,35 @@ function _ensureFolderOverlay() {
     if (folderOverlay) return;
     folderOverlay = document.createElement('div');
     folderOverlay.className = 'folder-overlay';
-    folderOverlay.innerHTML = `
-        <div class="folder-bubble">
-            <div class="folder-bubble-header">
-                <input id="folderOverlayInput" class="folder-bubble-input" />
-                <button id="folderOverlayClose" class="folder-bubble-close">&times;</button>
-            </div>
-            <div id="folderOverlayContent" class="folder-bubble-content"></div>
-        </div>
-    `;
+
+    const bubble = document.createElement('div');
+    bubble.className = 'folder-bubble';
+
+    const header = document.createElement('div');
+    header.className = 'folder-bubble-header';
+
+    const input = document.createElement('input');
+    input.id = 'folderOverlayInput';
+    input.className = 'folder-bubble-input';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.id = 'folderOverlayClose';
+    closeBtn.className = 'folder-bubble-close';
+    closeBtn.textContent = '×';
+
+    const content = document.createElement('div');
+    content.id = 'folderOverlayContent';
+    content.className = 'folder-bubble-content';
+
+    header.appendChild(input);
+    header.appendChild(closeBtn);
+    bubble.appendChild(header);
+    bubble.appendChild(content);
+    folderOverlay.appendChild(bubble);
+
     document.body.appendChild(folderOverlay);
-    folderOverlayContent = folderOverlay.querySelector('#folderOverlayContent');
-    folderOverlayInput = folderOverlay.querySelector('#folderOverlayInput');
-    const closeBtn = folderOverlay.querySelector('#folderOverlayClose');
+    folderOverlayContent = content;
+    folderOverlayInput = input;
     closeBtn.addEventListener('click', closeFolderOverlay);
     folderOverlay.addEventListener('click', (e) => {
         if (e.target === folderOverlay) closeFolderOverlay();

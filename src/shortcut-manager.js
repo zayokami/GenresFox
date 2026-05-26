@@ -745,6 +745,13 @@ const ShortcutManager = (function() {
             const deleteBtn = document.createElement("span");
             deleteBtn.className = "delete-btn";
             deleteBtn.textContent = '\u00D7';
+            const deleteLabel = shortcut.name || shortcut.url || 'shortcut';
+            const deleteAriaLabel = (window.I18n && I18n.getMessage)
+                ? (I18n.getMessage('deleteShortcutAriaLabel', deleteLabel) || `Delete shortcut ${deleteLabel}`)
+                : `Delete shortcut ${deleteLabel}`;
+            deleteBtn.setAttribute('aria-label', deleteAriaLabel);
+            deleteBtn.setAttribute('role', 'button');
+            deleteBtn.setAttribute('tabindex', '0');
             deleteBtn.addEventListener("click", () => {
                 // Use global deleteShortcut if available (for confirmation dialog)
                 // Otherwise use ShortcutManager's delete method directly
@@ -773,14 +780,16 @@ const ShortcutManager = (function() {
         if (!shortcutsGridElement) return;
         
         shortcutsGridElement.innerHTML = '';
-        
+        shortcutsGridElement.setAttribute('role', 'list');
+
         const showNames = localStorage.getItem('showShortcutNames') !== 'false';
         shortcutsGridElement.classList.toggle('hide-names', !showNames);
         const targetPref = (localStorage.getItem(SHORTCUT_TARGET_KEY) || 'current') === 'newtab' ? '_blank' : '_self';
-        
+
         shortcuts.forEach((shortcut, index) => {
             const a = document.createElement("a");
             a.className = "shortcut-item";
+            a.setAttribute('role', 'listitem');
             a.draggable = true;
             a.dataset.index = index;
             a.target = targetPref;
@@ -788,6 +797,9 @@ const ShortcutManager = (function() {
             if (targetPref === '_blank') {
                 a.rel = 'noopener noreferrer';
             }
+            // aria-label describing the destination
+            const shortcutLabel = shortcut.name || shortcut.url || 'Shortcut';
+            a.setAttribute('aria-label', shortcutLabel);
 
             if (_isFolder(shortcut) && FOLDER_FEATURE_ENABLED) {
                 a.classList.add('shortcut-folder');

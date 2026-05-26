@@ -86,6 +86,11 @@ const WallpaperManager = (function () {
     let _bingWallpaperPromise = null; // dedupe Bing fetch/apply
     let _bingWarmPromise = null;      // best-effort cache warmer
 
+    // Cached Intl.DateTimeFormat instances
+    let _cachedTimeZone = null;
+    let _cachedDateFormatter = null;
+    let _cachedPartsFormatter = null;
+
     const SEARCH_LIMITS = {
         width: { min: 300, max: 1000, fallback: 600 },
         position: { min: 0, max: 100, fallback: 40 },
@@ -210,6 +215,10 @@ const WallpaperManager = (function () {
             transaction.onerror = () => {
                 console.error('Transaction error:', transaction.error);
                 reject(transaction.error);
+            };
+
+            transaction.onabort = () => {
+                reject(new Error('Transaction aborted'));
             };
         });
     }
@@ -467,8 +476,8 @@ const WallpaperManager = (function () {
      */
     function _saveWallpaperPreviewSmall(source, kind) {
         _runWhenIdle(async () => {
+            let img = null;
             try {
-                let img;
                 if (source instanceof Blob) {
                     const url = URL.createObjectURL(source);
                     try {
@@ -510,7 +519,6 @@ const WallpaperManager = (function () {
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
                 canvas.width = 0;
                 canvas.height = 0;
-                if (img.close) img.close();
 
                 const payload = {
                     dataUrl,
@@ -523,6 +531,10 @@ const WallpaperManager = (function () {
                 _safeLocalStorageSet(CONFIG.STORAGE_KEYS.WALLPAPER_PREVIEW_SMALL, JSON.stringify(payload));
             } catch (_) {
                 // Silent failure. Preview is purely best-effort.
+            } finally {
+                if (img && typeof img.close === 'function') {
+                    img.close();
+                }
             }
         }, 2000);
     }
@@ -598,8 +610,10 @@ const WallpaperManager = (function () {
             }
         }
         el.textContent = text;
+        el.setAttribute('role', 'status');
+        el.setAttribute('aria-live', 'polite');
         el.style.opacity = '1';
-        clearTimeout(el._timer);
+        if (el._timer) clearTimeout(el._timer);
         el._timer = setTimeout(() => {
             el.style.opacity = '0';
         }, duration);
@@ -749,14 +763,17 @@ const WallpaperManager = (function () {
      */
     function _getDateString(offsetDays = 0) {
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        const formatter = new Intl.DateTimeFormat('en-CA', {
-            timeZone: tz,
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        });
+        if (tz !== _cachedTimeZone || !_cachedDateFormatter) {
+            _cachedTimeZone = tz;
+            _cachedDateFormatter = new Intl.DateTimeFormat('en-CA', {
+                timeZone: tz,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        }
         const target = new Date(Date.now() + offsetDays * 24 * 60 * 60 * 1000);
-        return formatter.format(target).replace(/-/g, '');
+        return _cachedDateFormatter.format(target).replace(/-/g, '');
     }
 
     /**
@@ -776,13 +793,16 @@ const WallpaperManager = (function () {
      */
     function _getStartOfTodayTs() {
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        const formatter = new Intl.DateTimeFormat('en-CA', {
-            timeZone: tz,
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        });
-        const parts = formatter.formatToParts(new Date());
+        if (tz !== _cachedTimeZone || !_cachedPartsFormatter) {
+            _cachedTimeZone = tz;
+            _cachedPartsFormatter = new Intl.DateTimeFormat('en-CA', {
+                timeZone: tz,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        }
+        const parts = _cachedPartsFormatter.formatToParts(new Date());
         const y = parts.find(p => p.type === 'year')?.value;
         const m = parts.find(p => p.type === 'month')?.value;
         const d = parts.find(p => p.type === 'day')?.value;
@@ -1048,25 +1068,15 @@ const WallpaperManager = (function () {
         // Method 2: Use proxy API
         try {
             const proxyUrl = `${CONFIG.BING_API.PROXY_URL}?resolution=UHD&format=image&index=${index}&mkt=en-US`;
-            
-            // Validate URL accessibility
-            const isAccessible = await new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => resolve(true);
-                img.onerror = () => resolve(false);
-                setTimeout(() => resolve(false), 5000);
-                img.src = proxyUrl;
-            });
-            
-            if (isAccessible) {
-                return {
-                    url: `${CONFIG.BING_API.PROXY_URL}?resolution=1920&format=image&index=${index}&mkt=en-US`,
-                    urlHD: proxyUrl,
-                    title: 'Bing Daily Wallpaper',
-                    copyright: '',
-                    date: _getDateString(-index)  // index=0 is today, index=-1 would be tomorrow
-                };
-            }
+
+            // Skip full-image validation; rely on actual fetch error handling
+            return {
+                url: `${CONFIG.BING_API.PROXY_URL}?resolution=1920&format=image&index=${index}&mkt=en-US`,
+                urlHD: proxyUrl,
+                title: 'Bing Daily Wallpaper',
+                copyright: '',
+                date: _getDateString(-index)  // index=0 is today, index=-1 would be tomorrow
+            };
         } catch (e) {
             console.warn('Bing proxy fetch failed:', e);
         }
@@ -1442,6 +1452,15 @@ const WallpaperManager = (function () {
             progressContent.appendChild(progressBarContainer);
             progressContent.appendChild(progressStatus);
             progressOverlay.appendChild(progressContent);
+
+            // ARIA for progress overlay
+            progressOverlay.setAttribute('role', 'progressbar');
+            progressOverlay.setAttribute('aria-valuemin', '0');
+            progressOverlay.setAttribute('aria-valuemax', '100');
+            progressOverlay.setAttribute('aria-valuenow', '0');
+            progressOverlay.setAttribute('aria-live', 'polite');
+            progressOverlay.setAttribute('aria-label', processingText);
+
             progressOverlay.style.cssText = `
                 position: fixed;
                 top: 0;
@@ -1512,7 +1531,8 @@ const WallpaperManager = (function () {
         
         if (fill) fill.style.width = `${progress}%`;
         if (statusEl && status) statusEl.textContent = status;
-        
+
+        progressOverlay.setAttribute('aria-valuenow', String(progress));
         progressOverlay.style.display = 'flex';
     }
     
@@ -1536,13 +1556,18 @@ const WallpaperManager = (function () {
 
         // File size check
         if (file.size > CONFIG.MAX_FILE_SIZE) {
-            alert(`Image too large (max ${CONFIG.MAX_FILE_SIZE / 1024 / 1024}MB)`);
+            const msg = _getLocalizedMessage(
+                'imageTooLarge',
+                `Image too large (max ${CONFIG.MAX_FILE_SIZE / 1024 / 1024}MB)`
+            );
+            alert(msg);
             return false;
         }
 
         // File type check
         if (!file.type.startsWith('image/')) {
-            alert('Please upload an image file');
+            const msg = _getLocalizedMessage('pleaseUploadImage', 'Please upload an image file');
+            alert(msg);
             return false;
         }
 
