@@ -1821,7 +1821,8 @@ footer,
     box-shadow: var(--shadow-medium);
     pointer-events: auto;
     transition: box-shadow var(--transition-fast) var(--transition-curve),
-                transform var(--transition-fast) var(--transition-curve);
+                transform var(--transition-fast) var(--transition-curve),
+                filter var(--transition-fast) var(--transition-curve);
     overflow: hidden;
     cursor: grab;
     user-select: none;
@@ -1829,9 +1830,17 @@ footer,
 
 .sticky-note.dragging {
     cursor: grabbing;
-    box-shadow: var(--shadow-strong);
     z-index: 9999 !important;
-    transform: rotate(0deg) scale(1.03) !important;
+    transform: rotate(0deg) scale(1.06) !important;
+    box-shadow:
+        0 25px 60px rgba(0, 0, 0, 0.45),
+        0 10px 20px rgba(0, 0, 0, 0.25),
+        0 0 0 1px rgba(255, 255, 255, 0.08);
+    filter: brightness(1.08);
+    transition:
+        box-shadow var(--transition-normal) var(--transition-curve),
+        transform var(--transition-normal) var(--transition-curve),
+        filter var(--transition-normal) var(--transition-curve);
 }
 
 .sticky-note-header {
@@ -1941,4 +1950,87 @@ footer,
     .sticky-note-content {
         font-size: 13px;
     }
+}
+
+/* ==================== Sticky Notes Context Menu ==================== */
+
+.sn-context-menu {
+    position: fixed;
+    min-width: 160px;
+    background: rgba(20, 20, 26, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-strong);
+    padding: 6px 0;
+    z-index: 99999;
+    animation: sn-menu-fade-in 0.12s var(--transition-curve);
+    user-select: none;
+}
+
+@keyframes sn-menu-fade-in {
+    from {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.sn-context-menu-item {
+    padding: 8px 16px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    transition: background var(--transition-fast) ease;
+    white-space: nowrap;
+}
+
+.sn-context-menu-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.sn-context-menu-item.danger {
+    color: #ff6b6b;
+}
+
+.sn-context-menu-item.danger:hover {
+    background: rgba(255, 77, 77, 0.12);
+}
+
+.sn-context-menu-separator {
+    height: 1px;
+    margin: 6px 10px;
+    background: rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+}
+
+.sn-context-menu-colors {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 8px 16px;
+}
+
+.sn-context-color-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform var(--transition-fast) ease,
+                box-shadow var(--transition-fast) ease;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.sn-context-color-dot:hover {
+    transform: scale(1.2);
+}
+
+.sn-context-color-dot.active {
+    box-shadow: 0 0 0 2px #fff;
 }

@@ -122,6 +122,9 @@
     "blurAmount": {
         "message": "ぼかし量"
     },
+    "bringToFront": {
+        "message": "最前面に移動"
+    },
     "clearAllStickyNotes": {
         "message": "すべて削除"
     },

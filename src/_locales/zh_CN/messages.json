@@ -122,6 +122,9 @@
     "blurAmount": {
         "message": "模糊程度"
     },
+    "bringToFront": {
+        "message": "置于顶层"
+    },
     "clearAllStickyNotes": {
         "message": "清除全部"
     },

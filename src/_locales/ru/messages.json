@@ -122,6 +122,9 @@
     "blurAmount": {
         "message": "Степень размытия"
     },
+    "bringToFront": {
+        "message": "На передний план"
+    },
     "clearAllStickyNotes": {
         "message": "Очистить все"
     },

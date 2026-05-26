@@ -122,6 +122,9 @@
     "blurAmount": {
         "message": "Flou"
     },
+    "bringToFront": {
+        "message": "Mettre au premier plan"
+    },
     "clearAllStickyNotes": {
         "message": "Tout effacer"
     },

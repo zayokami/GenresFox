@@ -122,6 +122,9 @@
     "blurAmount": {
         "message": "Desenfoque"
     },
+    "bringToFront": {
+        "message": "Traer al frente"
+    },
     "clearAllStickyNotes": {
         "message": "Borrar todas"
     },

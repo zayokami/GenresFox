@@ -122,6 +122,9 @@
     "blurAmount": {
         "message": "Blur Amount"
     },
+    "bringToFront": {
+        "message": "Bring to Front"
+    },
     "clearAllStickyNotes": {
         "message": "Clear All"
     },

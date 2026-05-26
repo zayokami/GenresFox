@@ -43,7 +43,163 @@ const StickyNotes = (function() {
         startY: 0,
         initialLeft: 0,
         initialTop: 0,
+        hasMoved: false,
+        dragThreshold: 5,
+        contentEl: null,
+        wasContentEditable: false,
     };
+
+    // ==================== Context Menu ====================
+
+    let _contextMenuState = {
+        menu: null,
+        noteId: null,
+    };
+
+    function _closeContextMenu() {
+        if (_contextMenuState.menu) {
+            _contextMenuState.menu.remove();
+            _contextMenuState.menu = null;
+            _contextMenuState.noteId = null;
+        }
+        document.removeEventListener('click', _onDocumentClickCloseMenu);
+        document.removeEventListener('keydown', _onEscapeCloseMenu);
+    }
+
+    function _onDocumentClickCloseMenu(e) {
+        if (_contextMenuState.menu && !_contextMenuState.menu.contains(e.target)) {
+            _closeContextMenu();
+        }
+    }
+
+    function _onEscapeCloseMenu(e) {
+        if (e.key === 'Escape') {
+            _closeContextMenu();
+        }
+    }
+
+    function _createContextMenuItem(label, onClick, options) {
+        options = options || {};
+        var item = document.createElement('div');
+        item.className = 'sn-context-menu-item';
+        if (options.danger) item.classList.add('danger');
+        if (options.separator) {
+            item.className = 'sn-context-menu-separator';
+            return item;
+        }
+
+        item.textContent = label;
+        item.addEventListener('click', function(e) {
+            e.stopPropagation();
+            onClick();
+            _closeContextMenu();
+        });
+        return item;
+    }
+
+    function _createColorOption(color, isActive, onClick) {
+        var dot = document.createElement('span');
+        dot.className = 'sn-context-color-dot';
+        if (isActive) dot.classList.add('active');
+        dot.style.backgroundColor = color.bg;
+        dot.style.borderColor = color.border;
+        dot.title = color.name;
+        dot.addEventListener('click', function(e) {
+            e.stopPropagation();
+            onClick(color);
+            _closeContextMenu();
+        });
+        return dot;
+    }
+
+    function _showContextMenu(x, y, items) {
+        _closeContextMenu();
+
+        var menu = document.createElement('div');
+        menu.className = 'sn-context-menu';
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
+
+        items.forEach(function(item) {
+            menu.appendChild(item);
+        });
+
+        document.body.appendChild(menu);
+        _contextMenuState.menu = menu;
+
+        // Adjust position to keep menu within viewport
+        var rect = menu.getBoundingClientRect();
+        var vpW = window.innerWidth;
+        var vpH = window.innerHeight;
+
+        if (rect.right > vpW) {
+            menu.style.left = (x - rect.width) + 'px';
+        }
+        if (rect.bottom > vpH) {
+            menu.style.top = (y - rect.height) + 'px';
+        }
+
+        document.addEventListener('click', _onDocumentClickCloseMenu);
+        document.addEventListener('keydown', _onEscapeCloseMenu);
+    }
+
+    function _onContainerContextMenu(e) {
+        if (!_state.settings.enabled) return;
+
+        var noteEl = e.target.closest('.sticky-note');
+        if (noteEl) {
+            // Right-click on a sticky note
+            e.preventDefault();
+            var noteId = parseInt(noteEl.dataset.id, 10);
+            var note = _state.notes.find(function(n) { return n.id === noteId; });
+            if (!note) return;
+
+            var currentColor = note.color || CONFIG.COLORS[0];
+            var items = [];
+
+            // Delete Note
+            items.push(_createContextMenuItem(
+                _getLocalizedMessage('deleteStickyNote', 'Delete Note'),
+                function() { _deleteNote(noteId); },
+                { danger: true }
+            ));
+
+            // Separator
+            items.push(_createContextMenuItem(null, null, { separator: true }));
+
+            // Color options row
+            var colorRow = document.createElement('div');
+            colorRow.className = 'sn-context-menu-colors';
+            CONFIG.COLORS.forEach(function(c) {
+                var isActive = currentColor.bg === c.bg;
+                colorRow.appendChild(_createColorOption(c, isActive, function(color) {
+                    _changeNoteColor(noteId, color);
+                }));
+            });
+            items.push(colorRow);
+
+            // Separator
+            items.push(_createContextMenuItem(null, null, { separator: true }));
+
+            // Bring to Front
+            items.push(_createContextMenuItem(
+                _getLocalizedMessage('bringToFront', 'Bring to Front'),
+                function() { _bringToFront(noteId); }
+            ));
+
+            _showContextMenu(e.clientX, e.clientY, items);
+            _contextMenuState.noteId = noteId;
+        } else {
+            // Right-click on empty area inside container
+            e.preventDefault();
+            var items = [];
+            items.push(_createContextMenuItem(
+                _getLocalizedMessage('addStickyNote', 'Create Note'),
+                function() { _createNote(); }
+            ));
+            _showContextMenu(e.clientX, e.clientY, items);
+        }
+    }
 
     // ==================== Storage ====================
 
@@ -178,11 +334,6 @@ const StickyNotes = (function() {
             _updateNoteContent(note.id, content.textContent);
         });
 
-        // Stop propagation on mousedown inside content so it doesn't trigger drag
-        content.addEventListener('mousedown', function(e) {
-            e.stopPropagation();
-        });
-
         // Handle Enter key to insert line break instead of submitting
         content.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -193,10 +344,11 @@ const StickyNotes = (function() {
 
         el.appendChild(content);
 
-        // Drag: only on the note background, not on content or header buttons
+        // Drag: mousedown anywhere on the note starts potential drag
         el.addEventListener('mousedown', function(e) {
-            if (e.target === content || e.target.closest('.sticky-note-header')) return;
-            _startDrag(e, note.id);
+            if (e.button !== 0) return;
+            if (e.target.closest('.sticky-note-header')) return;
+            _startDrag(e, note.id, content);
         });
 
         // Bring to front on any click
@@ -304,7 +456,7 @@ const StickyNotes = (function() {
 
     // ==================== Drag ====================
 
-    function _startDrag(e, noteId) {
+    function _startDrag(e, noteId, contentEl) {
         if (e.button !== 0) return;
 
         var note = _state.notes.find(function(n) { return n.id === noteId; });
@@ -317,10 +469,11 @@ const StickyNotes = (function() {
             startY: e.clientY,
             initialLeft: note.x,
             initialTop: note.y,
+            hasMoved: false,
+            dragThreshold: 5,
+            contentEl: contentEl || null,
+            wasContentEditable: contentEl ? contentEl.isContentEditable : false,
         };
-
-        var el = _elements.container.querySelector('.sticky-note[data-id="' + noteId + '"]');
-        if (el) el.classList.add('dragging');
 
         document.addEventListener('mousemove', _onDragMove);
         document.addEventListener('mouseup', _onDragEnd);
@@ -331,6 +484,23 @@ const StickyNotes = (function() {
 
         var dx = e.clientX - _dragState.startX;
         var dy = e.clientY - _dragState.startY;
+        var distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Check if we have moved enough to enter drag mode
+        if (!_dragState.hasMoved && distance > _dragState.dragThreshold) {
+            _dragState.hasMoved = true;
+
+            // If drag started from contenteditable, blur and disable editing
+            if (_dragState.contentEl && _dragState.wasContentEditable) {
+                _dragState.contentEl.blur();
+                _dragState.contentEl.contentEditable = 'false';
+            }
+
+            var el = _elements.container.querySelector('.sticky-note[data-id="' + _dragState.noteId + '"]');
+            if (el) el.classList.add('dragging');
+        }
+
+        if (!_dragState.hasMoved) return;
 
         var note = _state.notes.find(function(n) { return n.id === _dragState.noteId; });
         if (!note) return;
@@ -345,16 +515,29 @@ const StickyNotes = (function() {
         }
     }
 
-    function _onDragEnd() {
+    function _onDragEnd(e) {
         if (!_dragState.active) return;
 
         var el = _elements.container.querySelector('.sticky-note[data-id="' + _dragState.noteId + '"]');
         if (el) el.classList.remove('dragging');
 
-        _saveNotes();
+        // If it was a click (no significant movement), focus content if clicked there
+        if (!_dragState.hasMoved) {
+            if (_dragState.contentEl && _dragState.wasContentEditable) {
+                _dragState.contentEl.contentEditable = 'true';
+                _dragState.contentEl.focus();
+            }
+        } else {
+            // Drag completed: restore contenteditable and save position
+            if (_dragState.contentEl && _dragState.wasContentEditable) {
+                _dragState.contentEl.contentEditable = 'true';
+            }
+            _saveNotes();
+        }
 
         _dragState.active = false;
         _dragState.noteId = null;
+        _dragState.contentEl = null;
 
         document.removeEventListener('mousemove', _onDragMove);
         document.removeEventListener('mouseup', _onDragEnd);
@@ -375,6 +558,7 @@ const StickyNotes = (function() {
         document.body.appendChild(_elements.container);
 
         _renderNotes();
+        _elements.container.addEventListener('contextmenu', _onContainerContextMenu);
     }
 
     function createNote() {

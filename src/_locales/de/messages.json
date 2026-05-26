@@ -122,6 +122,9 @@
     "blurAmount": {
         "message": "Unschärfegrad"
     },
+    "bringToFront": {
+        "message": "In den Vordergrund bringen"
+    },
     "clearAllStickyNotes": {
         "message": "Alle löschen"
     },
