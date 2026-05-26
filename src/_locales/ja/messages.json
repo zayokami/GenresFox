@@ -374,6 +374,18 @@
     "snowEffectToggle": {
         "message": "雪のエフェクト"
     },
+    "stickyNoteFontSettings": {
+        "message": "フォント設定"
+    },
+    "stickyNoteFontSize": {
+        "message": "サイズ"
+    },
+    "stickyNoteLetterSpacing": {
+        "message": "字間"
+    },
+    "stickyNoteLineHeight": {
+        "message": "行間"
+    },
     "stickyNotePlaceholder": {
         "message": "ここに入力..."
     },

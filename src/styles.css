@@ -1905,6 +1905,30 @@ footer,
     box-shadow: 0 0 0 1.5px var(--sn-text, #78350f);
 }
 
+.sticky-note-font-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: var(--radius-xs);
+    background: transparent;
+    color: var(--sn-text, #78350f);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity var(--transition-fast), background var(--transition-fast);
+    margin-left: 4px;
+}
+
+.sticky-note-font-btn:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.08);
+}
+
 .sticky-note-content {
     flex: 1;
     padding: 4px 10px 10px;
@@ -2033,4 +2057,124 @@ footer,
 
 .sn-context-color-dot.active {
     box-shadow: 0 0 0 2px #fff;
+}
+
+/* ==================== Sticky Notes Font Panel ==================== */
+
+.sn-font-panel {
+    position: fixed;
+    z-index: 99999;
+    width: 220px;
+    background: rgba(20, 20, 26, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-strong);
+    padding: 12px;
+    animation: sn-menu-fade-in 0.12s var(--transition-curve);
+    user-select: none;
+}
+
+.sn-font-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.sn-font-row:last-child {
+    margin-bottom: 0;
+}
+
+.sn-font-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    min-width: 56px;
+    flex-shrink: 0;
+}
+
+.sn-font-row input[type="range"] {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.sn-font-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent-color, #3b82f6);
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.sn-font-row input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent-color, #3b82f6);
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.sn-font-toggles {
+    gap: 8px;
+    justify-content: flex-end;
+    padding-left: 64px;
+}
+
+.sn-font-toggle {
+    width: 28px;
+    height: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-xs);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.sn-font-toggle:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.sn-font-toggle.active {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: rgba(59, 130, 246, 0.5);
+    color: #fff;
+}
+
+.sn-font-panel-close {
+    display: flex;
+    justify-content: center;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sn-font-panel-close button {
+    padding: 5px 14px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.sn-font-panel-close button:hover {
+    background: rgba(255, 255, 255, 0.15);
 }

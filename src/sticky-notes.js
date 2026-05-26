@@ -22,6 +22,13 @@ const StickyNotes = (function() {
             { name: 'purple', bg: '#f3e8ff', border: '#a855f7', text: '#581c87' },
         ],
         Z_INDEX_BASE: 50,
+        DEFAULT_FONT: {
+            size: 14,
+            weight: 'normal',
+            style: 'normal',
+            letterSpacing: 0,
+            lineHeight: 1.5,
+        },
     };
 
     let _state = {
@@ -177,6 +184,21 @@ const StickyNotes = (function() {
                 }));
             });
             items.push(colorRow);
+
+            // Separator
+            items.push(_createContextMenuItem(null, null, { separator: true }));
+
+            // Font Settings
+            items.push(_createContextMenuItem(
+                _getLocalizedMessage('stickyNoteFontSettings', 'Font Settings'),
+                function() {
+                    var note = _state.notes.find(function(n) { return n.id === noteId; });
+                    if (note) {
+                        var el = _elements.container.querySelector('.sticky-note[data-id="' + noteId + '"]');
+                        if (el) _showFontPanel(note, el);
+                    }
+                }
+            ));
 
             // Separator
             items.push(_createContextMenuItem(null, null, { separator: true }));
@@ -397,6 +419,17 @@ const StickyNotes = (function() {
         });
         header.appendChild(colorPicker);
 
+        // Font settings button
+        const fontBtn = document.createElement('button');
+        fontBtn.className = 'sticky-note-font-btn';
+        fontBtn.setAttribute('aria-label', _getLocalizedMessage('stickyNoteFontSettings', 'Font settings'));
+        fontBtn.textContent = 'Aa';
+        fontBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            _showFontPanel(note, el);
+        });
+        header.appendChild(fontBtn);
+
         el.appendChild(header);
 
         // Content area (click to edit)
@@ -407,6 +440,9 @@ const StickyNotes = (function() {
         content.setAttribute('aria-multiline', 'true');
         content.setAttribute('data-placeholder', _getLocalizedMessage('stickyNotePlaceholder', 'Type here...'));
         content.textContent = note.content || '';
+
+        // Apply font styles
+        _applyFontStyles(content, note.font || CONFIG.DEFAULT_FONT);
 
         // Save content on blur
         content.addEventListener('blur', function() {
@@ -485,6 +521,7 @@ const StickyNotes = (function() {
             height: defH,
             rotation: (Math.random() - 0.5) * 3, // -1.5 to +1.5 deg
             createdAt: Date.now(),
+            font: Object.assign({}, CONFIG.DEFAULT_FONT),
         };
 
         _state.notes.push(note);
@@ -521,6 +558,174 @@ const StickyNotes = (function() {
             _saveNotes();
             _renderNotes();
         }
+    }
+
+    function _applyFontStyles(contentEl, font) {
+        var f = font || CONFIG.DEFAULT_FONT;
+        contentEl.style.fontSize = (f.size || 14) + 'px';
+        contentEl.style.fontWeight = f.weight || 'normal';
+        contentEl.style.fontStyle = f.style || 'normal';
+        contentEl.style.letterSpacing = (f.letterSpacing || 0) + 'px';
+        contentEl.style.lineHeight = (f.lineHeight || 1.5).toString();
+    }
+
+    function _updateNoteFont(id, patch) {
+        var note = _state.notes.find(function(n) { return n.id === id; });
+        if (!note) return;
+        if (!note.font) note.font = Object.assign({}, CONFIG.DEFAULT_FONT);
+        Object.assign(note.font, patch);
+        _saveNotes();
+        _renderNotes();
+    }
+
+    let _fontPanel = null;
+    let _fontPanelNoteId = null;
+
+    function _closeFontPanel() {
+        if (_fontPanel) {
+            _fontPanel.remove();
+            _fontPanel = null;
+            _fontPanelNoteId = null;
+        }
+        document.removeEventListener('click', _onDocumentClickCloseFontPanel);
+        document.removeEventListener('keydown', _onEscapeCloseFontPanel);
+    }
+
+    function _onDocumentClickCloseFontPanel(e) {
+        if (_fontPanel && !_fontPanel.contains(e.target)) {
+            _closeFontPanel();
+        }
+    }
+
+    function _onEscapeCloseFontPanel(e) {
+        if (e.key === 'Escape') {
+            _closeFontPanel();
+        }
+    }
+
+    function _createFontControlRow(label, control) {
+        var row = document.createElement('div');
+        row.className = 'sn-font-row';
+        var lbl = document.createElement('span');
+        lbl.className = 'sn-font-label';
+        lbl.textContent = label;
+        row.appendChild(lbl);
+        row.appendChild(control);
+        return row;
+    }
+
+    function _showFontPanel(note, targetEl) {
+        _closeFontPanel();
+        _fontPanelNoteId = note.id;
+
+        var panel = document.createElement('div');
+        panel.className = 'sn-font-panel';
+
+        var font = note.font || Object.assign({}, CONFIG.DEFAULT_FONT);
+
+        // Size
+        var sizeInput = document.createElement('input');
+        sizeInput.type = 'range';
+        sizeInput.min = '12';
+        sizeInput.max = '24';
+        sizeInput.step = '1';
+        sizeInput.value = font.size || 14;
+        sizeInput.addEventListener('input', function() {
+            _updateNoteFont(note.id, { size: parseInt(sizeInput.value, 10) });
+        });
+        panel.appendChild(_createFontControlRow(
+            _getLocalizedMessage('stickyNoteFontSize', 'Size'),
+            sizeInput
+        ));
+
+        // Style toggles
+        var toggleRow = document.createElement('div');
+        toggleRow.className = 'sn-font-row sn-font-toggles';
+
+        var boldBtn = document.createElement('button');
+        boldBtn.className = 'sn-font-toggle';
+        boldBtn.textContent = 'B';
+        if (font.weight === 'bold') boldBtn.classList.add('active');
+        boldBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var isBold = font.weight === 'bold';
+            _updateNoteFont(note.id, { weight: isBold ? 'normal' : 'bold' });
+        });
+        toggleRow.appendChild(boldBtn);
+
+        var italicBtn = document.createElement('button');
+        italicBtn.className = 'sn-font-toggle';
+        italicBtn.textContent = 'I';
+        italicBtn.style.fontStyle = 'italic';
+        if (font.style === 'italic') italicBtn.classList.add('active');
+        italicBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var isItalic = font.style === 'italic';
+            _updateNoteFont(note.id, { style: isItalic ? 'normal' : 'italic' });
+        });
+        toggleRow.appendChild(italicBtn);
+
+        panel.appendChild(toggleRow);
+
+        // Letter spacing
+        var lsInput = document.createElement('input');
+        lsInput.type = 'range';
+        lsInput.min = '-1';
+        lsInput.max = '3';
+        lsInput.step = '0.5';
+        lsInput.value = font.letterSpacing || 0;
+        lsInput.addEventListener('input', function() {
+            _updateNoteFont(note.id, { letterSpacing: parseFloat(lsInput.value) });
+        });
+        panel.appendChild(_createFontControlRow(
+            _getLocalizedMessage('stickyNoteLetterSpacing', 'Spacing'),
+            lsInput
+        ));
+
+        // Line height
+        var lhInput = document.createElement('input');
+        lhInput.type = 'range';
+        lhInput.min = '1';
+        lhInput.max = '2.5';
+        lhInput.step = '0.1';
+        lhInput.value = font.lineHeight || 1.5;
+        lhInput.addEventListener('input', function() {
+            _updateNoteFont(note.id, { lineHeight: parseFloat(lhInput.value) });
+        });
+        panel.appendChild(_createFontControlRow(
+            _getLocalizedMessage('stickyNoteLineHeight', 'Line Height'),
+            lhInput
+        ));
+
+        // Close button
+        var closeRow = document.createElement('div');
+        closeRow.className = 'sn-font-panel-close';
+        var closeBtn = document.createElement('button');
+        closeBtn.textContent = _getLocalizedMessage('closeModal', 'Close');
+        closeBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            _closeFontPanel();
+        });
+        closeRow.appendChild(closeBtn);
+        panel.appendChild(closeRow);
+
+        document.body.appendChild(panel);
+        _fontPanel = panel;
+
+        // Position panel near the target element
+        var rect = targetEl.getBoundingClientRect();
+        var panelRect = panel.getBoundingClientRect();
+        var left = rect.left + rect.width / 2 - panelRect.width / 2;
+        var top = rect.bottom + 8;
+        left = Math.max(8, Math.min(left, window.innerWidth - panelRect.width - 8));
+        if (top + panelRect.height > window.innerHeight - 8) {
+            top = rect.top - panelRect.height - 8;
+        }
+        panel.style.left = left + 'px';
+        panel.style.top = top + 'px';
+
+        document.addEventListener('click', _onDocumentClickCloseFontPanel);
+        document.addEventListener('keydown', _onEscapeCloseFontPanel);
     }
 
     function _bringToFront(id) {

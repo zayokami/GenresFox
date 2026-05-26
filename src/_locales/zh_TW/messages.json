@@ -353,6 +353,18 @@
     "snowEffectToggle": {
         "message": "雪花效果"
     },
+    "stickyNoteFontSettings": {
+        "message": "字型設定"
+    },
+    "stickyNoteFontSize": {
+        "message": "字級"
+    },
+    "stickyNoteLetterSpacing": {
+        "message": "字距"
+    },
+    "stickyNoteLineHeight": {
+        "message": "行高"
+    },
     "stickyNotePlaceholder": {
         "message": "在此輸入..."
     },

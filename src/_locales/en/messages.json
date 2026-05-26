@@ -353,6 +353,18 @@
     "snowEffectToggle": {
         "message": "Snow Effect"
     },
+    "stickyNoteFontSettings": {
+        "message": "Font Settings"
+    },
+    "stickyNoteFontSize": {
+        "message": "Size"
+    },
+    "stickyNoteLetterSpacing": {
+        "message": "Spacing"
+    },
+    "stickyNoteLineHeight": {
+        "message": "Line Height"
+    },
     "stickyNotePlaceholder": {
         "message": "Type here..."
     },

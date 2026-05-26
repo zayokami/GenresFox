@@ -353,6 +353,18 @@
     "snowEffectToggle": {
         "message": "Эффект снега"
     },
+    "stickyNoteFontSettings": {
+        "message": "Настройки шрифта"
+    },
+    "stickyNoteFontSize": {
+        "message": "Размер"
+    },
+    "stickyNoteLetterSpacing": {
+        "message": "Межбуквенный интервал"
+    },
+    "stickyNoteLineHeight": {
+        "message": "Межстрочный интервал"
+    },
     "stickyNotePlaceholder": {
         "message": "Введите текст..."
     },
