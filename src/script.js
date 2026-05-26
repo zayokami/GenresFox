@@ -33,8 +33,6 @@
     // Handle unhandled promise rejections
     window.addEventListener('unhandledrejection', (event) => {
         console.error('[Global Error Handler] Unhandled promise rejection:', event.reason);
-        // Prevent default handling
-        event.preventDefault();
     });
     
     // Monitor for critical element removal
@@ -348,8 +346,6 @@ const addShortcutBtn = document.getElementById("addShortcutBtn");
 const engineSelector = document.querySelector(".engine-selector");
 const selectedEngineIcon = document.querySelector(".selected-engine");
 const engineDropdown = document.querySelector(".engine-dropdown");
-const shortcutOpenCurrent = document.getElementById("shortcutOpenCurrent");
-const shortcutOpenNewTab = document.getElementById("shortcutOpenNewTab");
 
 // Default Data
 const defaultEngines = {
@@ -766,20 +762,6 @@ function _collectConfigurationData() {
         }
     }
 
-    // Shortcut settings
-    if (typeof ShortcutManager !== 'undefined' && ShortcutManager.getShortcutSettings) {
-        configData.settings.shortcutSettings = ShortcutManager.getShortcutSettings();
-    } else {
-        const shortcutSettings = localStorage.getItem('shortcutSettings');
-        if (shortcutSettings) {
-            try {
-                configData.settings.shortcutSettings = JSON.parse(shortcutSettings);
-            } catch (e) {
-                console.warn('Failed to parse shortcutSettings:', e);
-            }
-        }
-    }
-
     // Wallpaper settings
     const wallpaperSettings = localStorage.getItem('wallpaperSettings');
     if (wallpaperSettings) {
@@ -1055,14 +1037,69 @@ async function importConfiguration() {
                         return;
                     }
 
+                    // Backup current configuration before applying imported one
+                    try {
+                        const currentConfig = {
+                            version: ConfigManager.getVersion(),
+                            exportDate: new Date().toISOString(),
+                            settings: {
+                                wallpaperSettings: JSON.parse(localStorage.getItem('wallpaperSettings') || '{}'),
+                                searchBoxSettings: JSON.parse(localStorage.getItem('searchBoxSettings') || '{}'),
+                                themeSettings: JSON.parse(localStorage.getItem('themeSettings') || '{}'),
+                                accessibilitySettings: JSON.parse(localStorage.getItem('accessibilitySettings') || '{}'),
+                                engines: JSON.parse(localStorage.getItem('customEngines') || '{}'),
+                                shortcuts: JSON.parse(localStorage.getItem('shortcuts') || '[]'),
+                                showShortcutNames: localStorage.getItem('showShortcutNames') === 'true',
+                                shortcutOpenTarget: localStorage.getItem('shortcutOpenTarget') || 'current',
+                                snowEffectEnabled: localStorage.getItem('snowEffectEnabled') === 'true',
+                                snowEffectTriggered: localStorage.getItem('snowEffectTriggered') === 'true',
+                                preferredLanguage: localStorage.getItem('preferredLanguage') || null
+                            }
+                        };
+                        const timestamp = Date.now();
+                        localStorage.setItem(`genresfox_config_backup_${timestamp}`, JSON.stringify(currentConfig));
+                        // Keep only the 5 most recent backups
+                        const backupKeys = Object.keys(localStorage)
+                            .filter(k => k.startsWith('genresfox_config_backup_'))
+                            .sort();
+                        while (backupKeys.length > 5) {
+                            localStorage.removeItem(backupKeys.shift());
+                        }
+                    } catch (backupErr) {
+                        console.warn('[Import] Failed to create backup:', backupErr);
+                    }
+
                     // Import and verify configuration
                     const result = await ConfigManager.importFromFile(file);
-                    
+
                     if (!result.success) {
-                        const errorMessage = I18n && I18n.t ? 
-                            I18n.t('importConfigError', 'Failed to import configuration: ') + result.error : 
+                        const errorMessage = I18n && I18n.t ?
+                            I18n.t('importConfigError', 'Failed to import configuration: ') + result.error :
                             'Failed to import configuration: ' + result.error;
-                        alert(errorMessage);
+
+                        // Check for backup and offer restore
+                        const backupKey = Object.keys(localStorage).find(k => k.startsWith('genresfox_config_backup_'));
+                        if (backupKey) {
+                            const restoreConfirm = I18n && I18n.t ?
+                                I18n.t('importConfigRestorePrompt', 'Import failed. Would you like to restore your previous configuration from backup?') :
+                                'Import failed. Would you like to restore your previous configuration from backup?';
+                            if (confirm(restoreConfirm)) {
+                                try {
+                                    const backupData = JSON.parse(localStorage.getItem(backupKey));
+                                    _applyImportedConfiguration(backupData);
+                                    const restoreSuccess = I18n && I18n.t ?
+                                        I18n.t('importConfigRestoreSuccess', 'Backup restored successfully!') :
+                                        'Backup restored successfully!';
+                                    alert(restoreSuccess);
+                                    window.location.reload();
+                                } catch (restoreErr) {
+                                    console.error('Failed to restore backup:', restoreErr);
+                                    alert(errorMessage);
+                                }
+                            }
+                        } else {
+                            alert(errorMessage);
+                        }
                         fileInput.value = '';
                         resolve(null);
                         return;
@@ -1070,7 +1107,7 @@ async function importConfiguration() {
 
                     // Show migration notice if configuration was migrated
                     if (result.config && result.migrated) {
-                        const migrationMessage = I18n && I18n.getMessage ? 
+                        const migrationMessage = I18n && I18n.getMessage ?
                             `Configuration was automatically upgraded from version ${result.fromVersion || 'legacy'} to ${ConfigManager.getVersion()}.` :
                             `Configuration was automatically upgraded from version ${result.fromVersion || 'legacy'} to ${ConfigManager.getVersion()}.`;
                         console.log('[Import] ' + migrationMessage);
@@ -1125,7 +1162,11 @@ if (importConfigBtn) {
 function isDangerousUrl(url) {
     if (!url || typeof url !== 'string') return true;
     const trimmed = url.trim();
-    // Reject control/non-printable chars
+    // Block dangerous protocols in raw input before normalization
+    if (/^(javascript|data|vbscript|file|blob|about|chrome):/i.test(trimmed)) return true;
+    // Block control characters
+    if (/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(trimmed)) return true;
+    // Reject other non-printable chars
     if (/[^\x20-\x7E]/.test(trimmed)) return true;
 
     try {
@@ -2567,6 +2608,6 @@ window.initRippleEffects = initRippleEffects;
 init();
 
 /**
- * Often, only those who have succeeded have a voice.
- * The words of those who haven't yet succeeded or who have failed are often treated as a joke.
+ * "Before you succeed, No one Wants to Know Your Story."
+ * -- Frank Underwood, House of Cards
  */

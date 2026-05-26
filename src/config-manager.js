@@ -17,6 +17,9 @@ const ConfigManager = (function () {
         VERSION: '0.4.6',
         MAX_AGE_DAYS: 365, // Maximum age of config file (1 year)
         MIN_AGE_MS: 1000, // Minimum age to prevent replay attacks (1 second)
+        // NOTE: This hardcoded key is for accidental corruption detection only,
+        // NOT for cryptographic security. The config is signed to catch accidental
+        // file corruption or manual edits, not to prevent malicious tampering.
         SIGNATURE_KEY: 'genresfox-config-signature-v1', // Secret key for HMAC
         ALGORITHM: 'HMAC',
         HASH: 'SHA-256',
@@ -270,6 +273,10 @@ const ConfigManager = (function () {
      */
     async function exportConfig(configData) {
         try {
+            if (typeof crypto === 'undefined' || !crypto.subtle) {
+                throw new Error('Web Crypto API not available. Configuration signing requires a secure context.');
+            }
+
             // Validate input
             if (!configData || typeof configData !== 'object') {
                 throw new Error('Invalid configuration data');
@@ -489,6 +496,10 @@ const ConfigManager = (function () {
      */
     async function verifyConfig(config) {
         try {
+            if (typeof crypto === 'undefined' || !crypto.subtle) {
+                throw new Error('Web Crypto API not available. Configuration signing requires a secure context.');
+            }
+
             // Detect version
             const detectedVersion = _detectVersion(config);
             const configVersion = config.version || detectedVersion;

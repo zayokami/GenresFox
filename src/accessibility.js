@@ -129,7 +129,11 @@ const AccessibilityManager = (function () {
         try {
             localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(_state.settings));
         } catch (e) {
-            console.warn('Failed to save accessibility settings:', e);
+            if (e.name === 'QuotaExceededError') {
+                console.warn('Failed to save accessibility settings: storage quota exceeded');
+            } else {
+                console.warn('Failed to save accessibility settings:', e);
+            }
         }
     }
 
@@ -142,6 +146,8 @@ const AccessibilityManager = (function () {
     function _deepMerge(target, source) {
         const result = { ...target };
         for (const key in source) {
+            if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+            if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
             if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
                 result[key] = _deepMerge(target[key] || {}, source[key]);
             } else if (source[key] !== undefined) {
@@ -372,6 +378,7 @@ const AccessibilityManager = (function () {
      */
     function _handleFontFamilyChange(e) {
         _applyFontFamily(e.target.value);
+        _announceToScreenReader(`Font family changed to ${e.target.value}`);
     }
 
     /**
@@ -407,6 +414,7 @@ const AccessibilityManager = (function () {
      */
     function _handleMotionChange(e) {
         _applyMotion(e.target.value);
+        _announceToScreenReader(`Animation preference changed to ${e.target.value}`);
     }
 
     /**
@@ -416,24 +424,6 @@ const AccessibilityManager = (function () {
     function _handleFocusStyleChange(e) {
         _applyFocusStyle(e.target.value);
         _announceToScreenReader(`Focus indicator changed to ${e.target.value}`);
-    }
-
-    /**
-     * Handle motion change
-     * @param {Event} e
-     */
-    function _handleMotionChange(e) {
-        _applyMotion(e.target.value);
-        _announceToScreenReader(`Animation preference changed to ${e.target.value}`);
-    }
-
-    /**
-     * Handle font family change
-     * @param {Event} e
-     */
-    function _handleFontFamilyChange(e) {
-        _applyFontFamily(e.target.value);
-        _announceToScreenReader(`Font family changed to ${e.target.value}`);
     }
 
     /**
@@ -930,11 +920,14 @@ const AccessibilityManager = (function () {
     };
 
     let _shortcutsEnabled = true;
+    let _shortcutsInitialized = false;
 
     /**
      * Initialize keyboard shortcuts
      */
     function _initKeyboardShortcuts() {
+        if (_shortcutsInitialized) return;
+        _shortcutsInitialized = true;
         document.addEventListener('keydown', _handleGlobalKeydown);
     }
 
