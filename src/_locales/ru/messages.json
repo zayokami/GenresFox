@@ -113,11 +113,20 @@
     "add": {
         "message": "Добавить"
     },
+    "addStickyNote": {
+        "message": "Добавить заметку"
+    },
     "appTitle": {
         "message": "GenresFox"
     },
     "blurAmount": {
         "message": "Степень размытия"
+    },
+    "clearAllStickyNotes": {
+        "message": "Очистить все"
+    },
+    "clearAllStickyNotesConfirm": {
+        "message": "Очистить все стикеры?"
     },
     "closeModal": {
         "message": "Закрыть модальное окно или отменить"
@@ -152,8 +161,17 @@
     "deleteShortcutConfirm": {
         "message": "Удалить ярлык «%s»?"
     },
+    "deleteStickyNote": {
+        "message": "Удалить заметку"
+    },
     "dragDropText": {
         "message": "Перетащите изображение сюда или нажмите для загрузки"
+    },
+    "dragOverMerge": {
+        "message": "Удерживайте для объединения в папку"
+    },
+    "enableStickyNotes": {
+        "message": "Включить стикеры"
     },
     "errorImageTooLarge": {
         "message": "Размер файла изображения слишком большой (максимум 50 МБ)"
@@ -181,6 +199,18 @@
     },
     "focusSearch": {
         "message": "Фокус на поле поиска"
+    },
+    "folderDefault": {
+        "message": "Папка"
+    },
+    "folderDisband": {
+        "message": "Распустить папку"
+    },
+    "folderExtract": {
+        "message": "Извлечь"
+    },
+    "folderRemove": {
+        "message": "Удалить"
     },
     "fontFamilyChanged": {
         "message": "Шрифт изменён на %s"
@@ -323,6 +353,9 @@
     "stickyNotePlaceholder": {
         "message": "Введите текст..."
     },
+    "stickyNotes": {
+        "message": "Стикеры"
+    },
     "switchEngineNext": {
         "message": "Переключиться на следующую поисковую систему"
     },
@@ -363,24 +396,6 @@
         "message": "Настройки обоев"
     },
     "wordSpacingChanged": {
-        "message": "Межсловный интервал изменён на %s",
-        "addStickyNote": {
-            "message": "Добавить заметку"
-        },
-        "clearAllStickyNotes": {
-            "message": "Очистить все"
-        },
-        "clearAllStickyNotesConfirm": {
-            "message": "Очистить все стикеры?"
-        },
-        "deleteStickyNote": {
-            "message": "Удалить заметку"
-        },
-        "enableStickyNotes": {
-            "message": "Включить стикеры"
-        },
-        "stickyNotes": {
-            "message": "Стикеры"
-        }
+        "message": "Межсловный интервал изменён на %s"
     }
 }

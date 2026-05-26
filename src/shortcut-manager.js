@@ -15,8 +15,6 @@ const ShortcutManager = (function() {
         { name: "Gmail", url: "https://mail.google.com", icon: "https://icons.duckduckgo.com/ip3/mail.google.com.ico" }
     ];
 
-    // TODO: Folder feature is currently disabled. Re-enable when folder UI/UX design is finalized.
-    const FOLDER_FEATURE_ENABLED = false;
     const SHORTCUT_TARGET_KEY = 'shortcutOpenTarget';
 
     // Icon cache configuration
@@ -866,7 +864,7 @@ const ShortcutManager = (function() {
             const shortcutLabel = shortcut.name || shortcut.url || 'Shortcut';
             a.setAttribute('aria-label', shortcutLabel);
 
-            if (_isFolder(shortcut) && FOLDER_FEATURE_ENABLED) {
+            if (_isFolder(shortcut)) {
                 a.classList.add('shortcut-folder');
                 a.href = 'javascript:void(0)';
                 a.dataset.type = 'folder';
@@ -901,14 +899,18 @@ const ShortcutManager = (function() {
                 if (previews.length === 0) {
                     const empty = document.createElement('div');
                     empty.className = 'folder-stack-empty';
-                    empty.textContent = '[Folder]';
+                    empty.textContent = (typeof I18n !== 'undefined' && I18n.getMessage)
+                        ? I18n.getMessage('folderDefault', 'Folder')
+                        : 'Folder';
                     stack.appendChild(empty);
                 }
                 iconDiv.appendChild(stack);
 
                 const nameDiv = document.createElement("div");
                 nameDiv.className = "shortcut-name";
-                nameDiv.textContent = shortcut.name || 'Folder';
+                nameDiv.textContent = shortcut.name || ((typeof I18n !== 'undefined' && I18n.getMessage)
+                    ? I18n.getMessage('folderDefault', 'Folder')
+                    : 'Folder');
 
                 a.appendChild(iconDiv);
                 a.appendChild(nameDiv);

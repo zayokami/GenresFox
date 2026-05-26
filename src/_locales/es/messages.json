@@ -113,11 +113,20 @@
     "add": {
         "message": "Añadir"
     },
+    "addStickyNote": {
+        "message": "Añadir nota"
+    },
     "appTitle": {
         "message": "GenresFox"
     },
     "blurAmount": {
         "message": "Desenfoque"
+    },
+    "clearAllStickyNotes": {
+        "message": "Borrar todas"
+    },
+    "clearAllStickyNotesConfirm": {
+        "message": "¿Borrar todas las notas adhesivas?"
     },
     "closeModal": {
         "message": "Cerrar modal o cancelar"
@@ -152,8 +161,17 @@
     "deleteShortcutConfirm": {
         "message": "¿Eliminar acceso directo \"%s\"?"
     },
+    "deleteStickyNote": {
+        "message": "Eliminar nota"
+    },
     "dragDropText": {
         "message": "Arrastra una imagen aquí o haz clic para subirla"
+    },
+    "dragOverMerge": {
+        "message": "Mantén para agrupar en carpeta"
+    },
+    "enableStickyNotes": {
+        "message": "Habilitar notas adhesivas"
     },
     "errorImageTooLarge": {
         "message": "Imagen demasiado grande (máx 50MB)"
@@ -181,6 +199,18 @@
     },
     "focusSearch": {
         "message": "Enfocar cuadro de búsqueda"
+    },
+    "folderDefault": {
+        "message": "Carpeta"
+    },
+    "folderDisband": {
+        "message": "Desagrupar carpeta"
+    },
+    "folderExtract": {
+        "message": "Extraer"
+    },
+    "folderRemove": {
+        "message": "Eliminar"
     },
     "fontFamilyChanged": {
         "message": "Familia de fuente cambiada a %s"
@@ -322,6 +352,9 @@
     },
     "stickyNotePlaceholder": {
         "message": "Escribe aquí..."
+    },
+    "stickyNotes": {
+        "message": "Notas adhesivas"
     },
     "switchEngineNext": {
         "message": "Cambiar al siguiente motor de búsqueda"

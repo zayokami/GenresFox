@@ -113,11 +113,20 @@
     "add": {
         "message": "新增"
     },
+    "addStickyNote": {
+        "message": "新增便利貼"
+    },
     "appTitle": {
         "message": "GenresFox"
     },
     "blurAmount": {
         "message": "模糊程度"
+    },
+    "clearAllStickyNotes": {
+        "message": "清除全部"
+    },
+    "clearAllStickyNotesConfirm": {
+        "message": "清除所有便利貼？"
     },
     "closeModal": {
         "message": "關閉對話框"
@@ -152,8 +161,17 @@
     "deleteShortcutConfirm": {
         "message": "確認刪除捷徑「%s」？"
     },
+    "deleteStickyNote": {
+        "message": "刪除便利貼"
+    },
     "dragDropText": {
         "message": "拖曳圖片到此處或點擊上傳"
+    },
+    "dragOverMerge": {
+        "message": "按住以合併到資料夾"
+    },
+    "enableStickyNotes": {
+        "message": "啟用便利貼"
     },
     "errorImageTooLarge": {
         "message": "圖片檔案過大（最大 50MB）"
@@ -181,6 +199,18 @@
     },
     "focusSearch": {
         "message": "聚焦搜索框"
+    },
+    "folderDefault": {
+        "message": "資料夾"
+    },
+    "folderDisband": {
+        "message": "解散資料夾"
+    },
+    "folderExtract": {
+        "message": "提取"
+    },
+    "folderRemove": {
+        "message": "移除"
     },
     "fontFamilyChanged": {
         "message": "字型已更改為 %s"
@@ -323,6 +353,9 @@
     "stickyNotePlaceholder": {
         "message": "在此輸入..."
     },
+    "stickyNotes": {
+        "message": "便利貼"
+    },
     "switchEngineNext": {
         "message": "切換到下一個搜索引擎"
     },
@@ -363,24 +396,6 @@
         "message": "桌布設定"
     },
     "wordSpacingChanged": {
-        "message": "單詞間距已更改為 %s",
-        "addStickyNote": {
-            "message": "新增便利貼"
-        },
-        "clearAllStickyNotes": {
-            "message": "清除全部"
-        },
-        "clearAllStickyNotesConfirm": {
-            "message": "清除所有便利貼？"
-        },
-        "deleteStickyNote": {
-            "message": "刪除便利貼"
-        },
-        "enableStickyNotes": {
-            "message": "啟用便利貼"
-        },
-        "stickyNotes": {
-            "message": "便利貼"
-        }
+        "message": "單詞間距已更改為 %s"
     }
 }

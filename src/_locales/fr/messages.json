@@ -113,11 +113,20 @@
     "add": {
         "message": "Ajouter"
     },
+    "addStickyNote": {
+        "message": "Ajouter une note"
+    },
     "appTitle": {
         "message": "GenresFox"
     },
     "blurAmount": {
         "message": "Flou"
+    },
+    "clearAllStickyNotes": {
+        "message": "Tout effacer"
+    },
+    "clearAllStickyNotesConfirm": {
+        "message": "Effacer toutes les notes ?"
     },
     "closeModal": {
         "message": "Fermer la fenêtre ou annuler"
@@ -152,8 +161,17 @@
     "deleteShortcutConfirm": {
         "message": "Supprimer le raccourci \"%s\" ?"
     },
+    "deleteStickyNote": {
+        "message": "Supprimer la note"
+    },
     "dragDropText": {
         "message": "Glissez une image ici ou cliquez pour téléverser"
+    },
+    "dragOverMerge": {
+        "message": "Maintenir pour fusionner dans le dossier"
+    },
+    "enableStickyNotes": {
+        "message": "Activer les post-its"
     },
     "errorImageTooLarge": {
         "message": "Fichier trop volumineux (max 50MB)"
@@ -181,6 +199,18 @@
     },
     "focusSearch": {
         "message": "Mettre le focus sur la zone de recherche"
+    },
+    "folderDefault": {
+        "message": "Dossier"
+    },
+    "folderDisband": {
+        "message": "Dissoudre le dossier"
+    },
+    "folderExtract": {
+        "message": "Extraire"
+    },
+    "folderRemove": {
+        "message": "Retirer"
     },
     "fontFamilyChanged": {
         "message": "Famille de police changée en %s"
@@ -322,6 +352,9 @@
     },
     "stickyNotePlaceholder": {
         "message": "Écrivez ici..."
+    },
+    "stickyNotes": {
+        "message": "Post-its"
     },
     "switchEngineNext": {
         "message": "Passer au moteur de recherche suivant"

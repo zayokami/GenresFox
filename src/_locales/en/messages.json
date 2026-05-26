@@ -113,11 +113,20 @@
     "add": {
         "message": "Add"
     },
+    "addStickyNote": {
+        "message": "Add Note"
+    },
     "appTitle": {
         "message": "GenresFox"
     },
     "blurAmount": {
         "message": "Blur Amount"
+    },
+    "clearAllStickyNotes": {
+        "message": "Clear All"
+    },
+    "clearAllStickyNotesConfirm": {
+        "message": "Clear all sticky notes?"
     },
     "closeModal": {
         "message": "Close dialog"
@@ -152,8 +161,17 @@
     "deleteShortcutConfirm": {
         "message": "Delete shortcut \"%s\"?"
     },
+    "deleteStickyNote": {
+        "message": "Delete note"
+    },
     "dragDropText": {
         "message": "Drag & Drop image here or click to upload"
+    },
+    "dragOverMerge": {
+        "message": "Hold to merge into folder"
+    },
+    "enableStickyNotes": {
+        "message": "Enable sticky notes"
     },
     "errorImageTooLarge": {
         "message": "Image file too large (max 50MB)"
@@ -181,6 +199,18 @@
     },
     "focusSearch": {
         "message": "Focus search box"
+    },
+    "folderDefault": {
+        "message": "Folder"
+    },
+    "folderDisband": {
+        "message": "Disband Folder"
+    },
+    "folderExtract": {
+        "message": "Extract"
+    },
+    "folderRemove": {
+        "message": "Remove"
     },
     "fontFamilyChanged": {
         "message": "Font family changed to %s"
@@ -323,6 +353,9 @@
     "stickyNotePlaceholder": {
         "message": "Type here..."
     },
+    "stickyNotes": {
+        "message": "Sticky Notes"
+    },
     "switchEngineNext": {
         "message": "Switch to next search engine"
     },
@@ -363,24 +396,6 @@
         "message": "Wallpaper Settings"
     },
     "wordSpacingChanged": {
-        "message": "Word spacing changed to %s",
-        "addStickyNote": {
-            "message": "Add Note"
-        },
-        "clearAllStickyNotes": {
-            "message": "Clear All"
-        },
-        "clearAllStickyNotesConfirm": {
-            "message": "Clear all sticky notes?"
-        },
-        "deleteStickyNote": {
-            "message": "Delete note"
-        },
-        "enableStickyNotes": {
-            "message": "Enable sticky notes"
-        },
-        "stickyNotes": {
-            "message": "Sticky Notes"
-        }
+        "message": "Word spacing changed to %s"
     }
 }

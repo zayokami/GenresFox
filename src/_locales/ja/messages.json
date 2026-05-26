@@ -113,11 +113,20 @@
     "add": {
         "message": "追加"
     },
+    "addStickyNote": {
+        "message": "付箋を追加"
+    },
     "appTitle": {
         "message": "GenresFox"
     },
     "blurAmount": {
         "message": "ぼかし量"
+    },
+    "clearAllStickyNotes": {
+        "message": "すべて削除"
+    },
+    "clearAllStickyNotesConfirm": {
+        "message": "すべての付箋を削除しますか？"
     },
     "closeModal": {
         "message": "モーダルを閉じるまたはキャンセル"
@@ -152,8 +161,17 @@
     "deleteShortcutConfirm": {
         "message": "ショートカット「%s」を削除しますか？"
     },
+    "deleteStickyNote": {
+        "message": "付箋を削除"
+    },
     "dragDropText": {
         "message": "画像をドラッグ＆ドロップまたはクリックしてアップロード"
+    },
+    "dragOverMerge": {
+        "message": "フォルダにマージするには長押し"
+    },
+    "enableStickyNotes": {
+        "message": "付箋を有効にする"
     },
     "errorImageTooLarge": {
         "message": "画像ファイルが大きすぎます（最大 50MB）"
@@ -181,6 +199,18 @@
     },
     "focusSearch": {
         "message": "検索ボックスにフォーカス"
+    },
+    "folderDefault": {
+        "message": "フォルダ"
+    },
+    "folderDisband": {
+        "message": "フォルダを解散"
+    },
+    "folderExtract": {
+        "message": "抽出"
+    },
+    "folderRemove": {
+        "message": "削除"
     },
     "fontFamilyChanged": {
         "message": "フォントを %s に変更しました"
@@ -344,6 +374,9 @@
     "stickyNotePlaceholder": {
         "message": "ここに入力..."
     },
+    "stickyNotes": {
+        "message": "付箋"
+    },
     "switchEngineNext": {
         "message": "次の検索エンジンに切り替え"
     },
@@ -384,24 +417,6 @@
         "message": "壁紙設定"
     },
     "wordSpacingChanged": {
-        "message": "単語間隔を %s に変更しました",
-        "addStickyNote": {
-            "message": "付箋を追加"
-        },
-        "clearAllStickyNotes": {
-            "message": "すべて削除"
-        },
-        "clearAllStickyNotesConfirm": {
-            "message": "すべての付箋を削除しますか？"
-        },
-        "deleteStickyNote": {
-            "message": "付箋を削除"
-        },
-        "enableStickyNotes": {
-            "message": "付箋を有効にする"
-        },
-        "stickyNotes": {
-            "message": "付箋"
-        }
+        "message": "単語間隔を %s に変更しました"
     }
 }

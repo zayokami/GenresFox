@@ -398,8 +398,6 @@ try {
 
 let currentEngine = localStorage.getItem("preferredEngine") || "google";
 
-// TODO: Folder feature is currently disabled. Re-enable when folder UI/UX design is finalized.
-const FOLDER_FEATURE_ENABLED = false;
 const SHORTCUT_TARGET_KEY = 'shortcutOpenTarget';
 
 // Image helpers are now in ShortcutManager
@@ -1524,8 +1522,6 @@ function handleShortcutDragOver(e) {
     if (draggedShortcutIndex !== null && targetIndex !== draggedShortcutIndex) {
         target.classList.add('drag-over');
 
-        if (!FOLDER_FEATURE_ENABLED) return;
-
         // Only start timer if we are new to this target
         if (currentMergeTargetIndex !== targetIndex) {
             // Clean up previous target if any
@@ -1544,7 +1540,7 @@ function handleShortcutDragOver(e) {
                     mergeAllowedIndex = targetIndex;
                     target.classList.add('drag-over-merge');
                 }
-            }, 800); // 0.8s hover to allow merge
+            }, 300); // 0.3s hover to allow merge
         }
     }
 }
@@ -1557,8 +1553,6 @@ function handleShortcutDragLeave(e) {
     target.classList.remove('drag-over');
     target.classList.remove('drag-over-merge');
     
-    if (!FOLDER_FEATURE_ENABLED) return;
-
     const targetIndex = parseInt(target.dataset.index);
     if (currentMergeTargetIndex === targetIndex) {
         if (mergeHoverTimer) clearTimeout(mergeHoverTimer);
@@ -1587,8 +1581,8 @@ function handleShortcutDrop(e) {
 
     if (!draggedItem || !targetItem) return;
 
-    // If drop target is a folder, push into folder (only when feature enabled)
-    if (FOLDER_FEATURE_ENABLED && _isFolder(targetItem)) {
+    // If drop target is a folder, push into folder
+    if (_isFolder(targetItem)) {
         if (typeof ShortcutManager !== 'undefined' && ShortcutManager.delete && ShortcutManager.update) {
             ShortcutManager.delete(draggedShortcutIndex, { silent: true });
             _ensureShortcutId(draggedItem);
@@ -1604,7 +1598,7 @@ function handleShortcutDrop(e) {
         return;
     }
 
-    const allowMerge = FOLDER_FEATURE_ENABLED && mergeAllowedIndex === targetIndex;
+    const allowMerge = mergeAllowedIndex === targetIndex;
 
     // If dragging a folder onto item, just reorder
     if (_isFolder(draggedItem) && !_isFolder(targetItem)) {
@@ -1698,16 +1692,54 @@ function _ensureFolderOverlay() {
     content.id = 'folderOverlayContent';
     content.className = 'folder-bubble-content';
 
+    const footer = document.createElement('div');
+    footer.className = 'folder-bubble-footer';
+    const disbandBtn = document.createElement('button');
+    disbandBtn.className = 'folder-bubble-disband';
+    disbandBtn.id = 'folderOverlayDisband';
+    disbandBtn.textContent = (typeof I18n !== 'undefined' && I18n.getMessage)
+        ? I18n.getMessage('folderDisband', 'Disband Folder')
+        : 'Disband Folder';
+    footer.appendChild(disbandBtn);
+
     header.appendChild(input);
     header.appendChild(closeBtn);
     bubble.appendChild(header);
     bubble.appendChild(content);
+    bubble.appendChild(footer);
     folderOverlay.appendChild(bubble);
 
     document.body.appendChild(folderOverlay);
     folderOverlayContent = content;
     folderOverlayInput = input;
     closeBtn.addEventListener('click', closeFolderOverlay);
+    disbandBtn.addEventListener('click', () => {
+        if (currentFolderIndex === null) return;
+        const shortcutsList = getShortcuts();
+        const folder = shortcutsList[currentFolderIndex];
+        if (!_isFolder(folder)) return;
+        if (typeof ShortcutManager !== 'undefined' && ShortcutManager.delete && ShortcutManager.add) {
+            ShortcutManager.delete(currentFolderIndex, { silent: true });
+            folder.items.forEach((item, i) => {
+                ShortcutManager.add(item);
+                const currentList = ShortcutManager.getAll();
+                const newIndex = currentList.length - 1;
+                const targetPos = currentFolderIndex + i;
+                if (newIndex !== targetPos && targetPos < currentList.length) {
+                    ShortcutManager.reorder(newIndex, targetPos);
+                }
+            });
+            shortcuts = ShortcutManager.getAll();
+        } else {
+            const items = folder.items.slice();
+            shortcuts.splice(currentFolderIndex, 1);
+            items.forEach((item, i) => {
+                shortcuts.splice(currentFolderIndex + i, 0, item);
+            });
+        }
+        saveShortcuts();
+        closeFolderOverlay();
+    });
     folderOverlay.addEventListener('click', (e) => {
         if (e.target === folderOverlay) closeFolderOverlay();
     });
@@ -1759,7 +1791,9 @@ function openFolderOverlay(index) {
         const actions = document.createElement('div');
         actions.className = 'folder-item-actions';
         const removeBtn = document.createElement('button');
-        removeBtn.textContent = 'Remove';
+        removeBtn.textContent = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? I18n.getMessage('folderRemove', 'Remove')
+            : 'Remove';
         removeBtn.addEventListener('click', () => {
             folder.items.splice(idx, 1);
             if (typeof ShortcutManager !== 'undefined' && ShortcutManager.update && ShortcutManager.delete) {
@@ -1792,7 +1826,9 @@ function openFolderOverlay(index) {
         });
 
         const extractBtn = document.createElement('button');
-        extractBtn.textContent = 'Extract';
+        extractBtn.textContent = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? I18n.getMessage('folderExtract', 'Extract')
+            : 'Extract';
         extractBtn.addEventListener('click', () => {
             const extracted = folder.items.splice(idx, 1)[0];
             if (typeof ShortcutManager !== 'undefined' && ShortcutManager.add && ShortcutManager.update && ShortcutManager.delete) {

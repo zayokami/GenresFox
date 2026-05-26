@@ -335,6 +335,50 @@ body::after {
     opacity: 0.7;
 }
 
+.folder-bubble-footer {
+    display: flex;
+    justify-content: center;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.folder-bubble-disband {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    background: rgba(255, 59, 48, 0.15);
+    color: #ff6b6b;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.folder-bubble-disband:hover {
+    background: rgba(255, 59, 48, 0.28);
+    transform: scale(1.02);
+}
+
+.folder-bubble-disband:active {
+    transform: scale(0.98);
+}
+
+.shortcut-item.drag-over-merge {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5), 0 8px 24px rgba(59, 130, 246, 0.25);
+    animation: folderMergePulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes folderMergePulse {
+    from {
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4), 0 8px 24px rgba(59, 130, 246, 0.2);
+    }
+    to {
+        box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.6), 0 8px 28px rgba(59, 130, 246, 0.35);
+    }
+}
+
 .modal-open {
     overflow: hidden;
 }

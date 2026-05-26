@@ -113,11 +113,20 @@
     "add": {
         "message": "Hinzufügen"
     },
+    "addStickyNote": {
+        "message": "Notiz hinzufügen"
+    },
     "appTitle": {
         "message": "GenresFox"
     },
     "blurAmount": {
         "message": "Unschärfegrad"
+    },
+    "clearAllStickyNotes": {
+        "message": "Alle löschen"
+    },
+    "clearAllStickyNotesConfirm": {
+        "message": "Alle Haftnotizen löschen?"
     },
     "closeModal": {
         "message": "Modal schließen oder abbrechen"
@@ -152,8 +161,17 @@
     "deleteShortcutConfirm": {
         "message": "Sind Sie sicher, dass Sie den Schnellzugriff „%s“ löschen möchten?"
     },
+    "deleteStickyNote": {
+        "message": "Notiz löschen"
+    },
     "dragDropText": {
         "message": "Ziehen Sie das Bild hierher oder klicken Sie zum Hochladen"
+    },
+    "dragOverMerge": {
+        "message": "Halten, um in Ordner zu gruppieren"
+    },
+    "enableStickyNotes": {
+        "message": "Haftnotizen aktivieren"
     },
     "errorImageTooLarge": {
         "message": "Bilddatei ist zu groß (max. 50 MB)"
@@ -181,6 +199,18 @@
     },
     "focusSearch": {
         "message": "Suchfeld fokussieren"
+    },
+    "folderDefault": {
+        "message": "Ordner"
+    },
+    "folderDisband": {
+        "message": "Ordner auflösen"
+    },
+    "folderExtract": {
+        "message": "Herausziehen"
+    },
+    "folderRemove": {
+        "message": "Entfernen"
     },
     "fontFamilyChanged": {
         "message": "Schriftart geändert auf %s"
@@ -323,6 +353,9 @@
     "stickyNotePlaceholder": {
         "message": "Hier tippen..."
     },
+    "stickyNotes": {
+        "message": "Haftnotizen"
+    },
     "switchEngineNext": {
         "message": "Zur nächsten Suchmaschine wechseln"
     },
@@ -363,24 +396,6 @@
         "message": "Hintergrundbild-Einstellungen"
     },
     "wordSpacingChanged": {
-        "message": "Wortabstand geändert auf %s",
-        "addStickyNote": {
-            "message": "Notiz hinzufügen"
-        },
-        "clearAllStickyNotes": {
-            "message": "Alle löschen"
-        },
-        "clearAllStickyNotesConfirm": {
-            "message": "Alle Haftnotizen löschen?"
-        },
-        "deleteStickyNote": {
-            "message": "Notiz löschen"
-        },
-        "enableStickyNotes": {
-            "message": "Haftnotizen aktivieren"
-        },
-        "stickyNotes": {
-            "message": "Haftnotizen"
-        }
+        "message": "Wortabstand geändert auf %s"
     }
 }
