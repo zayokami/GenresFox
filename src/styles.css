@@ -2178,3 +2178,32 @@ footer,
 .sn-font-panel-close button:hover {
     background: rgba(255, 255, 255, 0.15);
 }
+
+/* Extracted from inline styles in newtab.html */
+
+.modal--shortcuts {
+    max-width: 600px;
+}
+
+.form-actions {
+    margin-top: 16px;
+    text-align: right;
+}
+
+.about-export {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.setting-desc {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+}
+
+.export-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
