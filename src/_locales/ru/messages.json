@@ -1,117 +1,33 @@
 {
-    "searchPlaceholder": {
-        "message": "Поиск..."
-    },
-    "searchActionLabel": {
-        "message": "Поиск"
-    },
-    "appTitle": {
-        "message": "GenresFox"
-    },
-    "settingsTitle": {
-        "message": "Настройки"
-    },
-    "tabWallpaper": {
-        "message": "Обои"
-    },
-    "tabSearch": {
-        "message": "Поиск и ярлыки"
-    },
-    "tabAccessibility": {
-        "message": "Доступность"
-    },
-    "tabAbout": {
-        "message": "О приложении"
-    },
-    "uploadWallpaper": {
-        "message": "Загрузить обои"
-    },
-    "resetWallpaper": {
-        "message": "Восстановить по умолчанию"
-    },
-    "customEngines": {
-        "message": "Пользовательские поисковые системы"
-    },
-    "shortcuts": {
-        "message": "Ярлыки"
-    },
-    "add": {
-        "message": "Добавить"
-    },
-    "dragDropText": {
-        "message": "Перетащите изображение сюда или нажмите для загрузки"
-    },
-    "wallpaperSettings": {
-        "message": "Настройки обоев"
-    },
-    "blurAmount": {
-        "message": "Степень размытия"
-    },
-    "vignetteAmount": {
-        "message": "Степень виньетирования"
-    },
-    "resetShortcuts": {
-        "message": "Сбросить ярлыки"
-    },
-    "shortcutOpenCurrent": {
-        "message": "Открыть в текущей вкладке"
-    },
-    "shortcutOpenNewTab": {
-        "message": "Открыть в новой вкладке"
-    },
-    "searchBoxSettings": {
-        "message": "Настройки поискового поля"
-    },
-    "searchBoxWidth": {
-        "message": "Ширина"
-    },
-    "searchBoxScale": {
-        "message": "Размер"
-    },
-    "searchBoxPosition": {
-        "message": "Вертикальное положение"
-    },
-    "searchBoxRadius": {
-        "message": "Радиус скругления"
-    },
-    "searchBoxShadow": {
-        "message": "Интенсивность тени"
-    },
-    "showShortcutNames": {
-        "message": "Показывать названия ярлыков"
-    },
-    "shortcutDragHint": {
-        "message": "💡 Перетащите ярлыки, чтобы изменить их порядок"
-    },
-    "livePreview": {
-        "message": "Превью в реальном времени"
+    "a11yAnimations": {
+        "message": "Эффекты анимации"
     },
     "a11yDisplay": {
         "message": "Отображение"
     },
-    "a11yTheme": {
-        "message": "Тема"
+    "a11yFocus": {
+        "message": "Фокус"
     },
-    "a11yThemeStandard": {
-        "message": "Стандартная"
+    "a11yFocusEnhanced": {
+        "message": "Улучшенный"
     },
-    "a11yThemeHCDark": {
-        "message": "Высокая контрастность (темная)"
+    "a11yFocusIndicator": {
+        "message": "Индикатор фокуса"
     },
-    "a11yThemeHCLight": {
-        "message": "Высокая контрастность (светлая)"
+    "a11yFocusLarge": {
+        "message": "Крупный"
     },
-    "a11yThemeYellowBlack": {
-        "message": "Желтый на черном фоне"
-    },
-    "a11yFontSize": {
-        "message": "Размер шрифта"
-    },
-    "a11yFontFamily": {
-        "message": "Шрифт"
+    "a11yFocusStandard": {
+        "message": "Стандартный"
     },
     "a11yFontDefault": {
         "message": "По умолчанию"
+    },
+    "a11yFontDyslexic": {
+        "message": "Удобный для дислексиков"
+    },
+    "a11yFontFamily": {
+        "message": "Шрифт"
     },
     "a11yFontSans": {
         "message": "Без засечек"
@@ -119,11 +35,35 @@
     "a11yFontSerif": {
         "message": "С засечками"
     },
-    "a11yFontDyslexic": {
-        "message": "Удобный для дислексиков"
+    "a11yFontSize": {
+        "message": "Размер шрифта"
+    },
+    "a11yKeyboardShortcuts": {
+        "message": "Горячие клавиши"
+    },
+    "a11yLetterSpacing": {
+        "message": "Межбуквенный интервал"
     },
     "a11yLineSpacing": {
         "message": "Межстрочный интервал"
+    },
+    "a11yMotion": {
+        "message": "Анимации"
+    },
+    "a11yMotionFull": {
+        "message": "Полные"
+    },
+    "a11yMotionNone": {
+        "message": "Отсутствуют"
+    },
+    "a11yMotionReduced": {
+        "message": "Уменьшенные"
+    },
+    "a11yReset": {
+        "message": "Восстановить настройки по умолчанию"
+    },
+    "a11yShowShortcuts": {
+        "message": "Показать горячие клавиши"
     },
     "a11ySpacingNormal": {
         "message": "Нормальный"
@@ -134,80 +74,29 @@
     "a11ySpacingVeryRelaxed": {
         "message": "Очень большой"
     },
-    "a11yLetterSpacing": {
-        "message": "Межбуквенный интервал"
-    },
-    "a11yWordSpacing": {
-        "message": "Межсловный интервал"
-    },
     "a11ySpacingWide": {
         "message": "Широкий"
     },
     "a11ySpacingWider": {
         "message": "Очень широкий"
     },
-    "a11yKeyboardShortcuts": {
-        "message": "Горячие клавиши"
+    "a11yTheme": {
+        "message": "Тема"
     },
-    "a11yShowShortcuts": {
-        "message": "Показать горячие клавиши"
+    "a11yThemeHCDark": {
+        "message": "Высокая контрастность (темная)"
     },
-    "switchEnginePrev": {
-        "message": "Переключиться на предыдущую поисковую систему"
+    "a11yThemeHCLight": {
+        "message": "Высокая контрастность (светлая)"
     },
-    "switchEngineNext": {
-        "message": "Переключиться на следующую поисковую систему"
+    "a11yThemeStandard": {
+        "message": "Стандартная"
     },
-    "focusSearch": {
-        "message": "Фокус на поле поиска"
+    "a11yThemeYellowBlack": {
+        "message": "Желтый на черном фоне"
     },
-    "openSettings": {
-        "message": "Открыть настройки"
-    },
-    "closeModal": {
-        "message": "Закрыть модальное окно или отменить"
-    },
-    "navigate": {
-        "message": "Навигация между элементами"
-    },
-    "activate": {
-        "message": "Активировать кнопку или ссылку"
-    },
-    "accessibilitySettingsReset": {
-        "message": "Настройки доступности сброшены по умолчанию"
-    },
-    "a11yMotion": {
-        "message": "Анимации"
-    },
-    "a11yAnimations": {
-        "message": "Эффекты анимации"
-    },
-    "a11yMotionFull": {
-        "message": "Полные"
-    },
-    "a11yMotionReduced": {
-        "message": "Уменьшенные"
-    },
-    "a11yMotionNone": {
-        "message": "Отсутствуют"
-    },
-    "a11yFocus": {
-        "message": "Фокус"
-    },
-    "a11yFocusIndicator": {
-        "message": "Индикатор фокуса"
-    },
-    "a11yFocusStandard": {
-        "message": "Стандартный"
-    },
-    "a11yFocusEnhanced": {
-        "message": "Улучшенный"
-    },
-    "a11yFocusLarge": {
-        "message": "Крупный"
-    },
-    "a11yReset": {
-        "message": "Восстановить настройки по умолчанию"
+    "a11yWordSpacing": {
+        "message": "Межсловный интервал"
     },
     "aboutDescription": {
         "message": "Полностью открытое, высокопроизводительное и чрезвычайно минималистичное расширение для новых вкладок браузера."
@@ -215,14 +104,128 @@
     "aboutOpenSource": {
         "message": "GenresFox — это открытый проект! Исходный код доступен на GitHub."
     },
-    "viewOnGitHub": {
-        "message": "Просмотреть на GitHub"
+    "accessibilitySettingsReset": {
+        "message": "Настройки доступности сброшены по умолчанию"
+    },
+    "activate": {
+        "message": "Активировать кнопку или ссылку"
+    },
+    "add": {
+        "message": "Добавить"
+    },
+    "appTitle": {
+        "message": "GenresFox"
+    },
+    "blurAmount": {
+        "message": "Степень размытия"
+    },
+    "closeModal": {
+        "message": "Закрыть модальное окно или отменить"
+    },
+    "creditsBingWallpaper": {
+        "message": "Стандартные обои предоставляются службой Bing Обои дня."
     },
     "creditsTitle": {
         "message": "Благодарности"
     },
-    "creditsBingWallpaper": {
-        "message": "Стандартные обои предоставляются службой Bing Обои дня."
+    "customEngines": {
+        "message": "Пользовательские поисковые системы"
+    },
+    "debugConsoleClear": {
+        "message": "Очистить консоль"
+    },
+    "debugConsoleClose": {
+        "message": "Закрыть"
+    },
+    "debugConsoleHelp": {
+        "message": "Показать справку"
+    },
+    "debugConsoleTitle": {
+        "message": "Консоль отладки"
+    },
+    "deleteEngineConfirm": {
+        "message": "Вы уверены, что хотите удалить эту поисковую систему?"
+    },
+    "deleteShortcutAriaLabel": {
+        "message": "Удалить ярлык %s"
+    },
+    "deleteShortcutConfirm": {
+        "message": "Удалить ярлык «%s»?"
+    },
+    "dragDropText": {
+        "message": "Перетащите изображение сюда или нажмите для загрузки"
+    },
+    "errorImageTooLarge": {
+        "message": "Размер файла изображения слишком большой (максимум 50 МБ)"
+    },
+    "errorResolutionTooHigh": {
+        "message": "Разрешение изображения слишком высокое (максимум 80 мегапикселей)"
+    },
+    "exportConfigButton": {
+        "message": "Экспортировать конфигурацию"
+    },
+    "exportConfigDescription": {
+        "message": "Экспортируйте все ваши настройки, ярлыки и кастомизации в JSON-файл для резервного копирования или обмена."
+    },
+    "exportConfigError": {
+        "message": "Не удалось экспортировать конфигурацию."
+    },
+    "exportConfigSuccess": {
+        "message": "Конфигурация успешно экспортирована!"
+    },
+    "exportConfigTitle": {
+        "message": "Экспорт конфигурации"
+    },
+    "focusIndicatorChanged": {
+        "message": "Индикатор фокуса изменён на %s"
+    },
+    "focusSearch": {
+        "message": "Фокус на поле поиска"
+    },
+    "fontFamilyChanged": {
+        "message": "Шрифт изменён на %s"
+    },
+    "fontSizeChanged": {
+        "message": "Размер шрифта установлен на %s процентов"
+    },
+    "imageTooLarge": {
+        "message": "Изображение слишком большое (максимум %s МБ)"
+    },
+    "importConfigButton": {
+        "message": "Импортировать конфигурацию"
+    },
+    "importConfigConfirm": {
+        "message": "Это заменит все ваши текущие настройки. Продолжить?"
+    },
+    "importConfigError": {
+        "message": "Не удалось импортировать конфигурацию: "
+    },
+    "importConfigSuccess": {
+        "message": "Конфигурация успешно импортирована!"
+    },
+    "letterSpacingChanged": {
+        "message": "Межбуквенный интервал изменён на %s"
+    },
+    "lineSpacingChanged": {
+        "message": "Межстрочный интервал изменён на %s"
+    },
+    "livePreview": {
+        "message": "Превью в реальном времени"
+    },
+    "motionPreferenceChanged": {
+        "message": "Настройка анимации изменена на %s"
+    },
+    "navigate": {
+        "message": "Навигация между элементами"
+    },
+    "openSettings": {
+        "message": "Открыть настройки"
+    },
+    "pleaseUploadImage": {
+        "message": "Пожалуйста, загрузите файл изображения"
+    },
+    "processingCompressing": {
+        "message": "Сжатие..."
     },
     "processingImage": {
         "message": "Обработка изображения..."
@@ -233,62 +236,47 @@
     "processingOptimizing": {
         "message": "Оптимизация..."
     },
-    "processingCompressing": {
-        "message": "Сжатие..."
-    },
     "processingSaving": {
         "message": "Сохранение..."
     },
     "processingStarting": {
         "message": "Начало обработки..."
     },
-    "deleteEngineConfirm": {
-        "message": "Вы уверены, что хотите удалить эту поисковую систему?"
-    },
-    "deleteShortcutAriaLabel": {
-        "message": "Удалить ярлык %s"
-    },
-    "errorImageTooLarge": {
-        "message": "Размер файла изображения слишком большой (максимум 50 МБ)"
-    },
-    "focusIndicatorChanged": {
-        "message": "Индикатор фокуса изменён на %s"
-    },
-    "fontFamilyChanged": {
-        "message": "Шрифт изменён на %s"
-    },
-    "fontSizeChanged": {
-        "message": "Размер шрифта установлен на %s процентов"
-    },
-    "errorResolutionTooHigh": {
-        "message": "Разрешение изображения слишком высокое (максимум 80 мегапикселей)"
-    },
-    "imageTooLarge": {
-        "message": "Изображение слишком большое (максимум %s МБ)"
-    },
-    "letterSpacingChanged": {
-        "message": "Межбуквенный интервал изменён на %s"
-    },
-    "lineSpacingChanged": {
-        "message": "Межстрочный интервал изменён на %s"
-    },
-    "motionPreferenceChanged": {
-        "message": "Настройка анимации изменена на %s"
-    },
-    "pleaseUploadImage": {
-        "message": "Пожалуйста, загрузите файл изображения"
-    },
     "resetAccessibilityConfirm": {
         "message": "Сбросить все настройки доступности по умолчанию?"
+    },
+    "resetShortcuts": {
+        "message": "Сбросить ярлыки"
     },
     "resetToBing": {
         "message": "Переключено на Bing Обои дня"
     },
-    "deleteShortcutConfirm": {
-        "message": "Удалить ярлык «%s»?"
+    "resetWallpaper": {
+        "message": "Восстановить по умолчанию"
     },
-    "searchErrorUnsafeUrl": {
-        "message": "Невозможно получить доступ к этому адресу — он может быть небезопасным."
+    "resetWallpaperConfirm": {
+        "message": "Вы уверены, что хотите сбросить обои?"
+    },
+    "searchActionLabel": {
+        "message": "Поиск"
+    },
+    "searchBoxPosition": {
+        "message": "Вертикальное положение"
+    },
+    "searchBoxRadius": {
+        "message": "Радиус скругления"
+    },
+    "searchBoxScale": {
+        "message": "Размер"
+    },
+    "searchBoxSettings": {
+        "message": "Настройки поискового поля"
+    },
+    "searchBoxShadow": {
+        "message": "Интенсивность тени"
+    },
+    "searchBoxWidth": {
+        "message": "Ширина"
     },
     "searchErrorNavigationFailed": {
         "message": "Не удалось открыть ссылку."
@@ -296,56 +284,26 @@
     "searchErrorNoEngine": {
         "message": "Нет доступных поисковых систем."
     },
-    "themeSectionTitle": {
-        "message": "Тема"
+    "searchErrorUnsafeUrl": {
+        "message": "Невозможно получить доступ к этому адресу — он может быть небезопасным."
     },
-    "themeUseWallpaperAccent": {
-        "message": "Использовать основные цвета обоев как акцент"
+    "searchPlaceholder": {
+        "message": "Поиск..."
     },
-    "snowEffectToggle": {
-        "message": "Эффект снега"
+    "settingsTitle": {
+        "message": "Настройки"
     },
-    "exportConfigTitle": {
-        "message": "Экспорт конфигурации"
+    "shortcutDragHint": {
+        "message": "💡 Перетащите ярлыки, чтобы изменить их порядок"
     },
-    "exportConfigDescription": {
-        "message": "Экспортируйте все ваши настройки, ярлыки и кастомизации в JSON-файл для резервного копирования или обмена."
+    "shortcutOpenCurrent": {
+        "message": "Открыть в текущей вкладке"
     },
-    "exportConfigButton": {
-        "message": "Экспортировать конфигурацию"
+    "shortcutOpenNewTab": {
+        "message": "Открыть в новой вкладке"
     },
-    "exportConfigSuccess": {
-        "message": "Конфигурация успешно экспортирована!"
-    },
-    "exportConfigError": {
-        "message": "Не удалось экспортировать конфигурацию."
-    },
-    "importConfigButton": {
-        "message": "Импортировать конфигурацию"
-    },
-    "importConfigConfirm": {
-        "message": "Это заменит все ваши текущие настройки. Продолжить?"
-    },
-    "importConfigSuccess": {
-        "message": "Конфигурация успешно импортирована!"
-    },
-    "importConfigError": {
-        "message": "Не удалось импортировать конфигурацию: "
-    },
-    "debugConsoleTitle": {
-        "message": "Консоль отладки"
-    },
-    "debugConsoleHelp": {
-        "message": "Показать справку"
-    },
-    "debugConsoleClose": {
-        "message": "Закрыть"
-    },
-    "debugConsoleClear": {
-        "message": "Очистить консоль"
-    },
-    "resetWallpaperConfirm": {
-        "message": "Вы уверены, что хотите сбросить обои?"
+    "shortcuts": {
+        "message": "Ярлыки"
     },
     "shortcutsHelpClosed": {
         "message": "Справка по горячим клавишам закрыта"
@@ -353,13 +311,76 @@
     "shortcutsHelpOpened": {
         "message": "Справка по горячим клавишам открыта"
     },
+    "showShortcutNames": {
+        "message": "Показывать названия ярлыков"
+    },
     "skipToMainContent": {
         "message": "Перейти к основному содержимому"
+    },
+    "snowEffectToggle": {
+        "message": "Эффект снега"
+    },
+    "stickyNotePlaceholder": {
+        "message": "Введите текст..."
+    },
+    "switchEngineNext": {
+        "message": "Переключиться на следующую поисковую систему"
+    },
+    "switchEnginePrev": {
+        "message": "Переключиться на предыдущую поисковую систему"
+    },
+    "tabAbout": {
+        "message": "О приложении"
+    },
+    "tabAccessibility": {
+        "message": "Доступность"
+    },
+    "tabSearch": {
+        "message": "Поиск и ярлыки"
+    },
+    "tabWallpaper": {
+        "message": "Обои"
     },
     "themeChanged": {
         "message": "Тема изменена на %s"
     },
+    "themeSectionTitle": {
+        "message": "Тема"
+    },
+    "themeUseWallpaperAccent": {
+        "message": "Использовать основные цвета обоев как акцент"
+    },
+    "uploadWallpaper": {
+        "message": "Загрузить обои"
+    },
+    "viewOnGitHub": {
+        "message": "Просмотреть на GitHub"
+    },
+    "vignetteAmount": {
+        "message": "Степень виньетирования"
+    },
+    "wallpaperSettings": {
+        "message": "Настройки обоев"
+    },
     "wordSpacingChanged": {
-        "message": "Межсловный интервал изменён на %s"
+        "message": "Межсловный интервал изменён на %s",
+        "addStickyNote": {
+            "message": "Добавить заметку"
+        },
+        "clearAllStickyNotes": {
+            "message": "Очистить все"
+        },
+        "clearAllStickyNotesConfirm": {
+            "message": "Очистить все стикеры?"
+        },
+        "deleteStickyNote": {
+            "message": "Удалить заметку"
+        },
+        "enableStickyNotes": {
+            "message": "Включить стикеры"
+        },
+        "stickyNotes": {
+            "message": "Стикеры"
+        }
     }
 }

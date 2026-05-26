@@ -1,117 +1,33 @@
 {
-    "searchPlaceholder": {
-        "message": "Search..."
-    },
-    "searchActionLabel": {
-        "message": "Search"
-    },
-    "appTitle": {
-        "message": "GenresFox"
-    },
-    "settingsTitle": {
-        "message": "Settings"
-    },
-    "tabWallpaper": {
-        "message": "Wallpaper"
-    },
-    "tabSearch": {
-        "message": "Search & Shortcuts"
-    },
-    "tabAccessibility": {
-        "message": "Accessibility"
-    },
-    "tabAbout": {
-        "message": "About"
-    },
-    "uploadWallpaper": {
-        "message": "Upload Wallpaper"
-    },
-    "resetWallpaper": {
-        "message": "Reset to Default"
-    },
-    "customEngines": {
-        "message": "Custom Search Engines"
-    },
-    "shortcuts": {
-        "message": "Shortcuts"
-    },
-    "add": {
-        "message": "Add"
-    },
-    "dragDropText": {
-        "message": "Drag & Drop image here or click to upload"
-    },
-    "wallpaperSettings": {
-        "message": "Wallpaper Settings"
-    },
-    "blurAmount": {
-        "message": "Blur Amount"
-    },
-    "vignetteAmount": {
-        "message": "Vignette Amount"
-    },
-    "resetShortcuts": {
-        "message": "Reset Shortcuts"
-    },
-    "shortcutOpenCurrent": {
-        "message": "Open in current tab"
-    },
-    "shortcutOpenNewTab": {
-        "message": "Open in new tab"
-    },
-    "searchBoxSettings": {
-        "message": "Search Box Settings"
-    },
-    "searchBoxWidth": {
-        "message": "Width"
-    },
-    "searchBoxScale": {
-        "message": "Size"
-    },
-    "searchBoxPosition": {
-        "message": "Vertical Position"
-    },
-    "searchBoxRadius": {
-        "message": "Corner Radius"
-    },
-    "searchBoxShadow": {
-        "message": "Shadow Strength"
-    },
-    "showShortcutNames": {
-        "message": "Show shortcut names"
-    },
-    "shortcutDragHint": {
-        "message": "💡 Drag shortcuts to reorder them"
-    },
-    "livePreview": {
-        "message": "Live Preview"
+    "a11yAnimations": {
+        "message": "Animations"
     },
     "a11yDisplay": {
         "message": "Display"
     },
-    "a11yTheme": {
-        "message": "Theme"
+    "a11yFocus": {
+        "message": "Focus"
     },
-    "a11yThemeStandard": {
+    "a11yFocusEnhanced": {
+        "message": "Enhanced"
+    },
+    "a11yFocusIndicator": {
+        "message": "Focus Indicator"
+    },
+    "a11yFocusLarge": {
+        "message": "Large"
+    },
+    "a11yFocusStandard": {
         "message": "Standard"
-    },
-    "a11yThemeHCDark": {
-        "message": "High Contrast (Dark)"
-    },
-    "a11yThemeHCLight": {
-        "message": "High Contrast (Light)"
-    },
-    "a11yThemeYellowBlack": {
-        "message": "Yellow on Black"
-    },
-    "a11yFontSize": {
-        "message": "Font Size"
-    },
-    "a11yFontFamily": {
-        "message": "Font Family"
     },
     "a11yFontDefault": {
         "message": "Default"
+    },
+    "a11yFontDyslexic": {
+        "message": "OpenDyslexic"
+    },
+    "a11yFontFamily": {
+        "message": "Font Family"
     },
     "a11yFontSans": {
         "message": "Sans-serif"
@@ -119,11 +35,35 @@
     "a11yFontSerif": {
         "message": "Serif"
     },
-    "a11yFontDyslexic": {
-        "message": "OpenDyslexic"
+    "a11yFontSize": {
+        "message": "Font Size"
+    },
+    "a11yKeyboardShortcuts": {
+        "message": "Keyboard Shortcuts"
+    },
+    "a11yLetterSpacing": {
+        "message": "Letter Spacing"
     },
     "a11yLineSpacing": {
         "message": "Line Spacing"
+    },
+    "a11yMotion": {
+        "message": "Motion"
+    },
+    "a11yMotionFull": {
+        "message": "Full"
+    },
+    "a11yMotionNone": {
+        "message": "None"
+    },
+    "a11yMotionReduced": {
+        "message": "Reduced"
+    },
+    "a11yReset": {
+        "message": "Reset to Defaults"
+    },
+    "a11yShowShortcuts": {
+        "message": "Show Keyboard Shortcuts"
     },
     "a11ySpacingNormal": {
         "message": "Normal"
@@ -134,80 +74,29 @@
     "a11ySpacingVeryRelaxed": {
         "message": "Very Relaxed"
     },
-    "a11yLetterSpacing": {
-        "message": "Letter Spacing"
-    },
-    "a11yWordSpacing": {
-        "message": "Word Spacing"
-    },
     "a11ySpacingWide": {
         "message": "Wide"
     },
     "a11ySpacingWider": {
         "message": "Wider"
     },
-    "a11yKeyboardShortcuts": {
-        "message": "Keyboard Shortcuts"
+    "a11yTheme": {
+        "message": "Theme"
     },
-    "a11yShowShortcuts": {
-        "message": "Show Keyboard Shortcuts"
+    "a11yThemeHCDark": {
+        "message": "High Contrast (Dark)"
     },
-    "switchEnginePrev": {
-        "message": "Switch to previous search engine"
+    "a11yThemeHCLight": {
+        "message": "High Contrast (Light)"
     },
-    "switchEngineNext": {
-        "message": "Switch to next search engine"
-    },
-    "focusSearch": {
-        "message": "Focus search box"
-    },
-    "openSettings": {
-        "message": "Open settings"
-    },
-    "closeModal": {
-        "message": "Close dialog"
-    },
-    "navigate": {
-        "message": "Navigate between elements"
-    },
-    "activate": {
-        "message": "Activate button or link"
-    },
-    "accessibilitySettingsReset": {
-        "message": "Accessibility settings reset to defaults"
-    },
-    "a11yMotion": {
-        "message": "Motion"
-    },
-    "a11yAnimations": {
-        "message": "Animations"
-    },
-    "a11yMotionFull": {
-        "message": "Full"
-    },
-    "a11yMotionReduced": {
-        "message": "Reduced"
-    },
-    "a11yMotionNone": {
-        "message": "None"
-    },
-    "a11yFocus": {
-        "message": "Focus"
-    },
-    "a11yFocusIndicator": {
-        "message": "Focus Indicator"
-    },
-    "a11yFocusStandard": {
+    "a11yThemeStandard": {
         "message": "Standard"
     },
-    "a11yFocusEnhanced": {
-        "message": "Enhanced"
+    "a11yThemeYellowBlack": {
+        "message": "Yellow on Black"
     },
-    "a11yFocusLarge": {
-        "message": "Large"
-    },
-    "a11yReset": {
-        "message": "Reset to Defaults"
+    "a11yWordSpacing": {
+        "message": "Word Spacing"
     },
     "aboutDescription": {
         "message": "A completely open-source, high-performance, and extremely minimalist browser new tab page extension."
@@ -215,68 +104,44 @@
     "aboutOpenSource": {
         "message": "GenresFox is an open-source project. You can find the source code on GitHub!"
     },
-    "viewOnGitHub": {
-        "message": "View on GitHub"
+    "accessibilitySettingsReset": {
+        "message": "Accessibility settings reset to defaults"
     },
-    "creditsTitle": {
-        "message": "Credits"
+    "activate": {
+        "message": "Activate button or link"
+    },
+    "add": {
+        "message": "Add"
+    },
+    "appTitle": {
+        "message": "GenresFox"
+    },
+    "blurAmount": {
+        "message": "Blur Amount"
+    },
+    "closeModal": {
+        "message": "Close dialog"
     },
     "creditsBingWallpaper": {
         "message": "Default wallpaper powered by Bing Daily Wallpaper."
     },
-    "processingImage": {
-        "message": "Processing image..."
+    "creditsTitle": {
+        "message": "Credits"
     },
-    "processingLoading": {
-        "message": "Loading image..."
+    "customEngines": {
+        "message": "Custom Search Engines"
     },
-    "processingOptimizing": {
-        "message": "Optimizing..."
+    "debugConsoleClear": {
+        "message": "Clear Console"
     },
-    "processingCompressing": {
-        "message": "Compressing..."
+    "debugConsoleClose": {
+        "message": "Close"
     },
-    "processingSaving": {
-        "message": "Saving..."
+    "debugConsoleHelp": {
+        "message": "Show Help"
     },
-    "processingStarting": {
-        "message": "Starting..."
-    },
-    "errorImageTooLarge": {
-        "message": "Image file too large (max 50MB)"
-    },
-    "focusIndicatorChanged": {
-        "message": "Focus indicator changed to %s"
-    },
-    "fontFamilyChanged": {
-        "message": "Font family changed to %s"
-    },
-    "fontSizeChanged": {
-        "message": "Font size set to %s percent"
-    },
-    "errorResolutionTooHigh": {
-        "message": "Image resolution too high (max 80 megapixels)"
-    },
-    "imageTooLarge": {
-        "message": "Image too large (max %s MB)"
-    },
-    "letterSpacingChanged": {
-        "message": "Letter spacing changed to %s"
-    },
-    "lineSpacingChanged": {
-        "message": "Line spacing changed to %s"
-    },
-    "motionPreferenceChanged": {
-        "message": "Animation preference changed to %s"
-    },
-    "pleaseUploadImage": {
-        "message": "Please upload an image file"
-    },
-    "resetAccessibilityConfirm": {
-        "message": "Reset all accessibility settings to defaults?"
-    },
-    "resetToBing": {
-        "message": "Switched to Bing Daily Wallpaper"
+    "debugConsoleTitle": {
+        "message": "Debug Console"
     },
     "deleteEngineConfirm": {
         "message": "Are you sure you want to delete this search engine?"
@@ -287,38 +152,44 @@
     "deleteShortcutConfirm": {
         "message": "Delete shortcut \"%s\"?"
     },
-    "searchErrorUnsafeUrl": {
-        "message": "This URL may be unsafe."
+    "dragDropText": {
+        "message": "Drag & Drop image here or click to upload"
     },
-    "searchErrorNavigationFailed": {
-        "message": "Failed to open the link."
+    "errorImageTooLarge": {
+        "message": "Image file too large (max 50MB)"
     },
-    "searchErrorNoEngine": {
-        "message": "No available search engine."
+    "errorResolutionTooHigh": {
+        "message": "Image resolution too high (max 80 megapixels)"
     },
-    "themeSectionTitle": {
-        "message": "Theme"
-    },
-    "themeUseWallpaperAccent": {
-        "message": "Use wallpaper colors as accent"
-    },
-    "snowEffectToggle": {
-        "message": "Snow Effect"
-    },
-    "exportConfigTitle": {
+    "exportConfigButton": {
         "message": "Export Configuration"
     },
     "exportConfigDescription": {
         "message": "Export all your settings, shortcuts, and customizations to a JSON file for backup or sharing."
     },
-    "exportConfigButton": {
-        "message": "Export Configuration"
+    "exportConfigError": {
+        "message": "Failed to export configuration."
     },
     "exportConfigSuccess": {
         "message": "Configuration exported successfully!"
     },
-    "exportConfigError": {
-        "message": "Failed to export configuration."
+    "exportConfigTitle": {
+        "message": "Export Configuration"
+    },
+    "focusIndicatorChanged": {
+        "message": "Focus indicator changed to %s"
+    },
+    "focusSearch": {
+        "message": "Focus search box"
+    },
+    "fontFamilyChanged": {
+        "message": "Font family changed to %s"
+    },
+    "fontSizeChanged": {
+        "message": "Font size set to %s percent"
+    },
+    "imageTooLarge": {
+        "message": "Image too large (max %s MB)"
     },
     "importConfigButton": {
         "message": "Import Configuration"
@@ -326,26 +197,113 @@
     "importConfigConfirm": {
         "message": "This will replace all your current settings. Continue?"
     },
-    "importConfigSuccess": {
-        "message": "Configuration imported successfully!"
-    },
     "importConfigError": {
         "message": "Failed to import configuration: "
     },
-    "debugConsoleTitle": {
-        "message": "Debug Console"
+    "importConfigSuccess": {
+        "message": "Configuration imported successfully!"
     },
-    "debugConsoleHelp": {
-        "message": "Show Help"
+    "letterSpacingChanged": {
+        "message": "Letter spacing changed to %s"
     },
-    "debugConsoleClose": {
-        "message": "Close"
+    "lineSpacingChanged": {
+        "message": "Line spacing changed to %s"
     },
-    "debugConsoleClear": {
-        "message": "Clear Console"
+    "livePreview": {
+        "message": "Live Preview"
+    },
+    "motionPreferenceChanged": {
+        "message": "Animation preference changed to %s"
+    },
+    "navigate": {
+        "message": "Navigate between elements"
+    },
+    "openSettings": {
+        "message": "Open settings"
+    },
+    "pleaseUploadImage": {
+        "message": "Please upload an image file"
+    },
+    "processingCompressing": {
+        "message": "Compressing..."
+    },
+    "processingImage": {
+        "message": "Processing image..."
+    },
+    "processingLoading": {
+        "message": "Loading image..."
+    },
+    "processingOptimizing": {
+        "message": "Optimizing..."
+    },
+    "processingSaving": {
+        "message": "Saving..."
+    },
+    "processingStarting": {
+        "message": "Starting..."
+    },
+    "resetAccessibilityConfirm": {
+        "message": "Reset all accessibility settings to defaults?"
+    },
+    "resetShortcuts": {
+        "message": "Reset Shortcuts"
+    },
+    "resetToBing": {
+        "message": "Switched to Bing Daily Wallpaper"
+    },
+    "resetWallpaper": {
+        "message": "Reset to Default"
     },
     "resetWallpaperConfirm": {
         "message": "Are you sure you want to reset the wallpaper?"
+    },
+    "searchActionLabel": {
+        "message": "Search"
+    },
+    "searchBoxPosition": {
+        "message": "Vertical Position"
+    },
+    "searchBoxRadius": {
+        "message": "Corner Radius"
+    },
+    "searchBoxScale": {
+        "message": "Size"
+    },
+    "searchBoxSettings": {
+        "message": "Search Box Settings"
+    },
+    "searchBoxShadow": {
+        "message": "Shadow Strength"
+    },
+    "searchBoxWidth": {
+        "message": "Width"
+    },
+    "searchErrorNavigationFailed": {
+        "message": "Failed to open the link."
+    },
+    "searchErrorNoEngine": {
+        "message": "No available search engine."
+    },
+    "searchErrorUnsafeUrl": {
+        "message": "This URL may be unsafe."
+    },
+    "searchPlaceholder": {
+        "message": "Search..."
+    },
+    "settingsTitle": {
+        "message": "Settings"
+    },
+    "shortcutDragHint": {
+        "message": "💡 Drag shortcuts to reorder them"
+    },
+    "shortcutOpenCurrent": {
+        "message": "Open in current tab"
+    },
+    "shortcutOpenNewTab": {
+        "message": "Open in new tab"
+    },
+    "shortcuts": {
+        "message": "Shortcuts"
     },
     "shortcutsHelpClosed": {
         "message": "Keyboard shortcuts help closed"
@@ -353,13 +311,76 @@
     "shortcutsHelpOpened": {
         "message": "Keyboard shortcuts help opened"
     },
+    "showShortcutNames": {
+        "message": "Show shortcut names"
+    },
     "skipToMainContent": {
         "message": "Skip to main content"
+    },
+    "snowEffectToggle": {
+        "message": "Snow Effect"
+    },
+    "stickyNotePlaceholder": {
+        "message": "Type here..."
+    },
+    "switchEngineNext": {
+        "message": "Switch to next search engine"
+    },
+    "switchEnginePrev": {
+        "message": "Switch to previous search engine"
+    },
+    "tabAbout": {
+        "message": "About"
+    },
+    "tabAccessibility": {
+        "message": "Accessibility"
+    },
+    "tabSearch": {
+        "message": "Search & Shortcuts"
+    },
+    "tabWallpaper": {
+        "message": "Wallpaper"
     },
     "themeChanged": {
         "message": "Theme changed to %s"
     },
+    "themeSectionTitle": {
+        "message": "Theme"
+    },
+    "themeUseWallpaperAccent": {
+        "message": "Use wallpaper colors as accent"
+    },
+    "uploadWallpaper": {
+        "message": "Upload Wallpaper"
+    },
+    "viewOnGitHub": {
+        "message": "View on GitHub"
+    },
+    "vignetteAmount": {
+        "message": "Vignette Amount"
+    },
+    "wallpaperSettings": {
+        "message": "Wallpaper Settings"
+    },
     "wordSpacingChanged": {
-        "message": "Word spacing changed to %s"
+        "message": "Word spacing changed to %s",
+        "addStickyNote": {
+            "message": "Add Note"
+        },
+        "clearAllStickyNotes": {
+            "message": "Clear All"
+        },
+        "clearAllStickyNotesConfirm": {
+            "message": "Clear all sticky notes?"
+        },
+        "deleteStickyNote": {
+            "message": "Delete note"
+        },
+        "enableStickyNotes": {
+            "message": "Enable sticky notes"
+        },
+        "stickyNotes": {
+            "message": "Sticky Notes"
+        }
     }
 }

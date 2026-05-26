@@ -1,117 +1,33 @@
 {
-    "searchPlaceholder": {
-        "message": "検索..."
-    },
-    "searchActionLabel": {
-        "message": "検索"
-    },
-    "appTitle": {
-        "message": "GenresFox"
-    },
-    "settingsTitle": {
-        "message": "設定"
-    },
-    "tabWallpaper": {
-        "message": "壁紙"
-    },
-    "tabSearch": {
-        "message": "検索とショートカット"
-    },
-    "tabAccessibility": {
-        "message": "アクセシビリティ"
-    },
-    "tabAbout": {
-        "message": "について"
-    },
-    "uploadWallpaper": {
-        "message": "壁紙をアップロード"
-    },
-    "resetWallpaper": {
-        "message": "デフォルトに戻す"
-    },
-    "customEngines": {
-        "message": "カスタム検索エンジン"
-    },
-    "shortcuts": {
-        "message": "ショートカット"
-    },
-    "add": {
-        "message": "追加"
-    },
-    "dragDropText": {
-        "message": "画像をドラッグ＆ドロップまたはクリックしてアップロード"
-    },
-    "wallpaperSettings": {
-        "message": "壁紙設定"
-    },
-    "blurAmount": {
-        "message": "ぼかし量"
-    },
-    "vignetteAmount": {
-        "message": "ビネット量"
-    },
-    "resetShortcuts": {
-        "message": "ショートカットをリセット"
-    },
-    "shortcutOpenCurrent": {
-        "message": "現在のタブで開く"
-    },
-    "shortcutOpenNewTab": {
-        "message": "新しいタブで開く"
-    },
-    "searchBoxSettings": {
-        "message": "検索ボックス設定"
-    },
-    "searchBoxWidth": {
-        "message": "幅"
-    },
-    "searchBoxScale": {
-        "message": "サイズ"
-    },
-    "searchBoxPosition": {
-        "message": "垂直位置"
-    },
-    "searchBoxRadius": {
-        "message": "角丸"
-    },
-    "searchBoxShadow": {
-        "message": "影の強さ"
-    },
-    "showShortcutNames": {
-        "message": "ショートカット名を表示"
-    },
-    "shortcutDragHint": {
-        "message": "💡 ショートカットをドラッグして並べ替え"
-    },
-    "livePreview": {
-        "message": "ライブプレビュー"
+    "a11yAnimations": {
+        "message": "アニメーション"
     },
     "a11yDisplay": {
         "message": "表示"
     },
-    "a11yTheme": {
-        "message": "テーマ"
+    "a11yFocus": {
+        "message": "フォーカス"
     },
-    "a11yThemeStandard": {
+    "a11yFocusEnhanced": {
+        "message": "強調"
+    },
+    "a11yFocusIndicator": {
+        "message": "フォーカスインジケーター"
+    },
+    "a11yFocusLarge": {
+        "message": "大"
+    },
+    "a11yFocusStandard": {
         "message": "標準"
-    },
-    "a11yThemeHCDark": {
-        "message": "ハイコントラスト (ダーク)"
-    },
-    "a11yThemeHCLight": {
-        "message": "ハイコントラスト (ライト)"
-    },
-    "a11yThemeYellowBlack": {
-        "message": "黄色に黒"
-    },
-    "a11yFontSize": {
-        "message": "フォントサイズ"
-    },
-    "a11yFontFamily": {
-        "message": "フォント"
     },
     "a11yFontDefault": {
         "message": "デフォルト"
+    },
+    "a11yFontDyslexic": {
+        "message": "ディスレクシア対応"
+    },
+    "a11yFontFamily": {
+        "message": "フォント"
     },
     "a11yFontSans": {
         "message": "サンセリフ"
@@ -119,11 +35,35 @@
     "a11yFontSerif": {
         "message": "セリフ"
     },
-    "a11yFontDyslexic": {
-        "message": "ディスレクシア対応"
+    "a11yFontSize": {
+        "message": "フォントサイズ"
+    },
+    "a11yKeyboardShortcuts": {
+        "message": "キーボードショートカット"
+    },
+    "a11yLetterSpacing": {
+        "message": "文字間隔"
     },
     "a11yLineSpacing": {
         "message": "行間"
+    },
+    "a11yMotion": {
+        "message": "モーション"
+    },
+    "a11yMotionFull": {
+        "message": "フル"
+    },
+    "a11yMotionNone": {
+        "message": "なし"
+    },
+    "a11yMotionReduced": {
+        "message": "軽減"
+    },
+    "a11yReset": {
+        "message": "デフォルトに戻す"
+    },
+    "a11yShowShortcuts": {
+        "message": "キーボードショートカットを表示"
     },
     "a11ySpacingNormal": {
         "message": "標準"
@@ -134,80 +74,29 @@
     "a11ySpacingVeryRelaxed": {
         "message": "とても広め"
     },
-    "a11yLetterSpacing": {
-        "message": "文字間隔"
-    },
-    "a11yWordSpacing": {
-        "message": "単語間隔"
-    },
     "a11ySpacingWide": {
         "message": "広め"
     },
     "a11ySpacingWider": {
         "message": "とても広め"
     },
-    "a11yKeyboardShortcuts": {
-        "message": "キーボードショートカット"
+    "a11yTheme": {
+        "message": "テーマ"
     },
-    "a11yShowShortcuts": {
-        "message": "キーボードショートカットを表示"
+    "a11yThemeHCDark": {
+        "message": "ハイコントラスト (ダーク)"
     },
-    "switchEnginePrev": {
-        "message": "前の検索エンジンに切り替え"
+    "a11yThemeHCLight": {
+        "message": "ハイコントラスト (ライト)"
     },
-    "switchEngineNext": {
-        "message": "次の検索エンジンに切り替え"
-    },
-    "focusSearch": {
-        "message": "検索ボックスにフォーカス"
-    },
-    "openSettings": {
-        "message": "設定を開く"
-    },
-    "closeModal": {
-        "message": "モーダルを閉じるまたはキャンセル"
-    },
-    "navigate": {
-        "message": "要素間を移動"
-    },
-    "activate": {
-        "message": "ボタンまたはリンクをアクティブ化"
-    },
-    "accessibilitySettingsReset": {
-        "message": "アクセシビリティ設定をデフォルトに戻しました"
-    },
-    "a11yMotion": {
-        "message": "モーション"
-    },
-    "a11yAnimations": {
-        "message": "アニメーション"
-    },
-    "a11yMotionFull": {
-        "message": "フル"
-    },
-    "a11yMotionReduced": {
-        "message": "軽減"
-    },
-    "a11yMotionNone": {
-        "message": "なし"
-    },
-    "a11yFocus": {
-        "message": "フォーカス"
-    },
-    "a11yFocusIndicator": {
-        "message": "フォーカスインジケーター"
-    },
-    "a11yFocusStandard": {
+    "a11yThemeStandard": {
         "message": "標準"
     },
-    "a11yFocusEnhanced": {
-        "message": "強調"
+    "a11yThemeYellowBlack": {
+        "message": "黄色に黒"
     },
-    "a11yFocusLarge": {
-        "message": "大"
-    },
-    "a11yReset": {
-        "message": "デフォルトに戻す"
+    "a11yWordSpacing": {
+        "message": "単語間隔"
     },
     "aboutDescription": {
         "message": "完全オープンソース、高性能、極めてミニマルなブラウザ新規タブページ拡張機能。"
@@ -215,14 +104,128 @@
     "aboutOpenSource": {
         "message": "GenresFox はオープンソースプロジェクトです。GitHub でソースコードを見つけることができます！"
     },
-    "viewOnGitHub": {
-        "message": "GitHub で見る"
+    "accessibilitySettingsReset": {
+        "message": "アクセシビリティ設定をデフォルトに戻しました"
+    },
+    "activate": {
+        "message": "ボタンまたはリンクをアクティブ化"
+    },
+    "add": {
+        "message": "追加"
+    },
+    "appTitle": {
+        "message": "GenresFox"
+    },
+    "blurAmount": {
+        "message": "ぼかし量"
+    },
+    "closeModal": {
+        "message": "モーダルを閉じるまたはキャンセル"
+    },
+    "creditsBingWallpaper": {
+        "message": "デフォルト壁紙は Bing 日替わり壁紙です。"
     },
     "creditsTitle": {
         "message": "クレジット"
     },
-    "creditsBingWallpaper": {
-        "message": "デフォルト壁紙は Bing 日替わり壁紙です。"
+    "customEngines": {
+        "message": "カスタム検索エンジン"
+    },
+    "debugConsoleClear": {
+        "message": "コンソールをクリア"
+    },
+    "debugConsoleClose": {
+        "message": "閉じる"
+    },
+    "debugConsoleHelp": {
+        "message": "ヘルプを表示"
+    },
+    "debugConsoleTitle": {
+        "message": "デバッグコンソール"
+    },
+    "deleteEngineConfirm": {
+        "message": "この検索エンジンを削除してもよろしいですか？"
+    },
+    "deleteShortcutAriaLabel": {
+        "message": "ショートカット %s を削除"
+    },
+    "deleteShortcutConfirm": {
+        "message": "ショートカット「%s」を削除しますか？"
+    },
+    "dragDropText": {
+        "message": "画像をドラッグ＆ドロップまたはクリックしてアップロード"
+    },
+    "errorImageTooLarge": {
+        "message": "画像ファイルが大きすぎます（最大 50MB）"
+    },
+    "errorResolutionTooHigh": {
+        "message": "画像の解像度が高すぎます（最大 8000 万画素）"
+    },
+    "exportConfigButton": {
+        "message": "設定をエクスポート"
+    },
+    "exportConfigDescription": {
+        "message": "設定を JSON ファイルにエクスポートしてバックアップできます。"
+    },
+    "exportConfigError": {
+        "message": "設定のエクスポートに失敗しました。"
+    },
+    "exportConfigSuccess": {
+        "message": "設定のエクスポートに成功しました！"
+    },
+    "exportConfigTitle": {
+        "message": "設定のエクスポート"
+    },
+    "focusIndicatorChanged": {
+        "message": "フォーカスインジケーターを %s に変更しました"
+    },
+    "focusSearch": {
+        "message": "検索ボックスにフォーカス"
+    },
+    "fontFamilyChanged": {
+        "message": "フォントを %s に変更しました"
+    },
+    "fontSizeChanged": {
+        "message": "フォントサイズを %s パーセントに設定しました"
+    },
+    "imageTooLarge": {
+        "message": "画像が大きすぎます（最大 %s MB）"
+    },
+    "importConfigButton": {
+        "message": "設定をインポート"
+    },
+    "importConfigConfirm": {
+        "message": "現在の設定が上書きされます。続行しますか？"
+    },
+    "importConfigError": {
+        "message": "設定のインポートに失敗しました："
+    },
+    "importConfigSuccess": {
+        "message": "設定のインポートに成功しました！"
+    },
+    "letterSpacingChanged": {
+        "message": "文字間隔を %s に変更しました"
+    },
+    "lineSpacingChanged": {
+        "message": "行間を %s に変更しました"
+    },
+    "livePreview": {
+        "message": "ライブプレビュー"
+    },
+    "motionPreferenceChanged": {
+        "message": "アニメーション設定を %s に変更しました"
+    },
+    "navigate": {
+        "message": "要素間を移動"
+    },
+    "openSettings": {
+        "message": "設定を開く"
+    },
+    "pleaseUploadImage": {
+        "message": "画像ファイルをアップロードしてください"
+    },
+    "processingCompressing": {
+        "message": "圧縮中..."
     },
     "processingImage": {
         "message": "画像を処理中..."
@@ -233,62 +236,59 @@
     "processingOptimizing": {
         "message": "最適化中..."
     },
-    "processingCompressing": {
-        "message": "圧縮中..."
-    },
     "processingSaving": {
         "message": "保存中..."
     },
     "processingStarting": {
         "message": "開始中..."
     },
-    "deleteEngineConfirm": {
-        "message": "この検索エンジンを削除してもよろしいですか？"
-    },
-    "deleteShortcutAriaLabel": {
-        "message": "ショートカット %s を削除"
-    },
-    "errorImageTooLarge": {
-        "message": "画像ファイルが大きすぎます（最大 50MB）"
-    },
-    "focusIndicatorChanged": {
-        "message": "フォーカスインジケーターを %s に変更しました"
-    },
-    "fontFamilyChanged": {
-        "message": "フォントを %s に変更しました"
-    },
-    "fontSizeChanged": {
-        "message": "フォントサイズを %s パーセントに設定しました"
-    },
-    "errorResolutionTooHigh": {
-        "message": "画像の解像度が高すぎます（最大 8000 万画素）"
-    },
-    "imageTooLarge": {
-        "message": "画像が大きすぎます（最大 %s MB）"
-    },
-    "letterSpacingChanged": {
-        "message": "文字間隔を %s に変更しました"
-    },
-    "lineSpacingChanged": {
-        "message": "行間を %s に変更しました"
-    },
-    "motionPreferenceChanged": {
-        "message": "アニメーション設定を %s に変更しました"
-    },
-    "pleaseUploadImage": {
-        "message": "画像ファイルをアップロードしてください"
-    },
     "resetAccessibilityConfirm": {
         "message": "すべてのアクセシビリティ設定をデフォルトに戻しますか？"
+    },
+    "resetShortcuts": {
+        "message": "ショートカットをリセット"
     },
     "resetToBing": {
         "message": "Bing 日替わり壁紙に切り替えました"
     },
-    "deleteShortcutConfirm": {
-        "message": "ショートカット「%s」を削除しますか？"
+    "resetWallpaper": {
+        "message": "デフォルトに戻す"
     },
-    "searchErrorUnsafeUrl": {
-        "message": "この URL は安全ではありません。"
+    "resetWallpaperConfirm": {
+        "message": "壁紙をリセットしてもよろしいですか？"
+    },
+    "searchActionLabel": {
+        "message": "検索"
+    },
+    "searchBoxPosition": {
+        "message": "垂直位置"
+    },
+    "searchBoxRadius": {
+        "message": "角丸"
+    },
+    "searchBoxScale": {
+        "message": "サイズ"
+    },
+    "searchBoxSettings": {
+        "message": "検索ボックス設定"
+    },
+    "searchBoxShadow": {
+        "message": "影の強さ"
+    },
+    "searchBoxWidth": {
+        "message": "幅"
+    },
+    "searchErrorBuildUrl": {
+        "message": "検索 URL の作成に失敗しました。"
+    },
+    "searchErrorInitFailed": {
+        "message": "検索欄の初期化に失敗しました。"
+    },
+    "searchErrorInvalidEngine": {
+        "message": "検索エンジンの URL が正しくありません。"
+    },
+    "searchErrorInvalidInput": {
+        "message": "検索内容を入力してください。"
     },
     "searchErrorNavigationFailed": {
         "message": "リンクを開けませんでした。"
@@ -299,74 +299,32 @@
     "searchErrorNoInput": {
         "message": "検索欄が使えません。"
     },
-    "searchErrorInvalidInput": {
-        "message": "検索内容を入力してください。"
-    },
-    "searchErrorInvalidEngine": {
-        "message": "検索エンジンの URL が正しくありません。"
-    },
     "searchErrorQueryTooLong": {
         "message": "検索内容が長すぎます。"
-    },
-    "searchErrorBuildUrl": {
-        "message": "検索 URL の作成に失敗しました。"
     },
     "searchErrorUnexpected": {
         "message": "エラーが発生しました。再試行してください。"
     },
-    "searchErrorInitFailed": {
-        "message": "検索欄の初期化に失敗しました。"
+    "searchErrorUnsafeUrl": {
+        "message": "この URL は安全ではありません。"
     },
-    "themeSectionTitle": {
-        "message": "テーマ"
+    "searchPlaceholder": {
+        "message": "検索..."
     },
-    "themeUseWallpaperAccent": {
-        "message": "壁紙の主色をアクセントに使う"
+    "settingsTitle": {
+        "message": "設定"
     },
-    "snowEffectToggle": {
-        "message": "雪のエフェクト"
+    "shortcutDragHint": {
+        "message": "💡 ショートカットをドラッグして並べ替え"
     },
-    "exportConfigTitle": {
-        "message": "設定のエクスポート"
+    "shortcutOpenCurrent": {
+        "message": "現在のタブで開く"
     },
-    "exportConfigDescription": {
-        "message": "設定を JSON ファイルにエクスポートしてバックアップできます。"
+    "shortcutOpenNewTab": {
+        "message": "新しいタブで開く"
     },
-    "exportConfigButton": {
-        "message": "設定をエクスポート"
-    },
-    "exportConfigSuccess": {
-        "message": "設定のエクスポートに成功しました！"
-    },
-    "exportConfigError": {
-        "message": "設定のエクスポートに失敗しました。"
-    },
-    "importConfigButton": {
-        "message": "設定をインポート"
-    },
-    "importConfigConfirm": {
-        "message": "現在の設定が上書きされます。続行しますか？"
-    },
-    "importConfigSuccess": {
-        "message": "設定のインポートに成功しました！"
-    },
-    "importConfigError": {
-        "message": "設定のインポートに失敗しました："
-    },
-    "debugConsoleTitle": {
-        "message": "デバッグコンソール"
-    },
-    "debugConsoleHelp": {
-        "message": "ヘルプを表示"
-    },
-    "debugConsoleClose": {
-        "message": "閉じる"
-    },
-    "debugConsoleClear": {
-        "message": "コンソールをクリア"
-    },
-    "resetWallpaperConfirm": {
-        "message": "壁紙をリセットしてもよろしいですか？"
+    "shortcuts": {
+        "message": "ショートカット"
     },
     "shortcutsHelpClosed": {
         "message": "キーボードショートカットのヘルプを閉じました"
@@ -374,13 +332,76 @@
     "shortcutsHelpOpened": {
         "message": "キーボードショートカットのヘルプを開きました"
     },
+    "showShortcutNames": {
+        "message": "ショートカット名を表示"
+    },
     "skipToMainContent": {
         "message": "メインコンテンツへスキップ"
+    },
+    "snowEffectToggle": {
+        "message": "雪のエフェクト"
+    },
+    "stickyNotePlaceholder": {
+        "message": "ここに入力..."
+    },
+    "switchEngineNext": {
+        "message": "次の検索エンジンに切り替え"
+    },
+    "switchEnginePrev": {
+        "message": "前の検索エンジンに切り替え"
+    },
+    "tabAbout": {
+        "message": "について"
+    },
+    "tabAccessibility": {
+        "message": "アクセシビリティ"
+    },
+    "tabSearch": {
+        "message": "検索とショートカット"
+    },
+    "tabWallpaper": {
+        "message": "壁紙"
     },
     "themeChanged": {
         "message": "テーマを %s に変更しました"
     },
+    "themeSectionTitle": {
+        "message": "テーマ"
+    },
+    "themeUseWallpaperAccent": {
+        "message": "壁紙の主色をアクセントに使う"
+    },
+    "uploadWallpaper": {
+        "message": "壁紙をアップロード"
+    },
+    "viewOnGitHub": {
+        "message": "GitHub で見る"
+    },
+    "vignetteAmount": {
+        "message": "ビネット量"
+    },
+    "wallpaperSettings": {
+        "message": "壁紙設定"
+    },
     "wordSpacingChanged": {
-        "message": "単語間隔を %s に変更しました"
+        "message": "単語間隔を %s に変更しました",
+        "addStickyNote": {
+            "message": "付箋を追加"
+        },
+        "clearAllStickyNotes": {
+            "message": "すべて削除"
+        },
+        "clearAllStickyNotesConfirm": {
+            "message": "すべての付箋を削除しますか？"
+        },
+        "deleteStickyNote": {
+            "message": "付箋を削除"
+        },
+        "enableStickyNotes": {
+            "message": "付箋を有効にする"
+        },
+        "stickyNotes": {
+            "message": "付箋"
+        }
     }
 }

@@ -249,6 +249,18 @@
                                 Shortcuts</button>
                         </div>
                     </div>
+
+                    <div class="setting-group">
+                        <h3 data-i18n="stickyNotes">Sticky Notes</h3>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="stickyNotesEnabled">
+                            <span data-i18n="enableStickyNotes">Enable sticky notes</span>
+                        </label>
+                        <div class="sticky-note-actions">
+                            <button id="addStickyNoteBtn" class="btn-primary" data-i18n="addStickyNote">Add Note</button>
+                            <button id="clearStickyNotesBtn" class="btn-danger" data-i18n="clearAllStickyNotes">Clear All</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="tab-content" id="tab-accessibility">
@@ -432,6 +444,7 @@
     <script src="snow-effect.js"></script>
     <script src="config-manager.js"></script>
     <script src="shortcut-manager.js"></script>
+    <script src="sticky-notes.js"></script>
     <script src="script.js"></script>
     <!-- Debug console (development tool) -->
     <script src="debug-console.js"></script>

@@ -786,6 +786,47 @@ if (resetShortcutsBtn) {
     });
 }
 
+// ==================== Sticky Notes ====================
+const stickyNotesEnabledCheckbox = document.getElementById("stickyNotesEnabled");
+const addStickyNoteBtn = document.getElementById("addStickyNoteBtn");
+const clearStickyNotesBtn = document.getElementById("clearStickyNotesBtn");
+
+function _syncStickyNotesUI() {
+    if (stickyNotesEnabledCheckbox) {
+        stickyNotesEnabledCheckbox.checked = typeof StickyNotes !== 'undefined' ? StickyNotes.isEnabled() : false;
+    }
+}
+
+if (stickyNotesEnabledCheckbox) {
+    stickyNotesEnabledCheckbox.addEventListener("change", (e) => {
+        if (typeof StickyNotes !== 'undefined' && StickyNotes.setEnabled) {
+            StickyNotes.setEnabled(e.target.checked);
+        }
+    });
+}
+
+if (addStickyNoteBtn) {
+    addStickyNoteBtn.addEventListener("click", () => {
+        if (typeof StickyNotes !== 'undefined' && StickyNotes.createNote) {
+            StickyNotes.createNote();
+            _syncStickyNotesUI();
+        }
+    });
+}
+
+if (clearStickyNotesBtn) {
+    clearStickyNotesBtn.addEventListener("click", () => {
+        const msg = (typeof I18n !== 'undefined' && I18n.getMessage)
+            ? I18n.getMessage('clearAllStickyNotesConfirm', 'Clear all sticky notes?')
+            : 'Clear all sticky notes?';
+        if (confirm(msg)) {
+            if (typeof StickyNotes !== 'undefined' && StickyNotes.clearAll) {
+                StickyNotes.clearAll();
+            }
+        }
+    });
+}
+
 // ==================== Export Configuration ====================
 /**
  * Collect all user configuration data
@@ -2330,7 +2371,15 @@ async function init() {
             AccessibilityManager.syncUI();
         }
     });
-    
+
+    // Initialize Sticky Notes
+    await safeInit('StickyNotes', () => {
+        if (typeof StickyNotes !== 'undefined' && StickyNotes.init) {
+            StickyNotes.init();
+            _syncStickyNotesUI();
+        }
+    });
+
     // Critical UI updates first (for LCP)
     updateUI();
     if (window.SearchBar && typeof window.SearchBar.init === 'function') {
