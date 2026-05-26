@@ -134,6 +134,45 @@
     "a11ySpacingVeryRelaxed": {
         "message": "Very Relaxed"
     },
+    "a11yLetterSpacing": {
+        "message": "Letter Spacing"
+    },
+    "a11yWordSpacing": {
+        "message": "Word Spacing"
+    },
+    "a11ySpacingWide": {
+        "message": "Wide"
+    },
+    "a11ySpacingWider": {
+        "message": "Wider"
+    },
+    "a11yKeyboardShortcuts": {
+        "message": "Keyboard Shortcuts"
+    },
+    "a11yShowShortcuts": {
+        "message": "Show Keyboard Shortcuts"
+    },
+    "switchEnginePrev": {
+        "message": "Switch to previous search engine"
+    },
+    "switchEngineNext": {
+        "message": "Switch to next search engine"
+    },
+    "focusSearch": {
+        "message": "Focus search box"
+    },
+    "openSettings": {
+        "message": "Open settings"
+    },
+    "closeModal": {
+        "message": "Close dialog"
+    },
+    "navigate": {
+        "message": "Navigate between elements"
+    },
+    "activate": {
+        "message": "Activate button or link"
+    },
     "a11yMotion": {
         "message": "Motion"
     },
@@ -256,5 +295,20 @@
     },
     "importConfigError": {
         "message": "Failed to import configuration: "
+    },
+    "debugConsoleTitle": {
+        "message": "Debug Console"
+    },
+    "debugConsoleHelp": {
+        "message": "Show Help"
+    },
+    "debugConsoleClose": {
+        "message": "Close"
+    },
+    "debugConsoleClear": {
+        "message": "Clear Console"
+    },
+    "resetWallpaperConfirm": {
+        "message": "Are you sure you want to reset the wallpaper?"
     }
 }

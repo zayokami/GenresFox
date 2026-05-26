@@ -134,6 +134,45 @@
     "a11ySpacingVeryRelaxed": {
         "message": "Sehr locker"
     },
+    "a11yLetterSpacing": {
+        "message": "Zeichenabstand"
+    },
+    "a11yWordSpacing": {
+        "message": "Wortabstand"
+    },
+    "a11ySpacingWide": {
+        "message": "Weit"
+    },
+    "a11ySpacingWider": {
+        "message": "Sehr weit"
+    },
+    "a11yKeyboardShortcuts": {
+        "message": "Tastenkürzel"
+    },
+    "a11yShowShortcuts": {
+        "message": "Tastenkürzel anzeigen"
+    },
+    "switchEnginePrev": {
+        "message": "Zum vorherigen Suchmaschine wechseln"
+    },
+    "switchEngineNext": {
+        "message": "Zur nächsten Suchmaschine wechseln"
+    },
+    "focusSearch": {
+        "message": "Suchfeld fokussieren"
+    },
+    "openSettings": {
+        "message": "Einstellungen öffnen"
+    },
+    "closeModal": {
+        "message": "Modal schließen oder abbrechen"
+    },
+    "navigate": {
+        "message": "Zwischen Elementen navigieren"
+    },
+    "activate": {
+        "message": "Schaltfläche oder Link aktivieren"
+    },
     "a11yMotion": {
         "message": "Animationen"
     },
@@ -256,5 +295,20 @@
     },
     "importConfigError": {
         "message": "Import der Konfiguration fehlgeschlagen: "
+    },
+    "debugConsoleTitle": {
+        "message": "Debug-Konsole"
+    },
+    "debugConsoleHelp": {
+        "message": "Hilfe anzeigen"
+    },
+    "debugConsoleClose": {
+        "message": "Schließen"
+    },
+    "debugConsoleClear": {
+        "message": "Konsole leeren"
+    },
+    "resetWallpaperConfirm": {
+        "message": "Sind Sie sicher, dass Sie das Hintergrundbild zurücksetzen möchten?"
     }
 }

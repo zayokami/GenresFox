@@ -134,6 +134,45 @@
     "a11ySpacingVeryRelaxed": {
         "message": "Очень большой"
     },
+    "a11yLetterSpacing": {
+        "message": "Межбуквенный интервал"
+    },
+    "a11yWordSpacing": {
+        "message": "Межсловный интервал"
+    },
+    "a11ySpacingWide": {
+        "message": "Широкий"
+    },
+    "a11ySpacingWider": {
+        "message": "Очень широкий"
+    },
+    "a11yKeyboardShortcuts": {
+        "message": "Горячие клавиши"
+    },
+    "a11yShowShortcuts": {
+        "message": "Показать горячие клавиши"
+    },
+    "switchEnginePrev": {
+        "message": "Переключиться на предыдущую поисковую систему"
+    },
+    "switchEngineNext": {
+        "message": "Переключиться на следующую поисковую систему"
+    },
+    "focusSearch": {
+        "message": "Фокус на поле поиска"
+    },
+    "openSettings": {
+        "message": "Открыть настройки"
+    },
+    "closeModal": {
+        "message": "Закрыть модальное окно или отменить"
+    },
+    "navigate": {
+        "message": "Навигация между элементами"
+    },
+    "activate": {
+        "message": "Активировать кнопку или ссылку"
+    },
     "a11yMotion": {
         "message": "Анимации"
     },
@@ -256,5 +295,20 @@
     },
     "importConfigError": {
         "message": "Не удалось импортировать конфигурацию: "
+    },
+    "debugConsoleTitle": {
+        "message": "Консоль отладки"
+    },
+    "debugConsoleHelp": {
+        "message": "Показать справку"
+    },
+    "debugConsoleClose": {
+        "message": "Закрыть"
+    },
+    "debugConsoleClear": {
+        "message": "Очистить консоль"
+    },
+    "resetWallpaperConfirm": {
+        "message": "Вы уверены, что хотите сбросить обои?"
     }
 }

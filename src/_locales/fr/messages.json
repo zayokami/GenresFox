@@ -44,6 +44,19 @@
     "a11ySpacingNormal": { "message": "Normal" },
     "a11ySpacingRelaxed": { "message": "Détendu" },
     "a11ySpacingVeryRelaxed": { "message": "Très détendu" },
+    "a11yLetterSpacing": { "message": "Espacement des lettres" },
+    "a11yWordSpacing": { "message": "Espacement des mots" },
+    "a11ySpacingWide": { "message": "Large" },
+    "a11ySpacingWider": { "message": "Très large" },
+    "a11yKeyboardShortcuts": { "message": "Raccourcis clavier" },
+    "a11yShowShortcuts": { "message": "Afficher les raccourcis clavier" },
+    "switchEnginePrev": { "message": "Passer au moteur de recherche précédent" },
+    "switchEngineNext": { "message": "Passer au moteur de recherche suivant" },
+    "focusSearch": { "message": "Mettre le focus sur la zone de recherche" },
+    "openSettings": { "message": "Ouvrir les paramètres" },
+    "closeModal": { "message": "Fermer la fenêtre ou annuler" },
+    "navigate": { "message": "Naviguer entre les éléments" },
+    "activate": { "message": "Activer le bouton ou le lien" },
     "a11yMotion": { "message": "Mouvements" },
     "a11yAnimations": { "message": "Animations" },
     "a11yMotionFull": { "message": "Complet" },
@@ -84,6 +97,11 @@
     "importConfigButton": { "message": "Importer la configuration" },
     "importConfigConfirm": { "message": "Cela remplacera tous vos paramètres actuels. Continuer ?" },
     "importConfigSuccess": { "message": "Configuration importée avec succès !" },
-    "importConfigError": { "message": "Échec de l'importation de la configuration : " }
+    "importConfigError": { "message": "Échec de l'importation de la configuration : " },
+    "debugConsoleTitle": { "message": "Console de débogage" },
+    "debugConsoleHelp": { "message": "Afficher l'aide" },
+    "debugConsoleClose": { "message": "Fermer" },
+    "debugConsoleClear": { "message": "Effacer la console" },
+    "resetWallpaperConfirm": { "message": "Êtes-vous sûr de vouloir réinitialiser le fond d'écran ?" }
 }
 

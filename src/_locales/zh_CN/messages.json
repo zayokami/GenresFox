@@ -134,6 +134,45 @@
     "a11ySpacingVeryRelaxed": {
         "message": "很宽松"
     },
+    "a11yLetterSpacing": {
+        "message": "字母间距"
+    },
+    "a11yWordSpacing": {
+        "message": "单词间距"
+    },
+    "a11ySpacingWide": {
+        "message": "较宽"
+    },
+    "a11ySpacingWider": {
+        "message": "很宽"
+    },
+    "a11yKeyboardShortcuts": {
+        "message": "键盘快捷键"
+    },
+    "a11yShowShortcuts": {
+        "message": "显示键盘快捷键"
+    },
+    "switchEnginePrev": {
+        "message": "切换到上一个搜索引擎"
+    },
+    "switchEngineNext": {
+        "message": "切换到下一个搜索引擎"
+    },
+    "focusSearch": {
+        "message": "聚焦搜索框"
+    },
+    "openSettings": {
+        "message": "打开设置"
+    },
+    "closeModal": {
+        "message": "关闭对话框"
+    },
+    "navigate": {
+        "message": "在元素间导航"
+    },
+    "activate": {
+        "message": "激活按钮或链接"
+    },
     "a11yMotion": {
         "message": "动画"
     },
@@ -256,5 +295,20 @@
     },
     "importConfigError": {
         "message": "配置导入失败："
+    },
+    "debugConsoleTitle": {
+        "message": "调试控制台"
+    },
+    "debugConsoleHelp": {
+        "message": "显示帮助"
+    },
+    "debugConsoleClose": {
+        "message": "关闭"
+    },
+    "debugConsoleClear": {
+        "message": "清空控制台"
+    },
+    "resetWallpaperConfirm": {
+        "message": "确定要重置壁纸吗？"
     }
 }

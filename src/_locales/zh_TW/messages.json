@@ -134,6 +134,45 @@
     "a11ySpacingVeryRelaxed": {
         "message": "非常寬鬆"
     },
+    "a11yLetterSpacing": {
+        "message": "字母間距"
+    },
+    "a11yWordSpacing": {
+        "message": "單詞間距"
+    },
+    "a11ySpacingWide": {
+        "message": "較寬"
+    },
+    "a11ySpacingWider": {
+        "message": "很寬"
+    },
+    "a11yKeyboardShortcuts": {
+        "message": "鍵盤快捷鍵"
+    },
+    "a11yShowShortcuts": {
+        "message": "顯示鍵盤快捷鍵"
+    },
+    "switchEnginePrev": {
+        "message": "切換到上一個搜索引擎"
+    },
+    "switchEngineNext": {
+        "message": "切換到下一個搜索引擎"
+    },
+    "focusSearch": {
+        "message": "聚焦搜索框"
+    },
+    "openSettings": {
+        "message": "打開設置"
+    },
+    "closeModal": {
+        "message": "關閉對話框"
+    },
+    "navigate": {
+        "message": "在元素間導航"
+    },
+    "activate": {
+        "message": "激活按鈕或鏈接"
+    },
     "a11yMotion": {
         "message": "動畫"
     },
@@ -256,6 +295,20 @@
     },
     "importConfigError": {
         "message": "設定匯入失敗："
+    },
+    "debugConsoleTitle": {
+        "message": "除錯主控台"
+    },
+    "debugConsoleHelp": {
+        "message": "顯示說明"
+    },
+    "debugConsoleClose": {
+        "message": "關閉"
+    },
+    "debugConsoleClear": {
+        "message": "清除主控台"
+    },
+    "resetWallpaperConfirm": {
+        "message": "確定要重設壁紙嗎？"
     }
 }
-

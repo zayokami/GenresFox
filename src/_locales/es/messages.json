@@ -44,6 +44,19 @@
     "a11ySpacingNormal": { "message": "Normal" },
     "a11ySpacingRelaxed": { "message": "Relajado" },
     "a11ySpacingVeryRelaxed": { "message": "Muy relajado" },
+    "a11yLetterSpacing": { "message": "Espaciado de letras" },
+    "a11yWordSpacing": { "message": "Espaciado de palabras" },
+    "a11ySpacingWide": { "message": "Amplio" },
+    "a11ySpacingWider": { "message": "Muy amplio" },
+    "a11yKeyboardShortcuts": { "message": "Atajos de teclado" },
+    "a11yShowShortcuts": { "message": "Mostrar atajos de teclado" },
+    "switchEnginePrev": { "message": "Cambiar al motor de búsqueda anterior" },
+    "switchEngineNext": { "message": "Cambiar al siguiente motor de búsqueda" },
+    "focusSearch": { "message": "Enfocar cuadro de búsqueda" },
+    "openSettings": { "message": "Abrir configuración" },
+    "closeModal": { "message": "Cerrar modal o cancelar" },
+    "navigate": { "message": "Navegar entre elementos" },
+    "activate": { "message": "Activar botón o enlace" },
     "a11yMotion": { "message": "Movimiento" },
     "a11yAnimations": { "message": "Animaciones" },
     "a11yMotionFull": { "message": "Completo" },
@@ -84,6 +97,10 @@
     "importConfigButton": { "message": "Importar configuración" },
     "importConfigConfirm": { "message": "Esto reemplazará todas tus configuraciones actuales. ¿Continuar?" },
     "importConfigSuccess": { "message": "¡Configuración importada exitosamente!" },
-    "importConfigError": { "message": "Error al importar la configuración: " }
+    "importConfigError": { "message": "Error al importar la configuración: " },
+    "debugConsoleTitle": { "message": "Consola de depuración" },
+    "debugConsoleHelp": { "message": "Mostrar ayuda" },
+    "debugConsoleClose": { "message": "Cerrar" },
+    "debugConsoleClear": { "message": "Limpiar consola" },
+    "resetWallpaperConfirm": { "message": "¿Restablecer fondo de pantalla?" }
 }
-

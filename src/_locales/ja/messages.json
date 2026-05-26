@@ -134,6 +134,45 @@
     "a11ySpacingVeryRelaxed": {
         "message": "とても広め"
     },
+    "a11yLetterSpacing": {
+        "message": "文字間隔"
+    },
+    "a11yWordSpacing": {
+        "message": "単語間隔"
+    },
+    "a11ySpacingWide": {
+        "message": "広め"
+    },
+    "a11ySpacingWider": {
+        "message": "とても広め"
+    },
+    "a11yKeyboardShortcuts": {
+        "message": "キーボードショートカット"
+    },
+    "a11yShowShortcuts": {
+        "message": "キーボードショートカットを表示"
+    },
+    "switchEnginePrev": {
+        "message": "前の検索エンジンに切り替え"
+    },
+    "switchEngineNext": {
+        "message": "次の検索エンジンに切り替え"
+    },
+    "focusSearch": {
+        "message": "検索ボックスにフォーカス"
+    },
+    "openSettings": {
+        "message": "設定を開く"
+    },
+    "closeModal": {
+        "message": "モーダルを閉じるまたはキャンセル"
+    },
+    "navigate": {
+        "message": "要素間を移動"
+    },
+    "activate": {
+        "message": "ボタンまたはリンクをアクティブ化"
+    },
     "a11yMotion": {
         "message": "モーション"
     },
@@ -277,6 +316,20 @@
     },
     "importConfigError": {
         "message": "設定のインポートに失敗しました："
+    },
+    "debugConsoleTitle": {
+        "message": "デバッグコンソール"
+    },
+    "debugConsoleHelp": {
+        "message": "ヘルプを表示"
+    },
+    "debugConsoleClose": {
+        "message": "閉じる"
+    },
+    "debugConsoleClear": {
+        "message": "コンソールをクリア"
+    },
+    "resetWallpaperConfirm": {
+        "message": "壁紙をリセットしてもよろしいですか？"
     }
 }
-
