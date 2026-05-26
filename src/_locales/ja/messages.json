@@ -134,6 +134,9 @@
     "closeModal": {
         "message": "モーダルを閉じるまたはキャンセル"
     },
+    "createStickyNoteShortcut": {
+        "message": "付箋を作成"
+    },
     "creditsBingWallpaper": {
         "message": "デフォルト壁紙は Bing 日替わり壁紙です。"
     },

@@ -134,6 +134,9 @@
     "closeModal": {
         "message": "Fermer la fenêtre ou annuler"
     },
+    "createStickyNoteShortcut": {
+        "message": "Créer un post-it"
+    },
     "creditsBingWallpaper": {
         "message": "Fond par défaut : Bing Daily Wallpaper."
     },

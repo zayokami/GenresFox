@@ -134,6 +134,9 @@
     "closeModal": {
         "message": "關閉對話框"
     },
+    "createStickyNoteShortcut": {
+        "message": "新增便籤"
+    },
     "creditsBingWallpaper": {
         "message": "預設桌布由 Bing 每日桌布提供。"
     },

@@ -134,6 +134,9 @@
     "closeModal": {
         "message": "Close dialog"
     },
+    "createStickyNoteShortcut": {
+        "message": "Create sticky note"
+    },
     "creditsBingWallpaper": {
         "message": "Default wallpaper powered by Bing Daily Wallpaper."
     },

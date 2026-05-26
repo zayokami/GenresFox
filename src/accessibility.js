@@ -492,6 +492,7 @@ const AccessibilityManager = (function () {
             { key: 'Alt + ↓', desc: 'switchEngineNext', action: 'Switch to next search engine' },
             { key: '/', desc: 'focusSearch', action: 'Focus search box' },
             { key: 'Alt + ,', desc: 'openSettings', action: 'Open settings' },
+            { key: 'Alt + N', desc: 'createStickyNoteShortcut', action: 'Create sticky note' },
             { key: 'Esc', desc: 'closeModal', action: 'Close modal or cancel' },
             { key: 'Tab', desc: 'navigate', action: 'Navigate between elements' },
             { key: 'Enter', desc: 'activate', action: 'Activate button or link' }
@@ -972,7 +973,8 @@ const AccessibilityManager = (function () {
         SWITCH_ENGINE_PREV: { key: 'ArrowUp', altKey: true, description: 'switchEnginePrev' },
         SWITCH_ENGINE_NEXT: { key: 'ArrowDown', altKey: true, description: 'switchEngineNext' },
         FOCUS_SEARCH: { key: '/', altKey: false, ctrlKey: false, description: 'focusSearch' },
-        OPEN_SETTINGS: { key: ',', altKey: true, description: 'openSettings' }
+        OPEN_SETTINGS: { key: ',', altKey: true, description: 'openSettings' },
+        CREATE_STICKY_NOTE: { key: 'n', altKey: true, description: 'createStickyNoteShortcut' }
     };
 
     let _shortcutsEnabled = true;
@@ -1020,6 +1022,15 @@ const AccessibilityManager = (function () {
         if (e.altKey && e.key === ',') {
             e.preventDefault();
             _openSettings();
+            return;
+        }
+
+        // Alt + "n": Create sticky note
+        if (e.altKey && (e.key === 'n' || e.key === 'N')) {
+            e.preventDefault();
+            if (typeof StickyNotes !== 'undefined' && StickyNotes.createNote) {
+                StickyNotes.createNote();
+            }
             return;
         }
     }

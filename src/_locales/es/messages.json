@@ -134,6 +134,9 @@
     "closeModal": {
         "message": "Cerrar modal o cancelar"
     },
+    "createStickyNoteShortcut": {
+        "message": "Crear nota adhesiva"
+    },
     "creditsBingWallpaper": {
         "message": "Fondo predeterminado de Bing Daily Wallpaper."
     },

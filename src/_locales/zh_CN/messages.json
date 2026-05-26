@@ -134,6 +134,9 @@
     "closeModal": {
         "message": "关闭对话框"
     },
+    "createStickyNoteShortcut": {
+        "message": "创建便签"
+    },
     "creditsBingWallpaper": {
         "message": "默认壁纸由 Bing 每日壁纸提供。"
     },

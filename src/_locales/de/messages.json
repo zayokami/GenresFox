@@ -134,6 +134,9 @@
     "closeModal": {
         "message": "Modal schließen oder abbrechen"
     },
+    "createStickyNoteShortcut": {
+        "message": "Haftnotiz erstellen"
+    },
     "creditsBingWallpaper": {
         "message": "Standard-Hintergrundbilder werden von Bing Tagesbilder bereitgestellt."
     },

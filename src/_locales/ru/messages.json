@@ -134,6 +134,9 @@
     "closeModal": {
         "message": "Закрыть модальное окно или отменить"
     },
+    "createStickyNoteShortcut": {
+        "message": "Создать заметку"
+    },
     "creditsBingWallpaper": {
         "message": "Стандартные обои предоставляются службой Bing Обои дня."
     },
