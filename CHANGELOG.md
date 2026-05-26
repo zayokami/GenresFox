@@ -6,6 +6,62 @@ The dates recorded in this document are based on CST (UTC+8).
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.7] - 2026-05-26
+
+### Added
+- **Sticky Notes**: Fully functional sticky notes with drag-and-drop placement
+  - Click directly on notes to edit text inline (contenteditable)
+  - Right-click context menu: create, delete, change colors, font settings, bring to front
+  - Per-note font customization: size (12-32px), weight (400-900), italic toggle, letter spacing, line height
+  - Bold/italic toggle buttons in font panel with live preview
+  - Drag lift effect: scale 1.06, triple-layer shadow, brightness increase on pickup
+  - IndexedDB storage (`GenresFoxStickyNotesDB`) for persistence across sessions
+  - Migration path from localStorage to IndexedDB for existing notes
+- **Keyboard Shortcut for Sticky Notes**: `Alt + N` creates a new sticky note instantly
+  - Listed in keyboard shortcuts help panel
+  - Respects accessibility animation preferences
+- **Near-Lossless Image Compression**: Enhanced image processing pipeline for maximum fidelity
+  - New `QUALITY_NEAR_LOSSLESS` (0.99) constant for ultra-high quality
+  - PNG lossless encoding path: automatically tries PNG first when `nearLossless` is enabled
+  - Falls back to high-quality WebP if PNG exceeds 15MB
+  - Quality constants raised across the board: HIGH 0.95→0.98, MEDIUM 0.88→0.92, LOW 0.75→0.88
+  - Target output size increased from 5MB to 8MB with tighter tolerance (3%)
+  - Progressive compression uses more conservative quality steps (0.97x/0.94x)
+- **Shortcut Folder Grouping**: Drag-to-folder grouping for shortcuts
+  - Drag a shortcut onto another to create a folder
+  - Folders can be disbanded to restore individual shortcuts
+  - Full internationalization support for folder UI
+  - Folder names can be edited inline
+- **HTML Structure Optimization**:
+  - Extracted inline styles to semantic CSS classes (`.modal--shortcuts`, `.form-actions`, `.about-export`, `.setting-desc`, `.export-actions`)
+  - Added `fetchpriority="high"` to critical CSS preload
+  - Added `decoding="async"` to preview image for non-blocking decode
+  - Added `<meta name="color-scheme">` for correct dark/light form controls
+  - Removed empty `src=""` to prevent spurious requests
+  - Marked `console-warning.js` as `async` to avoid parser blocking
+  - Replaced `style="display:none"` with native `hidden` attribute
+- **i18n Enhancements**: Added missing translations across all 8 languages for new features
+- **Debug Console Enhancements**: Expanded developer tools with additional diagnostic commands
+
+### Changed
+- **WASM Gamma Correction**: Optimized LUT lookup with linear interpolation
+  - `linear_to_srgb_lut` now interpolates between adjacent LUT entries instead of direct indexing
+  - Quantization error reduced from ~1/255 to ~1/65025, eliminating visible banding in gradients
+  - Bilinear interpolation unified to FMA-stable form `a + t * (b - a)` for better numerical stability
+- **Image Processing Defaults**: Preview quality raised (tiny 0.3→0.5, small 0.5→0.65, medium 0.4→0.65)
+- **Config Manager**: Version bumped to 0.4.7 with migration support for new settings
+
+### Fixed
+- **Bold/Italic Toggle Bug**: Fixed font panel toggle buttons referencing stale detached copy instead of live `note.font` object
+  - Toggle state now correctly syncs with actual note font properties
+- **Sticky Note Drag**: Fixed `contenteditable` area blocking drag via `stopPropagation()`
+  - Drag vs click detected via movement threshold (>5px)
+- **i18n Locale JSON Corruption**: Fixed batch script manual concatenation corrupting all 8 locale files
+  - Rebuilt using `JSON.stringify(sorted, null, 4)` for safe serialization
+- **Wallpaper Disk Pressure**: Added persistent storage permission logic to prevent IndexedDB eviction under disk pressure
+- **Memory Leaks**: Fixed object URL leaks, DOM thrashing, and worker callback accumulation
+- **WASM Busy-Wait**: Fixed worker lifecycle issues and race conditions in WASM loading
+
 ## [0.4.6] - 2026-01-02
 
 ### Added
