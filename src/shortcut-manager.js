@@ -1012,8 +1012,12 @@ const ShortcutManager = (function() {
          * @param {Object} shortcut - Shortcut object {name, url, icon?}
          */
         add(shortcut) {
-            if (!shortcut || !shortcut.name || !shortcut.url) {
-                throw new Error('Shortcut must have name and url');
+            if (!shortcut || !shortcut.name) {
+                throw new Error('Shortcut must have name');
+            }
+            // Folders do not require a url
+            if (shortcut.type !== 'folder' && !shortcut.url) {
+                throw new Error('Shortcut must have url');
             }
             shortcuts.push(shortcut);
             _saveShortcuts();
