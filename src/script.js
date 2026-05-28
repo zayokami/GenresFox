@@ -1530,17 +1530,18 @@ function handleShortcutDragOver(e) {
                 const oldEl = shortcutsGrid.querySelector(`.shortcut-item[data-index="${currentMergeTargetIndex}"]`);
                 if (oldEl) oldEl.classList.remove('drag-over-merge');
             }
-            
-            currentMergeTargetIndex = targetIndex;
-            mergeAllowedIndex = null;
 
+            currentMergeTargetIndex = targetIndex;
+            // Allow merge immediately so folder creation works on quick drops
+            mergeAllowedIndex = targetIndex;
+
+            // Visual feedback delay: show pulse animation after brief hover
             mergeHoverTimer = setTimeout(() => {
                 // Double check if we are still on the same target
                 if (currentMergeTargetIndex === targetIndex) {
-                    mergeAllowedIndex = targetIndex;
                     target.classList.add('drag-over-merge');
                 }
-            }, 300); // 0.3s hover to allow merge
+            }, 150);
         }
     }
 }
