@@ -193,190 +193,379 @@ body::after {
     object-fit: contain;
 }
 
-/* Folder overlay */
+/* ==================== Folder Styles ==================== */
+
+/* --- Folder in shortcuts grid --- */
+
+.shortcut-folder .folder-icon {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible;
+}
+
+/* Folder tab */
+.folder-tab {
+    width: 28px;
+    height: 10px;
+    background: linear-gradient(135deg, #e8a838 0%, #d48a20 100%);
+    border-radius: 6px 6px 0 0;
+    box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.15);
+    position: relative;
+    z-index: 2;
+    margin-bottom: -2px;
+}
+
+/* Folder body */
+.folder-body {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(145deg, #f0c050 0%, #e0a030 50%, #c88020 100%);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.3),
+        0 2px 6px rgba(0, 0, 0, 0.25),
+        0 4px 12px rgba(180, 120, 20, 0.3);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: transform var(--transition-normal) var(--transition-bouncy),
+                box-shadow var(--transition-normal) var(--transition-bouncy);
+}
+
+.shortcut-folder:hover .folder-body {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        0 4px 10px rgba(0, 0, 0, 0.3),
+        0 6px 18px rgba(180, 120, 20, 0.4);
+}
+
+/* Paper stack inside folder */
+.folder-paper-stack {
+    position: relative;
+    width: 36px;
+    height: 36px;
+}
+
+.folder-paper {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 245, 250, 0.9) 100%);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.folder-paper:nth-child(1) {
+    top: 2px;
+    left: 6px;
+    transform: rotate(-8deg);
+}
+
+.folder-paper:nth-child(2) {
+    top: 4px;
+    left: 8px;
+    transform: rotate(4deg);
+}
+
+.folder-paper:nth-child(3) {
+    top: 6px;
+    left: 4px;
+    transform: rotate(-2deg);
+}
+
+.folder-paper img {
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+}
+
+.folder-paper-fallback {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(0, 0, 0, 0.55);
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Count badge */
+.folder-count-badge {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    border-radius: var(--radius-pill);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    z-index: 5;
+}
+
+/* Drag merge effect */
+.shortcut-item.drag-over-merge .folder-body {
+    animation: folderMergePulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes folderMergePulse {
+    from {
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 2px 6px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(180, 120, 20, 0.3), 0 0 0 3px rgba(59, 130, 246, 0.5);
+    }
+    to {
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 6px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(180, 120, 20, 0.3), 0 0 0 5px rgba(59, 130, 246, 0.7);
+    }
+}
+
+/* --- Folder Overlay --- */
+
 .folder-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.35);
+    background: rgba(0, 0, 0, 0.4);
     display: none;
     align-items: flex-start;
     justify-content: center;
     z-index: 999;
-    padding: 20px;
+    padding: 24px;
+    backdrop-filter: blur(4px);
+}
+
+.folder-overlay.active {
+    display: flex;
 }
 
 .folder-bubble {
-    position: absolute;
-    background: rgba(25, 25, 30, 0.9);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    width: 360px;
-    max-width: 90vw;
-    padding: 16px;
+    position: relative;
+    background: linear-gradient(145deg, rgba(32, 32, 40, 0.92) 0%, rgba(24, 24, 32, 0.95) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-lg);
+    width: 380px;
+    max-width: 92vw;
+    padding: 20px;
     color: #fff;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--shadow-strong), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    animation: folderBubbleIn 0.3s var(--transition-curve);
+}
+
+@keyframes folderBubbleIn {
+    from {
+        opacity: 0;
+        transform: translateY(-16px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 .folder-bubble-header {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
 }
 
 .folder-bubble-input {
     flex: 1;
-    padding: 8px 12px;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
     background: rgba(255, 255, 255, 0.06);
     color: #fff;
+    font-size: 15px;
+    font-weight: 500;
     outline: none;
+    transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.folder-bubble-input:focus {
+    border-color: rgba(59, 130, 246, 0.6);
+    background: rgba(255, 255, 255, 0.09);
 }
 
 .folder-bubble-close {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     background: rgba(255, 255, 255, 0.08);
-    color: #fff;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 18px;
+    line-height: 1;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--transition-fast), color var(--transition-fast), transform 0.15s ease;
+}
+
+.folder-bubble-close:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    transform: rotate(90deg);
 }
 
 .folder-bubble-content {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    max-height: 300px;
+    gap: 6px;
+    max-height: 320px;
     overflow-y: auto;
+    padding-right: 4px;
+}
+
+.folder-bubble-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.folder-bubble-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.folder-bubble-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-pill);
+}
+
+/* Folder item row */
+.folder-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.04);
+    transition: background var(--transition-fast);
+}
+
+.folder-item:hover {
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .folder-item-info {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    min-width: 0;
 }
 
 .folder-item-info img {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     object-fit: contain;
+    flex-shrink: 0;
+}
+
+.folder-item-info span {
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .folder-item-fallback {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 5px;
+    flex-shrink: 0;
 }
 
 .folder-item-actions {
     display: flex;
-    gap: 8px;
+    gap: 6px;
+    flex-shrink: 0;
 }
 
 .folder-item-actions button {
-    padding: 6px 10px;
+    padding: 5px 10px;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     cursor: pointer;
-    background: rgba(0, 191, 255, 0.15);
-    color: #fff;
-    transition: background 0.2s ease;
+    font-size: 12px;
+    font-weight: 500;
+    transition: background var(--transition-fast), transform 0.15s ease;
 }
 
-.folder-item-actions button:hover {
-    background: rgba(0, 191, 255, 0.3);
+.folder-item-actions .btn-extract {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
 }
 
-.shortcut-folder .folder-icon {
-    position: relative;
-    overflow: hidden;
+.folder-item-actions .btn-extract:hover {
+    background: rgba(59, 130, 246, 0.3);
+    transform: translateY(-1px);
 }
 
-.folder-stack {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: repeat(2, 1fr);
-    gap: 2px;
-    width: 100%;
-    height: 100%;
+.folder-item-actions .btn-remove {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
 }
 
-.folder-stack-cell {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
+.folder-item-actions .btn-remove:hover {
+    background: rgba(239, 68, 68, 0.25);
+    transform: translateY(-1px);
 }
 
-.folder-stack-cell img {
-    width: 20px;
-    height: 20px;
-}
-
-.shortcut-icon-fallback {
-    background: rgba(255, 255, 255, 0.16) !important;
-    color: rgba(255, 255, 255, 0.92) !important;
-}
-
-.folder-stack-empty {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0.7;
-}
-
+/* Folder footer */
 .folder-bubble-footer {
     display: flex;
     justify-content: center;
-    margin-top: 12px;
-    padding-top: 12px;
+    margin-top: 16px;
+    padding-top: 14px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .folder-bubble-disband {
-    padding: 8px 16px;
+    padding: 9px 20px;
     border: none;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    background: rgba(255, 59, 48, 0.15);
-    color: #ff6b6b;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.2) 100%);
+    color: #fca5a5;
     font-size: 13px;
     font-weight: 500;
-    transition: background 0.2s ease, transform 0.15s ease;
+    transition: background var(--transition-fast), transform 0.15s ease, box-shadow var(--transition-fast);
 }
 
 .folder-bubble-disband:hover {
-    background: rgba(255, 59, 48, 0.28);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.28) 0%, rgba(220, 38, 38, 0.35) 100%);
     transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
 .folder-bubble-disband:active {
     transform: scale(0.98);
-}
-
-.shortcut-item.drag-over-merge {
-    transform: scale(1.08);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5), 0 8px 24px rgba(59, 130, 246, 0.25);
-    animation: folderMergePulse 0.8s ease-in-out infinite alternate;
-}
-
-@keyframes folderMergePulse {
-    from {
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4), 0 8px 24px rgba(59, 130, 246, 0.2);
-    }
-    to {
-        box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.6), 0 8px 28px rgba(59, 130, 246, 0.35);
-    }
 }
 
 .modal-open {

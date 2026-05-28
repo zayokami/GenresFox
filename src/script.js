@@ -1769,7 +1769,7 @@ function openFolderOverlay(index) {
     folderOverlayContent.innerHTML = '';
     folder.items.forEach((item, idx) => {
         const row = document.createElement('div');
-        row.className = 'folder-item-row';
+        row.className = 'folder-item';
         const left = document.createElement('div');
         left.className = 'folder-item-info';
         const img = document.createElement('img');
@@ -1792,6 +1792,7 @@ function openFolderOverlay(index) {
         const actions = document.createElement('div');
         actions.className = 'folder-item-actions';
         const removeBtn = document.createElement('button');
+        removeBtn.className = 'btn-remove';
         removeBtn.textContent = (typeof I18n !== 'undefined' && I18n.getMessage)
             ? I18n.getMessage('folderRemove', 'Remove')
             : 'Remove';
@@ -1827,6 +1828,7 @@ function openFolderOverlay(index) {
         });
 
         const extractBtn = document.createElement('button');
+        extractBtn.className = 'btn-extract';
         extractBtn.textContent = (typeof I18n !== 'undefined' && I18n.getMessage)
             ? I18n.getMessage('folderExtract', 'Extract')
             : 'Extract';

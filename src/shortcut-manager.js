@@ -872,42 +872,54 @@ const ShortcutManager = (function() {
                     a.addEventListener('click', () => onFolderClick(index));
                 }
 
-                const iconDiv = document.createElement("div");
-                iconDiv.className = "shortcut-icon folder-icon";
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'shortcut-icon folder-icon';
 
-                const stack = document.createElement('div');
-                stack.className = 'folder-stack';
-                const previews = shortcut.items.slice(0, 4);
-                previews.forEach(item => {
-                    const cell = document.createElement('div');
-                    cell.className = 'folder-stack-cell';
+                // Folder tab
+                const folderTab = document.createElement('div');
+                folderTab.className = 'folder-tab';
+                iconDiv.appendChild(folderTab);
+
+                // Folder body
+                const folderBody = document.createElement('div');
+                folderBody.className = 'folder-body';
+
+                // Paper stack preview
+                const paperStack = document.createElement('div');
+                paperStack.className = 'folder-paper-stack';
+                const previews = shortcut.items.slice(0, 3);
+                previews.forEach((item, i) => {
+                    const paper = document.createElement('div');
+                    paper.className = 'folder-paper';
+                    paper.style.zIndex = 3 - i;
                     const img = document.createElement('img');
                     img.alt = item.name;
+                    img.draggable = false;
                     const cacheKey = `shortcut_${item.url || item.id}`;
                     img.src = getIconSrc(cacheKey, item.icon || '', item.url);
                     img.onerror = () => {
                         img.style.display = 'none';
-                        cell.textContent = (item.name || '?').charAt(0).toUpperCase();
-                        cell.classList.add('shortcut-icon-fallback');
-                        cell.title = (window.I18n && I18n.getMessage)
-                            ? (I18n.getMessage('shortcutIconError') || 'Icon failed to load, using initial instead.')
-                            : 'Icon failed to load, using initial instead.';
+                        paper.textContent = (item.name || '?').charAt(0).toUpperCase();
+                        paper.classList.add('folder-paper-fallback');
                     };
-                    cell.appendChild(img);
-                    stack.appendChild(cell);
+                    paper.appendChild(img);
+                    paperStack.appendChild(paper);
                 });
-                if (previews.length === 0) {
-                    const empty = document.createElement('div');
-                    empty.className = 'folder-stack-empty';
-                    empty.textContent = (typeof I18n !== 'undefined' && I18n.getMessage)
-                        ? I18n.getMessage('folderDefault', 'Folder')
-                        : 'Folder';
-                    stack.appendChild(empty);
-                }
-                iconDiv.appendChild(stack);
+                folderBody.appendChild(paperStack);
 
-                const nameDiv = document.createElement("div");
-                nameDiv.className = "shortcut-name";
+                // Count badge
+                const count = shortcut.items.length;
+                if (count > 0) {
+                    const badge = document.createElement('span');
+                    badge.className = 'folder-count-badge';
+                    badge.textContent = count > 99 ? '99+' : String(count);
+                    folderBody.appendChild(badge);
+                }
+
+                iconDiv.appendChild(folderBody);
+
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'shortcut-name';
                 nameDiv.textContent = shortcut.name || ((typeof I18n !== 'undefined' && I18n.getMessage)
                     ? I18n.getMessage('folderDefault', 'Folder')
                     : 'Folder');
