@@ -73,18 +73,7 @@ if [ -z "$CHROME_PATH" ]; then
 fi
 
 if [ -z "$CHROME_PATH" ]; then
-    echo ""
-    echo "Error: Chrome or Chromium not found!"
-    echo ""
-    echo "Please use manual packaging method:"
-    echo "1. Open Chrome/Chromium and go to chrome://extensions/"
-    echo "2. Enable 'Developer mode'"
-    echo "3. Click 'Pack extension'"
-    echo "4. Select the 'src' folder as extension root"
-    echo "5. Leave private key blank (for first-time packaging)"
-    echo "6. Click 'Pack Extension'"
-    echo ""
-    exit 1
+    echo "Chrome or Chromium not found; creating ZIP only."
 fi
 
 echo ""
@@ -113,9 +102,13 @@ fi
 # Create zip using zip command (if available)
 if command -v zip &> /dev/null; then
     cd src
-    if zip -r "../$ZIP_NAME" . -q; then
+    if zip -r "../$ZIP_NAME" . -q \
+        -x "*.git*" "*node_modules*" "*target*" "*wasm-resize/*" \
+        -x "*.cargo*" "*.rs" "*.toml" "*.lock" "*.sh" "*.bat" "*.md" \
+        -x "*.pem" "*.key" "*.crt" "*.cer" "*.p12" "*.pfx" "*.secret" \
+        -x ".env" ".env.*" "*.crx" "*.zip"; then
         cd ..
-        FILE_SIZE=$(du -h "../$ZIP_NAME" | cut -f1)
+        FILE_SIZE=$(du -h "$ZIP_NAME" | cut -f1)
         echo "Created: $ZIP_NAME ($FILE_SIZE)"
     else
         cd ..
@@ -123,7 +116,11 @@ if command -v zip &> /dev/null; then
         exit 1
     fi
 elif command -v 7z &> /dev/null; then
-    if 7z a "$ZIP_NAME" src/* -r -q; then
+    if (cd src && 7z a "../$ZIP_NAME" . -r -q \
+        -xr!*.git* -xr!*node_modules* -xr!*target* -xr!*wasm-resize/* \
+        -xr!*.cargo* -xr!*.rs -xr!*.toml -xr!*.lock -xr!*.sh -xr!*.bat -xr!*.md \
+        -xr!*.pem -xr!*.key -xr!*.crt -xr!*.cer -xr!*.p12 -xr!*.pfx -xr!*.secret \
+        -xr!.env -xr!.env.* -xr!*.crx -xr!*.zip); then
         FILE_SIZE=$(du -h "$ZIP_NAME" | cut -f1)
         echo "Created: $ZIP_NAME ($FILE_SIZE)"
     else
@@ -141,4 +138,3 @@ echo "To convert ZIP to CRX:"
 echo "1. Rename .zip to .crx (optional, but recommended)"
 echo "2. Or use Chrome's packager as described above"
 echo ""
-

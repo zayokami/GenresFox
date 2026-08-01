@@ -71,7 +71,7 @@ const AccessibilityManager = (function () {
 
     // ==================== Private State ====================
     let _state = {
-        settings: { ...DEFAULT_SETTINGS },
+        settings: _sanitizeSettings(DEFAULT_SETTINGS),
         isInitialized: false,
         liveRegion: null,
         skipLink: null
@@ -111,15 +111,14 @@ const AccessibilityManager = (function () {
     function _loadSettings() {
         try {
             const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
-            if (saved) {
+            if (saved && saved.length <= 16384) {
                 const parsed = JSON.parse(saved);
-                // Deep merge with defaults to handle missing properties
-                return _deepMerge(DEFAULT_SETTINGS, parsed);
+                return _sanitizeSettings(_deepMerge(DEFAULT_SETTINGS, parsed));
             }
         } catch (e) {
             console.warn('Failed to load accessibility settings:', e);
         }
-        return { ...DEFAULT_SETTINGS };
+        return _sanitizeSettings(DEFAULT_SETTINGS);
     }
 
     /**
@@ -145,6 +144,9 @@ const AccessibilityManager = (function () {
      */
     function _deepMerge(target, source) {
         const result = { ...target };
+        if (!source || typeof source !== 'object' || Array.isArray(source)) {
+            return result;
+        }
         for (const key in source) {
             if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
             if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
@@ -157,6 +159,37 @@ const AccessibilityManager = (function () {
         return result;
     }
 
+    function _allowedValue(value, allowedValues, fallback) {
+        return typeof value === 'string' && allowedValues.includes(value) ? value : fallback;
+    }
+
+    function _normalizeFontSize(value) {
+        const numericValue = typeof value === 'number' ? value : Number(value);
+        if (!Number.isFinite(numericValue)) return CONFIG.FONT_SIZE.DEFAULT;
+        return Math.round(Math.max(CONFIG.FONT_SIZE.MIN, Math.min(CONFIG.FONT_SIZE.MAX, numericValue)));
+    }
+
+    function _sanitizeSettings(settings) {
+        const source = settings && typeof settings === 'object' && !Array.isArray(settings) ? settings : {};
+        const sourceDisplay = source.display && typeof source.display === 'object' && !Array.isArray(source.display)
+            ? source.display
+            : {};
+
+        return {
+            enabled: typeof source.enabled === 'boolean' ? source.enabled : DEFAULT_SETTINGS.enabled,
+            display: {
+                theme: _allowedValue(sourceDisplay.theme, Object.values(CONFIG.THEMES), DEFAULT_SETTINGS.display.theme),
+                fontSize: _normalizeFontSize(sourceDisplay.fontSize),
+                fontFamily: _allowedValue(sourceDisplay.fontFamily, Object.values(CONFIG.FONT_FAMILIES), DEFAULT_SETTINGS.display.fontFamily),
+                lineSpacing: _allowedValue(sourceDisplay.lineSpacing, Object.values(CONFIG.LINE_SPACING), DEFAULT_SETTINGS.display.lineSpacing),
+                letterSpacing: _allowedValue(sourceDisplay.letterSpacing, Object.values(CONFIG.LETTER_SPACING), DEFAULT_SETTINGS.display.letterSpacing),
+                wordSpacing: _allowedValue(sourceDisplay.wordSpacing, Object.values(CONFIG.WORD_SPACING), DEFAULT_SETTINGS.display.wordSpacing)
+            },
+            motion: _allowedValue(source.motion, Object.values(CONFIG.MOTION), DEFAULT_SETTINGS.motion),
+            focus: _allowedValue(source.focus, Object.values(CONFIG.FOCUS_STYLE), DEFAULT_SETTINGS.focus)
+        };
+    }
+
     // ==================== Theme Management ====================
 
     /**
@@ -164,6 +197,7 @@ const AccessibilityManager = (function () {
      * @param {string} theme - Theme identifier
      */
     function _applyTheme(theme) {
+        theme = _allowedValue(theme, Object.values(CONFIG.THEMES), DEFAULT_SETTINGS.display.theme);
         const root = document.documentElement;
         
         // Remove all theme classes
@@ -193,7 +227,7 @@ const AccessibilityManager = (function () {
      * @param {number} size - Font size percentage (80-200)
      */
     function _applyFontSize(size) {
-        const clampedSize = Math.max(CONFIG.FONT_SIZE.MIN, Math.min(CONFIG.FONT_SIZE.MAX, size));
+        const clampedSize = _normalizeFontSize(size);
         document.documentElement.style.setProperty('--a11y-font-scale', clampedSize / 100);
         
         _state.settings.display.fontSize = clampedSize;
@@ -208,6 +242,7 @@ const AccessibilityManager = (function () {
      * @param {string} family - Font family identifier
      */
     function _applyFontFamily(family) {
+        family = _allowedValue(family, Object.values(CONFIG.FONT_FAMILIES), DEFAULT_SETTINGS.display.fontFamily);
         const root = document.documentElement;
         
         // Remove all font family classes
@@ -229,6 +264,7 @@ const AccessibilityManager = (function () {
      * @param {string} spacing - Line spacing identifier
      */
     function _applyLineSpacing(spacing) {
+        spacing = _allowedValue(spacing, Object.values(CONFIG.LINE_SPACING), DEFAULT_SETTINGS.display.lineSpacing);
         const root = document.documentElement;
         
         // Remove all line spacing classes
@@ -250,6 +286,7 @@ const AccessibilityManager = (function () {
      * @param {string} spacing - Letter spacing identifier
      */
     function _applyLetterSpacing(spacing) {
+        spacing = _allowedValue(spacing, Object.values(CONFIG.LETTER_SPACING), DEFAULT_SETTINGS.display.letterSpacing);
         const root = document.documentElement;
         
         // Remove all letter spacing classes
@@ -271,6 +308,7 @@ const AccessibilityManager = (function () {
      * @param {string} spacing - Word spacing identifier
      */
     function _applyWordSpacing(spacing) {
+        spacing = _allowedValue(spacing, Object.values(CONFIG.WORD_SPACING), DEFAULT_SETTINGS.display.wordSpacing);
         const root = document.documentElement;
         
         // Remove all word spacing classes
@@ -294,6 +332,7 @@ const AccessibilityManager = (function () {
      * @param {string} motion - Motion preference identifier
      */
     function _applyMotion(motion) {
+        motion = _allowedValue(motion, Object.values(CONFIG.MOTION), DEFAULT_SETTINGS.motion);
         const root = document.documentElement;
         
         // Remove all motion classes
@@ -317,6 +356,7 @@ const AccessibilityManager = (function () {
      * @param {string} style - Focus style identifier
      */
     function _applyFocusStyle(style) {
+        style = _allowedValue(style, Object.values(CONFIG.FOCUS_STYLE), DEFAULT_SETTINGS.focus);
         const root = document.documentElement;
         
         // Remove all focus style classes
@@ -369,7 +409,7 @@ const AccessibilityManager = (function () {
      * @param {Event} e
      */
     function _handleFontSizeChange(e) {
-        const value = parseInt(e.target.value, 10);
+        const value = _normalizeFontSize(e.target.value);
 
         // Update displayed value immediately for responsiveness
         if (_elements.fontSizeValue) {
@@ -577,7 +617,7 @@ const AccessibilityManager = (function () {
             : 'Reset all accessibility settings to defaults?';
         if (!confirm(confirmMessage)) return;
 
-        _state.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+        _state.settings = _sanitizeSettings(DEFAULT_SETTINGS);
         _saveSettings();
         _applyAllSettings();
         _syncUI();

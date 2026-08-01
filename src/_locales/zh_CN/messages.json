@@ -317,8 +317,29 @@
     "searchErrorNavigationFailed": {
         "message": "链接打开失败。"
     },
+    "searchErrorBuildUrl": {
+        "message": "构建搜索 URL 失败。"
+    },
+    "searchErrorInitFailed": {
+        "message": "搜索栏初始化失败。"
+    },
+    "searchErrorInvalidEngine": {
+        "message": "搜索引擎 URL 无效。"
+    },
+    "searchErrorInvalidInput": {
+        "message": "请输入有效的搜索内容。"
+    },
     "searchErrorNoEngine": {
         "message": "没有可用的搜索引擎。"
+    },
+    "searchErrorNoInput": {
+        "message": "搜索输入框不可用。"
+    },
+    "searchErrorQueryTooLong": {
+        "message": "搜索内容过长。"
+    },
+    "searchErrorUnexpected": {
+        "message": "发生意外错误，请重试。"
     },
     "searchErrorUnsafeUrl": {
         "message": "无法访问此网址，可能不安全。"

@@ -5,6 +5,7 @@
 .cursorrules/
 .claude/
 CLAUDE.md
+PROJECT_INDEX.md
 *.suo
 *.ntvs*
 *.njsproj

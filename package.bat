@@ -21,18 +21,10 @@ if not exist "src\manifest.json" (
     exit /b 1
 )
 
-echo.
-echo Manual Packaging Steps:
-echo 1. Open Chrome/Edge and navigate to chrome://extensions/
-echo 2. Enable 'Developer mode' (toggle in top right)
-echo 3. Click 'Pack extension' button
-echo 4. Extension root directory: Select the 'src' folder
-echo 5. Private key file: Leave blank (for first-time packaging)
-echo 6. Click 'Pack Extension'
-echo 7. The .crx file will be created in the parent directory of 'src'
-echo.
-echo Note: Automated .crx packaging requires Chrome's command-line tools.
-echo The easiest method is to use Chrome's built-in packager as shown above.
-echo.
-pause
+echo Creating a filtered ZIP package...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0package.ps1" %*
+if errorlevel 1 (
+    echo Packaging failed.
+    exit /b 1
+)
 

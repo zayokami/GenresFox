@@ -12,7 +12,7 @@ const ShortcutManager = (function() {
         { name: "GitHub", url: "https://github.com", icon: "https://github.com/favicon.ico" },
         { name: "YouTube", url: "https://youtube.com", icon: "https://www.youtube.com/favicon.ico" },
         { name: "Bilibili", url: "https://bilibili.com", icon: "https://bilibili.com/favicon.ico" },
-        { name: "Gmail", url: "https://mail.google.com", icon: "https://icons.duckduckgo.com/ip3/mail.google.com.ico" }
+        { name: "Gmail", url: "https://mail.google.com", icon: "https://mail.google.com/favicon.ico" }
     ];
 
     const SHORTCUT_TARGET_KEY = 'shortcutOpenTarget';
@@ -23,6 +23,14 @@ const ShortcutManager = (function() {
     const ICON_CACHE_DB_VERSION = 1;
     const ICON_CACHE_VERSION = 1;
     const ICON_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+    const MAX_ICON_BYTES = 512 * 1024;
+    const MAX_ICON_DATA_URL_LENGTH = Math.ceil(MAX_ICON_BYTES * 4 / 3) + 128;
+    const MAX_ICON_PIXELS = 4 * 1024 * 1024;
+    const MAX_SHORTCUT_NAME_LENGTH = 2048;
+    const MAX_SHORTCUT_URL_LENGTH = 2048;
+    const MAX_SHORTCUTS = 500;
+    const MAX_FOLDER_DEPTH = 3;
+    const MAX_FOLDER_ITEMS = 200;
 
     // ==================== State ====================
     let shortcuts = [];
@@ -127,6 +135,114 @@ const ShortcutManager = (function() {
         }
     }
 
+    function _isPrivateHostname(hostname) {
+        const value = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
+        if (!value || value === 'localhost' || value.endsWith('.localhost') ||
+            value.endsWith('.local') || value.endsWith('.internal') || value.endsWith('.lan')) {
+            return true;
+        }
+        if (value === '::1' || (value.includes(':') && (value.startsWith('fc') || value.startsWith('fd') || value.startsWith('fe80:'))) ||
+            /^::ffff:(?:127\.|10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/.test(value)) {
+            return true;
+        }
+        if (value.includes(':')) return true;
+        const parts = value.split('.');
+        if (parts.length !== 4 || parts.some(part => !/^\d+$/.test(part))) return false;
+        const octets = parts.map(Number);
+        if (octets.some(octet => octet < 0 || octet > 255)) return false;
+        return octets[0] === 0 || octets[0] === 10 || octets[0] === 127 ||
+            octets[0] === 169 && octets[1] === 254 ||
+            octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31 ||
+            octets[0] === 192 && (octets[1] === 168 || octets[1] === 0) ||
+            octets[0] === 100 && octets[1] >= 64 && octets[1] <= 127 ||
+            octets[0] === 198 && (octets[1] === 18 || octets[1] === 19) ||
+            octets[0] === 198 && octets[1] === 51 && octets[2] === 100 ||
+            octets[0] === 203 && octets[1] === 0 && octets[2] === 113;
+    }
+
+    function _validateHttpUrl(url, allowRelative = false, rejectPrivate = false) {
+        if (typeof url !== 'string') return null;
+        const trimmed = url.trim();
+        if (!trimmed || trimmed.length > MAX_SHORTCUT_URL_LENGTH || /[\u0000-\u001F\u007F]/.test(trimmed)) return null;
+        if (trimmed.startsWith('//')) return null;
+        if (allowRelative && !/^[a-z][a-z0-9+.-]*:/i.test(trimmed) && !trimmed.startsWith('//')) return trimmed;
+        const scheme = trimmed.match(/^([a-z][a-z0-9+.-]*):/i);
+        if (scheme && !/^https?:\/\//i.test(trimmed)) return null;
+        try {
+            const parsed = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+            if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+            if (!parsed.hostname || (rejectPrivate && _isPrivateHostname(parsed.hostname))) return null;
+            return trimmed;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function _validateShortcut(shortcut, depth = 0, total = { value: 0 }) {
+        if (!shortcut || typeof shortcut !== 'object' || Array.isArray(shortcut) ||
+            typeof shortcut.name !== 'string' || !shortcut.name.trim() ||
+            shortcut.name.length > MAX_SHORTCUT_NAME_LENGTH) return false;
+        total.value++;
+        if (total.value > MAX_SHORTCUTS) return false;
+        if (shortcut.icon !== undefined && shortcut.icon !== null && shortcut.icon !== '' &&
+            !_validateHttpUrl(shortcut.icon, true, true)) return false;
+
+        if (shortcut.type === 'folder') {
+            if (depth >= MAX_FOLDER_DEPTH || !Array.isArray(shortcut.items) || shortcut.items.length > MAX_FOLDER_ITEMS) return false;
+            for (const item of shortcut.items) {
+                if (!_validateShortcut(item, depth + 1, total)) return false;
+            }
+            return true;
+        }
+
+        return !!_validateHttpUrl(shortcut.url, false, true);
+    }
+
+    function _isSafeIconDataUrl(value) {
+        return typeof value === 'string' && value.length <= MAX_ICON_DATA_URL_LENGTH &&
+            /^data:image\/(?:png|jpeg|gif|webp|x-icon);base64,[A-Za-z0-9+/]*={0,2}$/i.test(value);
+    }
+
+    function _sanitizeShortcutList(list) {
+        if (!Array.isArray(list)) return [];
+        const sanitized = [];
+        const total = { value: 0 };
+        for (const shortcut of list.slice(0, MAX_SHORTCUTS)) {
+            if (_validateShortcut(shortcut, 0, total)) sanitized.push(shortcut);
+        }
+        return sanitized;
+    }
+
+    async function _readResponseBlobWithLimit(response, maxBytes) {
+        const contentLength = Number(response.headers.get('content-length'));
+        if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+            throw new Error('Icon response is too large');
+        }
+        if (!response.body || typeof response.body.getReader !== 'function') {
+            const blob = await response.blob();
+            if (blob.size > maxBytes) throw new Error('Icon response is too large');
+            return blob;
+        }
+        const reader = response.body.getReader();
+        const chunks = [];
+        let size = 0;
+        try {
+            while (true) {
+                const result = await reader.read();
+                if (result.done) break;
+                size += result.value.byteLength;
+                if (size > maxBytes) {
+                    await reader.cancel();
+                    throw new Error('Icon response is too large');
+                }
+                chunks.push(result.value);
+            }
+        } finally {
+            reader.releaseLock();
+        }
+        return new Blob(chunks, { type: response.headers.get('content-type') || 'application/octet-stream' });
+    }
+
     /**
      * Decorate image element with optimal settings
      * @param {HTMLImageElement} img - Image element
@@ -196,72 +312,18 @@ const ShortcutManager = (function() {
                 const urlObj = new URL(basisUrl);
                 const origin = urlObj.origin;
                 const domain = urlObj.hostname;
+                if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') return ['icon.png'];
+                if (_isPrivateHostname(domain)) return ['icon.png'];
                 
-                // Special handling for Gmail
-                if (domain === 'mail.google.com' || domain.includes('mail.google.com')) {
-                    add('https://icons.duckduckgo.com/ip3/mail.google.com.ico');
-                    add('https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico');
-                    add('https://api.faviconkit.com/mail.google.com/144');
-                    add('https://icon.horse/icon/mail.google.com');
-                    add('https://favicon.yandex.net/favicon/mail.google.com');
-                    add('https://logo.clearbit.com/mail.google.com');
-                    add(`${origin}/favicon.ico`);
-                    return candidates.length > 0 ? candidates : ['icon.png'];
-                }
-                
-                // Special handling for Proton Mail
-                if (domain === 'mail.proton.me' || domain.includes('mail.proton.me') || 
-                    domain === 'proton.me' || domain.includes('proton.me')) {
-                    add('https://icons.duckduckgo.com/ip3/mail.proton.me.ico');
-                    add(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`);
-                    add('https://api.faviconkit.com/mail.proton.me/144');
-                    add('https://icon.horse/icon/mail.proton.me');
-                    add('https://favicon.yandex.net/favicon/mail.proton.me');
-                    add('https://logo.clearbit.com/mail.proton.me');
-                    add(`${origin}/favicon.ico`);
-                    return candidates.length > 0 ? candidates : ['icon.png'];
-                }
-                
-                // Prioritize site's own favicon first
                 add(`${origin}/favicon.ico`);
-                const skipAppleTouchDomains = ['www.google.com', 'google.com', 'mail.google.com', 'mail.proton.me', 'proton.me'];
-                if (!skipAppleTouchDomains.some(d => domain === d || domain.endsWith('.' + d))) {
-                    add(`${origin}/apple-touch-icon.png`);
-                    add(`${origin}/apple-touch-icon-precomposed.png`);
-                }
+                add(`${origin}/apple-touch-icon.png`);
+                add(`${origin}/apple-touch-icon-precomposed.png`);
             } catch (e) {
                 // Ignore parse errors
             }
         }
 
-        if (rawIconUrl) add(rawIconUrl);
-
-        // Add icon services as fallbacks
-        if (basisUrl) {
-            try {
-                const urlObj = new URL(basisUrl);
-                const domain = urlObj.hostname;
-                
-                const skipGoogleS2Domains = ['mail.google.com'];
-                if (!skipGoogleS2Domains.some(d => domain === d || domain.endsWith('.' + d))) {
-                    add(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`);
-                }
-                
-                if (domain !== 'mail.google.com' && !domain.includes('mail.google.com') &&
-                    domain !== 'mail.proton.me' && !domain.includes('mail.proton.me') &&
-                    domain !== 'proton.me' && !domain.includes('proton.me')) {
-                    add(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
-                }
-                
-                add(`https://api.faviconkit.com/${domain}/144`);
-                add(`https://icon.horse/icon/${domain}`);
-                add(`https://favicon.yandex.net/favicon/${domain}`);
-                add(`https://logo.clearbit.com/${domain}`);
-                add(`https://favicons.githubusercontent.com/${domain}`);
-            } catch (e) {
-                // Ignore parse errors
-            }
-        }
+        if (rawIconUrl && _validateHttpUrl(rawIconUrl, true, true)) add(rawIconUrl);
 
         if (candidates.length === 0) add("icon.png");
         return candidates;
@@ -330,13 +392,17 @@ const ShortcutManager = (function() {
             throw new Error('Service does not support CORS, use Image fallback');
         }
         
+        let timeout = null;
         try {
             // Note: HTTP response header warnings (x-content-type-options, set-cookie, etc.)
             // are from external servers and cannot be controlled by the extension
+            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            timeout = controller ? setTimeout(() => controller.abort(), 5000) : null;
             const response = await fetch(url, { 
                 mode: 'cors',
                 credentials: 'omit',
-                redirect: 'follow',
+                redirect: 'error',
+                signal: controller ? controller.signal : undefined,
                 headers: {
                     'Accept': 'image/*,*/*;q=0.8',
                     'User-Agent': navigator.userAgent
@@ -347,15 +413,27 @@ const ShortcutManager = (function() {
                 throw new Error(`HTTP ${response.status}`);
             }
             
-            const blob = await response.blob();
+            const blob = await _readResponseBlobWithLimit(response, MAX_ICON_BYTES);
+            const contentType = (blob.type || '').split(';', 1)[0].trim().toLowerCase();
+            if (contentType && (!contentType.startsWith('image/') || contentType === 'image/svg+xml')) {
+                throw new Error('Icon response is not a safe image type');
+            }
             return await new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
+                reader.onloadend = () => {
+                    if (_isSafeIconDataUrl(reader.result)) {
+                        resolve(reader.result);
+                    } else {
+                        reject(new Error('Icon data is not a safe image'));
+                    }
+                };
                 reader.onerror = reject;
                 reader.readAsDataURL(blob);
             });
         } catch (fetchErr) {
             throw new Error('Fetch failed, use Image fallback');
+        } finally {
+            if (timeout) clearTimeout(timeout);
         }
     }
 
@@ -367,6 +445,7 @@ const ShortcutManager = (function() {
     async function _loadIconViaImage(url) {
         return new Promise((resolve, reject) => {
             const img = new Image();
+            img.referrerPolicy = 'no-referrer';
             
             if (!_isNonCorsService(url)) {
                 img.crossOrigin = 'anonymous';
@@ -390,10 +469,17 @@ const ShortcutManager = (function() {
                         resolve(url);
                         return;
                     }
+
+                    const width = img.naturalWidth || img.width || 0;
+                    const height = img.naturalHeight || img.height || 0;
+                    if (!width || !height || width * height > MAX_ICON_PIXELS) {
+                        reject(new Error('Icon dimensions are too large'));
+                        return;
+                    }
                     
                     const canvas = document.createElement('canvas');
-                    canvas.width = img.width || 64;
-                    canvas.height = img.height || 64;
+                    canvas.width = width;
+                    canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0);
                     resolve(canvas.toDataURL('image/png'));
@@ -538,7 +624,10 @@ const ShortcutManager = (function() {
      * @param {string} dataUrl - Icon data URL
      */
     function _updateImagesForKey(key, dataUrl) {
-        document.querySelectorAll(`img[data-cache-key="${key}"]`).forEach(img => {
+        const escapedKey = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+            ? CSS.escape(key)
+            : String(key).replace(/(["\\])/g, '\\$1');
+        document.querySelectorAll(`img[data-cache-key="${escapedKey}"]`).forEach(img => {
             img.src = dataUrl;
         });
     }
@@ -620,7 +709,8 @@ const ShortcutManager = (function() {
      * @returns {string} Icon URL or data URL
      */
     function getIconSrc(key, url, pageUrl) {
-        const preferredUrl = url || (pageUrl ? getFavicon(pageUrl) : null) || "icon.png";
+        const preferredUrl = _validateHttpUrl(url, true, true) ||
+            (pageUrl && _validateHttpUrl(pageUrl, false, true) ? getFavicon(pageUrl) : null) || "icon.png";
 
         // 1) In-memory cache
         const mem = _iconCacheInMemory.get(key);
@@ -634,7 +724,7 @@ const ShortcutManager = (function() {
 
         // 2) Legacy localStorage
         const legacy = localStorage.getItem(`icon_cache_${key}`);
-        if (legacy) {
+        if (legacy && _isSafeIconDataUrl(legacy)) {
             _iconCacheInMemory.set(key, { data: legacy, updatedAt: Date.now(), version: ICON_CACHE_VERSION, status: 'ok' });
             _putIconToDB(key, legacy).catch(() => {});
             cacheIcon(key, preferredUrl, pageUrl);
@@ -643,6 +733,9 @@ const ShortcutManager = (function() {
 
         // 3) IndexedDB async fetch
         _getIconFromDB(key).then(entry => {
+            if (entry && entry.data && entry.data.startsWith('data:') && !_isSafeIconDataUrl(entry.data)) {
+                entry = null;
+            }
             if (entry && _isIconFresh(entry)) {
                 const isFailed = entry.status === 'failed' || !entry.data;
                 _iconCacheInMemory.set(key, entry);
@@ -719,13 +812,13 @@ const ShortcutManager = (function() {
             }
             
             if (s.url.includes('mail.google.com') && typeof s.icon === 'string' && s.icon.includes('mail.google.com/favicon.ico')) {
-                s.icon = "https://icons.duckduckgo.com/ip3/mail.google.com.ico";
+                    s.icon = "https://mail.google.com/favicon.ico";
                 migrated = true;
             }
             
             if (s.url.includes('mail.proton.me') || s.url.includes('proton.me')) {
                 if (typeof s.icon === 'string' && (s.icon.includes('mail.proton.me') || s.icon.includes('proton.me'))) {
-                    s.icon = "https://icons.duckduckgo.com/ip3/mail.proton.me.ico";
+                    s.icon = "https://mail.proton.me/favicon.ico";
                     migrated = true;
                 }
             }
@@ -749,8 +842,15 @@ const ShortcutManager = (function() {
             if (_migrateShortcuts(shortcutsList)) {
                 localStorage.setItem("shortcuts", JSON.stringify(shortcutsList));
             }
-            
-            return shortcutsList;
+
+            const sanitized = _sanitizeShortcutList(shortcutsList);
+            if (sanitized.length === 0) {
+                return JSON.parse(JSON.stringify(DEFAULT_SHORTCUTS));
+            }
+            if (sanitized.length !== shortcutsList.length || sanitized.some((item, index) => item !== shortcutsList[index])) {
+                localStorage.setItem("shortcuts", JSON.stringify(sanitized));
+            }
+            return sanitized;
         } catch (e) {
             console.warn('Failed to parse shortcuts from localStorage, using defaults');
             return JSON.parse(JSON.stringify(DEFAULT_SHORTCUTS));
@@ -856,7 +956,8 @@ const ShortcutManager = (function() {
             a.draggable = true;
             a.dataset.index = index;
             a.target = targetPref;
-            a.href = shortcut.url || '#';
+            const safeDestination = _validateHttpUrl(shortcut.url, false, true) || '#';
+            a.href = safeDestination;
             if (targetPref === '_blank') {
                 a.rel = 'noopener noreferrer';
             }
@@ -866,10 +967,13 @@ const ShortcutManager = (function() {
 
             if (_isFolder(shortcut)) {
                 a.classList.add('shortcut-folder');
-                a.href = 'javascript:void(0)';
+                a.href = '#';
                 a.dataset.type = 'folder';
                 if (onFolderClick) {
-                    a.addEventListener('click', () => onFolderClick(index));
+                    a.addEventListener('click', event => {
+                        event.preventDefault();
+                        onFolderClick(index);
+                    });
                 }
 
                 const iconDiv = document.createElement('div');
@@ -927,7 +1031,7 @@ const ShortcutManager = (function() {
                 a.appendChild(iconDiv);
                 a.appendChild(nameDiv);
             } else {
-                a.href = shortcut.url;
+                a.href = safeDestination;
                 a.dataset.type = 'item';
 
                 const iconDiv = document.createElement("div");
@@ -1024,13 +1128,8 @@ const ShortcutManager = (function() {
          * @param {Object} shortcut - Shortcut object {name, url, icon?}
          */
         add(shortcut) {
-            if (!shortcut || !shortcut.name) {
-                throw new Error('Shortcut must have name');
-            }
-            // Folders do not require a url
-            if (shortcut.type !== 'folder' && !shortcut.url) {
-                throw new Error('Shortcut must have url');
-            }
+            if (!_validateShortcut(shortcut)) throw new Error('Invalid shortcut');
+            if (shortcuts.length >= MAX_SHORTCUTS) throw new Error('Shortcut limit reached');
             shortcuts.push(shortcut);
             _saveShortcuts();
         },
@@ -1086,7 +1185,9 @@ const ShortcutManager = (function() {
             if (index < 0 || index >= shortcuts.length) {
                 throw new Error('Invalid shortcut index');
             }
-            shortcuts[index] = { ...shortcuts[index], ...shortcut };
+            const updated = { ...shortcuts[index], ...shortcut };
+            if (!_validateShortcut(updated)) throw new Error('Invalid shortcut');
+            shortcuts[index] = updated;
             _saveShortcuts();
         },
 

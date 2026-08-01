@@ -37,7 +37,7 @@ This is the easiest and most reliable method:
 
 7. **Rename the output file** (optional)
    - The default name is `src.crx`
-   - You can rename it to `GenresFox-v0.4.5.crx` or similar
+   - You can rename it to `GenresFox-v0.4.7.0.crx` or similar
 
 ## Method 2: Using Command Line (Advanced)
 
@@ -48,7 +48,7 @@ This is the easiest and most reliable method:
 .\package.ps1
 
 # Or specify custom output name
-.\package.ps1 -OutputName "GenresFox-v0.4.5.crx"
+.\package.ps1 -OutputName "GenresFox-v0.4.7.0.crx"
 ```
 
 ### Windows (Batch)
@@ -67,7 +67,7 @@ chmod +x package.sh
 ./package.sh
 
 # Or specify custom output name
-./package.sh GenresFox-v0.4.5.crx
+./package.sh GenresFox-v0.4.7.0.crx
 ```
 
 **Note**: The automated scripts primarily provide instructions and create backup ZIP files. For actual `.crx` creation, use Method 1 (Chrome's built-in packager).
@@ -81,7 +81,7 @@ If you have Node.js installed, you can use the `crx` package:
 npm install -g crx
 
 # Package the extension
-crx pack src -o GenresFox-v0.4.5.crx
+crx pack src -o GenresFox-v0.4.7.0.crx
 ```
 
 ## File Structure
@@ -151,17 +151,6 @@ GenresFox-NEWTAB/
 - This happens if you use a different `.pem` file
 - Use the original `.pem` file to maintain the same ID
 
-## Version Information
-
-Current version: **0.4.5**
-
-The version number is defined in:
-- `src/manifest.json` - Extension version
-- `src/config-manager.js` - Configuration version
-- `src/newtab.html` - Displayed version
-
-Make sure all version numbers match before packaging!
-
 ---
 
 ## 中文
@@ -205,7 +194,7 @@ Make sure all version numbers match before packaging!
 
 7. **重命名输出文件**（可选）
    - 默认名称是 `src.crx`
-   - 您可以将其重命名为 `GenresFox-v0.4.5.crx` 或类似名称
+   - 您可以将其重命名为 `GenresFox-v0.4.7.0.crx` 或类似名称
 
 ## 方法 2：使用命令行（高级）
 
@@ -216,7 +205,7 @@ Make sure all version numbers match before packaging!
 .\package.ps1
 
 # 或指定自定义输出名称
-.\package.ps1 -OutputName "GenresFox-v0.4.5.crx"
+.\package.ps1 -OutputName "GenresFox-v0.4.7.0.crx"
 ```
 
 ### Windows (批处理)
@@ -235,7 +224,7 @@ chmod +x package.sh
 ./package.sh
 
 # 或指定自定义输出名称
-./package.sh GenresFox-v0.4.5.crx
+./package.sh GenresFox-v0.4.7.0.crx
 ```
 
 **注意**：自动化脚本主要提供说明并创建备份 ZIP 文件。要创建实际的 `.crx` 文件，请使用方法 1（Chrome 内置打包工具）。
@@ -249,7 +238,7 @@ chmod +x package.sh
 npm install -g crx
 
 # 打包扩展
-crx pack src -o GenresFox-v0.4.5.crx
+crx pack src -o GenresFox-v0.4.7.0.crx
 ```
 
 ## 文件结构
@@ -318,15 +307,3 @@ GenresFox-NEWTAB/
 
 - 如果使用不同的 `.pem` 文件会发生这种情况
 - 使用原始 `.pem` 文件以保持相同的 ID
-
-## 版本信息
-
-当前版本：**0.4.5**
-
-版本号定义在：
-- `src/manifest.json` - 扩展版本
-- `src/config-manager.js` - 配置版本
-- `src/newtab.html` - 显示的版本
-
-打包前请确保所有版本号匹配！
-

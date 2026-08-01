@@ -41,8 +41,8 @@
      */
     function isValidDataUrl(dataUrl) {
         if (typeof dataUrl !== 'string' || !dataUrl) return false;
-        // Check for common data URL patterns: data:image/jpeg;base64, data:image/png;base64, etc.
-        return /^data:image\/(jpeg|jpg|png|webp|gif);base64,/.test(dataUrl);
+        if (dataUrl.length > 2 * 1024 * 1024) return false;
+        return /^data:image\/(jpeg|jpg|png|webp|gif);base64,[A-Za-z0-9+/]*={0,2}$/i.test(dataUrl);
     }
     
     /**

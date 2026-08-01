@@ -10,7 +10,7 @@
  * 
  * To use WASM:
  * 1. Build or obtain a WASM module with resize_rgba function
- * 2. Place it in the extension's web_accessible_resources
+ * 2. Place it in the extension package
  * 3. Call ImageProcessor.setWasmUrl('path/to/resize.wasm') from main thread
  */
 

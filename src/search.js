@@ -220,6 +220,15 @@ const SearchBar = (function () {
             return { safe: false, reason: 'dangerous_protocol' };
         }
 
+        if (trimmed.startsWith('//')) {
+            return { safe: false, reason: 'protocol_relative_url' };
+        }
+
+        const scheme = trimmed.match(/^([a-z][a-z0-9+.-]*):/i);
+        if (scheme && !/^https?:\/\//i.test(trimmed)) {
+            return { safe: false, reason: 'invalid_protocol' };
+        }
+
         // Check for encoded dangerous protocols
         try {
             const decoded = decodeURIComponent(trimmed);

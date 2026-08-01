@@ -317,8 +317,29 @@
     "searchErrorNavigationFailed": {
         "message": "連結開啟失敗。"
     },
+    "searchErrorBuildUrl": {
+        "message": "建構搜尋 URL 失敗。"
+    },
+    "searchErrorInitFailed": {
+        "message": "搜尋列初始化失敗。"
+    },
+    "searchErrorInvalidEngine": {
+        "message": "搜尋引擎 URL 無效。"
+    },
+    "searchErrorInvalidInput": {
+        "message": "請輸入有效的搜尋內容。"
+    },
     "searchErrorNoEngine": {
         "message": "沒有可用的搜尋引擎。"
+    },
+    "searchErrorNoInput": {
+        "message": "搜尋輸入框不可用。"
+    },
+    "searchErrorQueryTooLong": {
+        "message": "搜尋內容過長。"
+    },
+    "searchErrorUnexpected": {
+        "message": "發生意外錯誤，請重試。"
     },
     "searchErrorUnsafeUrl": {
         "message": "無法訪問此網址，可能不安全。"

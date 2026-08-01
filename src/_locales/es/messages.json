@@ -317,8 +317,29 @@
     "searchErrorNavigationFailed": {
         "message": "No se pudo abrir el enlace."
     },
+    "searchErrorBuildUrl": {
+        "message": "Error al construir la URL de búsqueda."
+    },
+    "searchErrorInitFailed": {
+        "message": "Error al inicializar la barra de búsqueda."
+    },
+    "searchErrorInvalidEngine": {
+        "message": "La URL del motor de búsqueda es inválida."
+    },
+    "searchErrorInvalidInput": {
+        "message": "Por favor, ingrese una consulta de búsqueda válida."
+    },
     "searchErrorNoEngine": {
         "message": "No hay motor de búsqueda disponible."
+    },
+    "searchErrorNoInput": {
+        "message": "El campo de búsqueda no está disponible."
+    },
+    "searchErrorQueryTooLong": {
+        "message": "La consulta de búsqueda es demasiado larga."
+    },
+    "searchErrorUnexpected": {
+        "message": "Ocurrió un error inesperado. Por favor, intente nuevamente."
     },
     "searchErrorUnsafeUrl": {
         "message": "Esta URL puede ser insegura."

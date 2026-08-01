@@ -317,8 +317,29 @@
     "searchErrorNavigationFailed": {
         "message": "Failed to open the link."
     },
+    "searchErrorBuildUrl": {
+        "message": "Failed to build search URL."
+    },
+    "searchErrorInitFailed": {
+        "message": "Search bar initialization failed."
+    },
+    "searchErrorInvalidEngine": {
+        "message": "Search engine URL is invalid."
+    },
+    "searchErrorInvalidInput": {
+        "message": "Please enter a valid search query."
+    },
     "searchErrorNoEngine": {
         "message": "No available search engine."
+    },
+    "searchErrorNoInput": {
+        "message": "Search input not available."
+    },
+    "searchErrorQueryTooLong": {
+        "message": "Search query is too long."
+    },
+    "searchErrorUnexpected": {
+        "message": "An unexpected error occurred. Please try again."
     },
     "searchErrorUnsafeUrl": {
         "message": "This URL may be unsafe."

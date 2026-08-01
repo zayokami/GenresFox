@@ -14,12 +14,12 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '20'
 
@@ -28,25 +28,33 @@ jobs:
         run: |
           TAG_NAME=${GITHUB_REF#refs/tags/}
           VERSION=${TAG_NAME#v}
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "Error: Invalid release version: $VERSION"
+            exit 1
+          fi
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Tag: $TAG_NAME"
           echo "Version: $VERSION"
 
       - name: Verify version matches manifest
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           MANIFEST_VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('src/manifest.json', 'utf8')).version)")
-          if [ "$MANIFEST_VERSION" != "${{ steps.version.outputs.version }}" ]; then
-            echo "Error: Tag version (${{ steps.version.outputs.version }}) does not match manifest.json version ($MANIFEST_VERSION)"
+          if [ "$MANIFEST_VERSION" != "$RELEASE_VERSION" ]; then
+            echo "Error: Tag version ($RELEASE_VERSION) does not match manifest.json version ($MANIFEST_VERSION)"
             exit 1
           fi
           echo "✓ Version matches manifest.json"
 
       - name: Package extension
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           echo "Packaging extension for release..."
           cd src
-          zip -r "../GenresFox-v${{ steps.version.outputs.version }}.zip" . \
+          zip -r "../GenresFox-v$RELEASE_VERSION.zip" . \
             -x "*.git*" \
             -x "*node_modules*" \
             -x "*target*" \
@@ -56,31 +64,38 @@ jobs:
             -x "*.lock" \
             -x "*.sh" \
             -x "*.bat" \
-            -x "*.md"
+            -x "*.md" \
+            -x "wasm-resize/*" \
+            -x "*.pem" -x "*.key" -x "*.crt" -x "*.cer" -x "*.p12" -x "*.pfx" -x "*.secret" \
+            -x ".env" -x ".env.*" -x "*.crx" -x "*.zip"
           cd ..
           
-          FILE_SIZE=$(du -h "GenresFox-v${{ steps.version.outputs.version }}.zip" | cut -f1)
-          echo "✓ Package created: GenresFox-v${{ steps.version.outputs.version }}.zip ($FILE_SIZE)"
+          FILE_SIZE=$(du -h "GenresFox-v$RELEASE_VERSION.zip" | cut -f1)
+          echo "✓ Package created: GenresFox-v$RELEASE_VERSION.zip ($FILE_SIZE)"
 
       - name: Calculate checksums
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           echo "Calculating checksums..."
-          sha256sum "GenresFox-v${{ steps.version.outputs.version }}.zip" > "GenresFox-v${{ steps.version.outputs.version }}.zip.sha256"
-          sha512sum "GenresFox-v${{ steps.version.outputs.version }}.zip" > "GenresFox-v${{ steps.version.outputs.version }}.zip.sha512"
+          sha256sum "GenresFox-v$RELEASE_VERSION.zip" > "GenresFox-v$RELEASE_VERSION.zip.sha256"
+          sha512sum "GenresFox-v$RELEASE_VERSION.zip" > "GenresFox-v$RELEASE_VERSION.zip.sha512"
           
           echo "SHA256:"
-          cat "GenresFox-v${{ steps.version.outputs.version }}.zip.sha256"
+          cat "GenresFox-v$RELEASE_VERSION.zip.sha256"
           echo ""
           echo "SHA512:"
-          cat "GenresFox-v${{ steps.version.outputs.version }}.zip.sha512"
+          cat "GenresFox-v$RELEASE_VERSION.zip.sha512"
 
       - name: Generate release notes
         id: release_notes
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           echo "Generating release notes..."
           
           # Extract changelog for this version
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="$RELEASE_VERSION"
           # Normalize version (remove trailing .0 if present, e.g., 0.4.6.0 -> 0.4.6)
           NORMALIZED_VERSION="${VERSION%.0}"
           if [ "$NORMALIZED_VERSION" = "$VERSION" ]; then
@@ -133,7 +148,7 @@ jobs:
           cat release_notes.md
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@26994186c0ac3ef5cae75ac16aa32e8153525f77
         with:
           files: |
             GenresFox-v${{ steps.version.outputs.version }}.zip

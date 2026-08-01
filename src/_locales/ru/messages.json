@@ -317,8 +317,29 @@
     "searchErrorNavigationFailed": {
         "message": "Не удалось открыть ссылку."
     },
+    "searchErrorBuildUrl": {
+        "message": "Не удалось создать URL для поиска."
+    },
+    "searchErrorInitFailed": {
+        "message": "Не удалось инициализировать панель поиска."
+    },
+    "searchErrorInvalidEngine": {
+        "message": "URL поисковой системы недействителен."
+    },
+    "searchErrorInvalidInput": {
+        "message": "Пожалуйста, введите действительный поисковый запрос."
+    },
     "searchErrorNoEngine": {
         "message": "Нет доступных поисковых систем."
+    },
+    "searchErrorNoInput": {
+        "message": "Поле поиска недоступно."
+    },
+    "searchErrorQueryTooLong": {
+        "message": "Поисковый запрос слишком длинный."
+    },
+    "searchErrorUnexpected": {
+        "message": "Произошла непредвиденная ошибка. Пожалуйста, попробуйте снова."
     },
     "searchErrorUnsafeUrl": {
         "message": "Невозможно получить доступ к этому адресу — он может быть небезопасным."

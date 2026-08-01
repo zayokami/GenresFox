@@ -384,19 +384,60 @@ const defaultShortcuts = [
     { name: "GitHub", url: "https://github.com", icon: "https://github.com/favicon.ico" },
     { name: "YouTube", url: "https://youtube.com", icon: "https://www.youtube.com/favicon.ico" },
     { name: "Bilibili", url: "https://bilibili.com", icon: "https://bilibili.com/favicon.ico" },
-    { name: "Gmail", url: "https://mail.google.com", icon: "https://icons.duckduckgo.com/ip3/mail.google.com.ico" }
+    { name: "Gmail", url: "https://mail.google.com", icon: "https://mail.google.com/favicon.ico" }
 ];
+
+const MAX_ENGINE_COUNT = 100;
+const MAX_ENGINE_STRING_LENGTH = 2048;
+
+function _sanitizeEngineMap(candidate) {
+    const sanitized = { ...defaultEngines };
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+        return sanitized;
+    }
+
+    let engineCount = Object.keys(sanitized).length;
+    Object.keys(candidate).slice(0, MAX_ENGINE_COUNT).forEach(key => {
+        if (!key || key.length > MAX_ENGINE_STRING_LENGTH ||
+            key === '__proto__' || key === 'constructor' || key === 'prototype') return;
+        if (!Object.prototype.hasOwnProperty.call(sanitized, key) && engineCount >= MAX_ENGINE_COUNT) return;
+        const engine = candidate[key];
+        if (!engine || typeof engine !== 'object' || Array.isArray(engine) ||
+            typeof engine.name !== 'string' || !engine.name.trim() ||
+            engine.name.length > MAX_ENGINE_STRING_LENGTH ||
+            typeof engine.url !== 'string' || engine.url.length > MAX_ENGINE_STRING_LENGTH ||
+            !engine.url.includes('%s') || isDangerousUrl(engine.url.replace(/%s/g, 'test'))) return;
+
+        const normalizedUrl = /^https?:\/\//i.test(engine.url.trim())
+            ? engine.url.trim()
+            : `https://${engine.url.trim()}`;
+        if (isDangerousUrl(normalizedUrl.replace(/%s/g, 'test'))) return;
+
+        const icon = typeof engine.icon === 'string' && engine.icon.length <= MAX_ENGINE_STRING_LENGTH
+            ? engine.icon
+            : 'icon.png';
+        if (!Object.prototype.hasOwnProperty.call(sanitized, key)) engineCount++;
+        sanitized[key] = { name: engine.name, url: normalizedUrl, icon };
+    });
+
+    return sanitized;
+}
 
 // State - with safe JSON parsing to handle corrupted data
 let engines;
 try {
-    engines = JSON.parse(localStorage.getItem("engines")) || defaultEngines;
+    const storedEngines = localStorage.getItem("engines");
+    engines = _sanitizeEngineMap(storedEngines ? JSON.parse(storedEngines) : null);
+    if (storedEngines !== JSON.stringify(engines)) {
+        localStorage.setItem('engines', JSON.stringify(engines));
+    }
 } catch (e) {
     console.warn('Failed to parse engines from localStorage, using defaults');
-    engines = defaultEngines;
+    engines = { ...defaultEngines };
 }
 
 let currentEngine = localStorage.getItem("preferredEngine") || "google";
+if (!Object.prototype.hasOwnProperty.call(engines, currentEngine)) currentEngine = 'google';
 
 const SHORTCUT_TARGET_KEY = 'shortcutOpenTarget';
 
@@ -645,7 +686,7 @@ function renderShortcutsGrid() {
 
 // --- Actions ---
 function setEngine(key) {
-    if (!engines[key]) return;
+    if (!Object.prototype.hasOwnProperty.call(engines, key)) return;
     currentEngine = key;
     localStorage.setItem("preferredEngine", key);
     updateUI();
@@ -932,7 +973,7 @@ function _collectConfigurationData() {
 }
 
 /**
- * Export all user configuration to a JSON file with integrity verification
+ * Export all user configuration to a bounded JSON file
  */
 async function exportConfiguration() {
     try {
@@ -973,13 +1014,14 @@ function _applyImportedConfiguration(config) {
 
     // Apply search engines
     if (settings.engines && typeof settings.engines === 'object') {
-        engines = settings.engines;
+        engines = _sanitizeEngineMap(settings.engines);
         localStorage.setItem('engines', JSON.stringify(engines));
         renderEnginesList();
         renderEngineDropdown();
     }
 
-    if (settings.preferredEngine && typeof settings.preferredEngine === 'string') {
+    if (settings.preferredEngine && typeof settings.preferredEngine === 'string' &&
+        Object.prototype.hasOwnProperty.call(engines, settings.preferredEngine)) {
         currentEngine = settings.preferredEngine;
         localStorage.setItem('preferredEngine', currentEngine);
         setEngine(currentEngine);
@@ -1154,7 +1196,7 @@ async function importConfiguration() {
                                 searchBoxSettings: JSON.parse(localStorage.getItem('searchBoxSettings') || '{}'),
                                 themeSettings: JSON.parse(localStorage.getItem('themeSettings') || '{}'),
                                 accessibilitySettings: JSON.parse(localStorage.getItem('accessibilitySettings') || '{}'),
-                                engines: JSON.parse(localStorage.getItem('customEngines') || '{}'),
+                                engines: JSON.parse(localStorage.getItem('engines') || '{}'),
                                 shortcuts: JSON.parse(localStorage.getItem('shortcuts') || '[]'),
                                 showShortcutNames: localStorage.getItem('showShortcutNames') === 'true',
                                 shortcutOpenTarget: localStorage.getItem('shortcutOpenTarget') || 'current',
@@ -1271,8 +1313,12 @@ if (importConfigBtn) {
 function isDangerousUrl(url) {
     if (!url || typeof url !== 'string') return true;
     const trimmed = url.trim();
+    if (trimmed.length > MAX_ENGINE_STRING_LENGTH) return true;
     // Block dangerous protocols in raw input before normalization
     if (/^(javascript|data|vbscript|file|blob|about|chrome):/i.test(trimmed)) return true;
+    if (trimmed.startsWith('//')) return true;
+    const scheme = trimmed.match(/^([a-z][a-z0-9+.-]*):/i);
+    if (scheme && !/^https?:\/\//i.test(trimmed)) return true;
     // Block control characters
     if (/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(trimmed)) return true;
 
@@ -1294,13 +1340,24 @@ addEngineBtn.addEventListener("click", () => {
     const name = document.getElementById("newEngineName").value.trim();
     let url = document.getElementById("newEngineUrl").value.trim();
     if (name && url) {
+        if (name.length > 2048 || url.length > 2048 || !url.includes('%s')) {
+            alert('Invalid search engine name or URL template');
+            return;
+        }
         // Security check
-        if (isDangerousUrl(url)) {
+        if (isDangerousUrl(url.replace(/%s/g, 'test'))) {
             alert('Invalid URL protocol');
             return;
         }
         
         const key = name.toLowerCase().replace(/\s+/g, '_');
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype' ||
+            key.length > MAX_ENGINE_STRING_LENGTH ||
+            (!engines[key] && Object.keys(engines).length >= MAX_ENGINE_COUNT)) {
+            alert('Invalid or too many search engines');
+            return;
+        }
+        if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
         let icon = "icon.png";
         try {
             const cleanUrl = url.replace('%s', '').replace(/=$/, '');
@@ -2414,8 +2471,9 @@ async function init() {
     // Initialize Sticky Notes
     await safeInit('StickyNotes', () => {
         if (typeof StickyNotes !== 'undefined' && StickyNotes.init) {
-            StickyNotes.init();
-            _syncStickyNotesUI();
+            return StickyNotes.init().then(() => {
+                _syncStickyNotesUI();
+            });
         }
     });
 

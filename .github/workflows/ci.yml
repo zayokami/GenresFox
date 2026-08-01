@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main, dev]
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     name: Validate Extension
@@ -13,10 +16,10 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '20'
 
@@ -81,30 +84,32 @@ jobs:
       - name: Validate localization files
         run: |
           echo "Validating localization files..."
-          
-          # Get base messages from English
-          base_messages=$(node -e "console.log(JSON.stringify(Object.keys(JSON.parse(require('fs').readFileSync('src/_locales/en/messages.json', 'utf8')))))")
-          
-          # Check all locale directories
-          for locale_dir in src/_locales/*/; do
-            locale=$(basename "$locale_dir")
-            messages_file="$locale_dir/messages.json"
-            
-            if [ ! -f "$messages_file" ]; then
-              echo "Error: Missing messages.json in $locale_dir"
-              exit 1
-            fi
-            
-            # Validate JSON
-            if ! node -e "JSON.parse(require('fs').readFileSync('$messages_file', 'utf8'))" 2>/dev/null; then
-              echo "Error: Invalid JSON in $messages_file"
-              exit 1
-            fi
-            
-            echo "✓ $locale/messages.json is valid"
-          done
-          
-          echo "✓ All localization files are valid"
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const localeRoot = path.join('src', '_locales');
+          const locales = fs.readdirSync(localeRoot, { withFileTypes: true })
+            .filter(entry => entry.isDirectory())
+            .map(entry => entry.name)
+            .sort();
+          if (!locales.includes('en')) throw new Error('English locale is missing');
+          const loadKeys = locale => {
+            const file = path.join(localeRoot, locale, 'messages.json');
+            if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
+            return new Set(Object.keys(JSON.parse(fs.readFileSync(file, 'utf8'))));
+          };
+          const base = loadKeys('en');
+          for (const locale of locales) {
+            const keys = loadKeys(locale);
+            const missing = [...base].filter(key => !keys.has(key));
+            const extra = [...keys].filter(key => !base.has(key));
+            if (missing.length || extra.length) {
+              throw new Error(`${locale}: missing=[${missing.join(', ')}], extra=[${extra.join(', ')}]`);
+            }
+            console.log(`✓ ${locale}/messages.json is valid`);
+          }
+          NODE
+          echo "✓ All localization files have the same schema"
 
       - name: Check for common issues
         run: |
@@ -129,7 +134,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Read version from manifest
         id: version
@@ -152,7 +157,10 @@ jobs:
             -x "*.lock" \
             -x "*.sh" \
             -x "*.bat" \
-            -x "*.md"
+            -x "*.md" \
+            -x "wasm-resize/*" \
+            -x "*.pem" -x "*.key" -x "*.crt" -x "*.cer" -x "*.p12" -x "*.pfx" -x "*.secret" \
+            -x ".env" -x ".env.*" -x "*.crx" -x "*.zip"
           cd ..
           
           # Check if zip was created
@@ -166,7 +174,7 @@ jobs:
           echo "✓ Package created: GenresFox-v${{ steps.version.outputs.version }}.zip ($FILE_SIZE)"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: extension-package
           path: GenresFox-v${{ steps.version.outputs.version }}.zip
@@ -179,7 +187,7 @@ jobs:
           cat "GenresFox-v${{ steps.version.outputs.version }}.zip.sha256"
 
       - name: Upload checksum
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: extension-checksum
           path: GenresFox-v${{ steps.version.outputs.version }}.zip.sha256

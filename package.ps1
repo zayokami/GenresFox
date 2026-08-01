@@ -1,6 +1,6 @@
 # GenresFox Extension Packager
 # Packages the extension into .crx format
-# Requires Chrome/Edge browser to be installed
+# Creates a filtered ZIP package and prints optional CRX instructions
 
 param(
     [string]$OutputName = "",
@@ -44,7 +44,7 @@ try {
     }
 }
 
-# Auto-detect Chrome/Edge path if not provided
+# Auto-detect Chrome/Edge path if available
 if ([string]::IsNullOrEmpty($ChromePath)) {
     $possiblePaths = @(
         "${env:ProgramFiles}\Google\Chrome\Application\chrome.exe",
@@ -64,37 +64,12 @@ if ([string]::IsNullOrEmpty($ChromePath)) {
 }
 
 if ([string]::IsNullOrEmpty($ChromePath)) {
-    Write-Host ""
-    Write-Host "Error: Chrome or Edge not found!" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "Please use manual packaging method:" -ForegroundColor Yellow
-    Write-Host "1. Open Chrome/Edge and go to chrome://extensions/" -ForegroundColor Yellow
-    Write-Host "2. Enable 'Developer mode'" -ForegroundColor Yellow
-    Write-Host "3. Click 'Pack extension'" -ForegroundColor Yellow
-    Write-Host "4. Select the 'src' folder as extension root" -ForegroundColor Yellow
-    Write-Host "5. Leave private key blank (for first-time packaging)" -ForegroundColor Yellow
-    Write-Host "6. Click 'Pack Extension'" -ForegroundColor Yellow
-    Write-Host ""
-    exit 1
+    Write-Host "Chrome or Edge not found; creating ZIP only." -ForegroundColor Yellow
 }
 
-Write-Host ""
-Write-Host "Note: Automated .crx packaging requires Chrome's command-line tools." -ForegroundColor Yellow
-Write-Host "The easiest method is to use Chrome's built-in packager:" -ForegroundColor Yellow
-Write-Host ""
-Write-Host "Manual Packaging Steps:" -ForegroundColor Cyan
-Write-Host "1. Open Chrome/Edge and navigate to chrome://extensions/" -ForegroundColor White
-Write-Host "2. Enable 'Developer mode' (toggle in top right)" -ForegroundColor White
-Write-Host "3. Click 'Pack extension' button" -ForegroundColor White
-Write-Host "4. Extension root directory: Select the 'src' folder" -ForegroundColor White
-Write-Host "5. Private key file: Leave blank (for first-time packaging)" -ForegroundColor White
-Write-Host "6. Click 'Pack Extension'" -ForegroundColor White
-Write-Host "7. The .crx file will be created in the parent directory of 'src'" -ForegroundColor White
-Write-Host ""
 Write-Host "Output file will be: $OutputName" -ForegroundColor Green
 Write-Host ""
 
-# Alternative: Create a zip file (can be converted to .crx later)
 Write-Host "Creating backup ZIP file..." -ForegroundColor Cyan
 $zipName = $OutputName -replace '\.crx$', '.zip'
 if (Test-Path $zipName) {
@@ -102,10 +77,35 @@ if (Test-Path $zipName) {
     Write-Host "Removed existing: $zipName" -ForegroundColor Yellow
 }
 
-# Create zip using .NET compression
 try {
     Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop
-    [System.IO.Compression.ZipFile]::CreateFromDirectory("$PWD\src", "$PWD\$zipName")
+    $sourceRoot = (Resolve-Path "src").Path
+    $zipPath = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $zipName))
+    $excludedPatterns = @(
+        '(^|[\\/])\.git([\\/]|$)',
+        '(^|[\\/])node_modules([\\/]|$)',
+        '(^|[\\/])target([\\/]|$)',
+        '(^|[\\/])wasm-resize([\\/]|$)',
+        '(^|[\/])\.env(?:\..*)?$|\.(cargo|rs|toml|lock|sh|bat|md|pem|key|crt|cer|p12|pfx|secret|crx|zip)$'
+    )
+    $files = Get-ChildItem -LiteralPath $sourceRoot -File -Recurse | Where-Object {
+        $relative = $_.FullName.Substring($sourceRoot.Length).TrimStart('\', '/')
+        -not ($excludedPatterns | Where-Object { $relative -match $_ })
+    }
+    $archive = [System.IO.Compression.ZipFile]::Open($zipPath, [System.IO.Compression.ZipArchiveMode]::Create)
+    try {
+        foreach ($file in $files) {
+            $relative = $file.FullName.Substring($sourceRoot.Length).TrimStart('\', '/')
+            $null = [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+                $archive,
+                $file.FullName,
+                ($relative -replace '\\', '/'),
+                [System.IO.Compression.CompressionLevel]::Optimal
+            )
+        }
+    } finally {
+        $archive.Dispose()
+    }
     
     if (Test-Path $zipName) {
         $fileSize = (Get-Item $zipName).Length
@@ -117,24 +117,7 @@ try {
     }
 } catch {
     Write-Host "Error creating ZIP file: $_" -ForegroundColor Red
-    Write-Host "Trying alternative method..." -ForegroundColor Yellow
-    
-    # Alternative: Use Compress-Archive (PowerShell 5.0+)
-    try {
-        Compress-Archive -Path "src\*" -DestinationPath $zipName -Force
-        if (Test-Path $zipName) {
-            $fileSize = (Get-Item $zipName).Length
-            $fileSizeMB = [math]::Round($fileSize / 1MB, 2)
-            Write-Host "Created: $zipName ($fileSizeMB MB)" -ForegroundColor Green
-        } else {
-            Write-Host "Error: ZIP file was not created!" -ForegroundColor Red
-            exit 1
-        }
-    } catch {
-        Write-Host "Error: Failed to create ZIP file using both methods" -ForegroundColor Red
-        Write-Host "Error details: $_" -ForegroundColor Red
-        exit 1
-    }
+    exit 1
 }
 Write-Host ""
 Write-Host "To convert ZIP to CRX:" -ForegroundColor Yellow

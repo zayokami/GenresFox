@@ -7,6 +7,9 @@ on:
     branches: [main, dev]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Code Quality Checks
@@ -14,10 +17,10 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '20'
 
@@ -52,22 +55,39 @@ jobs:
       - name: Check for security issues
         run: |
           echo "Checking for common security issues..."
-          
-          # Check for eval() usage
-          if grep -r "eval(" src/*.js 2>/dev/null; then
-            echo "Warning: Found eval() usage (potential security risk)"
-          fi
-          
-          # Check for innerHTML with user input
-          if grep -r "innerHTML" src/*.js 2>/dev/null | grep -v "textContent\|createElement"; then
-            echo "Info: Found innerHTML usage (ensure proper sanitization)"
-          fi
-          
-          # Check for dangerous URL schemes
-          if grep -r "javascript:\|data:\|vbscript:" src/*.js 2>/dev/null; then
-            echo "Warning: Found potentially dangerous URL schemes"
-          fi
-          
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          function collectJavaScriptFiles(directory) {
+            return fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+              const fullPath = path.join(directory, entry.name);
+              if (entry.isDirectory()) return collectJavaScriptFiles(fullPath);
+              return entry.isFile() && entry.name.endsWith('.js') && !entry.name.endsWith('.min.js')
+                ? [fullPath]
+                : [];
+            });
+          }
+
+          const checks = [
+            { name: 'dynamic code execution', pattern: /\beval\s*\(|\bnew\s+Function\s*\(/ },
+            { name: 'HTML injection APIs', pattern: /\bdocument\.write\s*\(|\binsertAdjacentHTML\s*\(|\bouterHTML\s*=/ },
+            { name: 'literal dangerous navigation scheme', pattern: /(?:href|src|location(?:\.href|\.assign|\.replace)?)\s*=\s*['\"`]\s*(?:javascript|data|vbscript):/i }
+          ];
+          const findings = [];
+          for (const file of collectJavaScriptFiles('src')) {
+            const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
+            lines.forEach((line, index) => {
+              for (const check of checks) {
+                if (check.pattern.test(line)) findings.push(`${file}:${index + 1}: ${check.name}`);
+              }
+            });
+          }
+          if (findings.length) {
+            console.error('Security checks failed:\n' + findings.join('\n'));
+            process.exit(1);
+          }
+          NODE
           echo "✓ Security checks completed"
 
       - name: Check file sizes

@@ -21,7 +21,7 @@ This directory contains GitHub Actions workflows for automated testing, building
 ### 2. Release (`release.yml`)
 
 **Triggers:**
-- Push of a tag matching `v*` pattern (e.g., `v0.4.6`)
+- Push of a tag matching `v*` pattern (e.g., `v0.4.7.0`)
 
 **Jobs:**
 - Verifies tag version matches `manifest.json` version
@@ -35,8 +35,8 @@ This directory contains GitHub Actions workflows for automated testing, building
 **Usage:**
 ```bash
 # Create and push a version tag
-git tag v0.4.6
-git push origin v0.4.6
+git tag v0.4.7.0
+git push origin v0.4.7.0
 ```
 
 ### 3. Code Quality (`code-quality.yml`)
@@ -205,7 +205,7 @@ Edit `code-quality.yml` to add custom validation steps:
 ### 2. Release (`release.yml`)
 
 **触发条件:**
-- 推送匹配 `v*` 模式的标签（例如 `v0.4.6`）
+- 推送匹配 `v*` 模式的标签（例如 `v0.4.7.0`）
 
 **任务:**
 - 验证标签版本是否与 `manifest.json` 版本匹配
@@ -219,8 +219,8 @@ Edit `code-quality.yml` to add custom validation steps:
 **使用方法:**
 ```bash
 # 创建并推送版本标签
-git tag v0.4.6
-git push origin v0.4.6
+git tag v0.4.7.0
+git push origin v0.4.7.0
 ```
 
 ### 3. Code Quality (`code-quality.yml`)

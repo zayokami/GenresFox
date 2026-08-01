@@ -317,8 +317,29 @@
     "searchErrorNavigationFailed": {
         "message": "Link konnte nicht geöffnet werden."
     },
+    "searchErrorBuildUrl": {
+        "message": "Fehler beim Erstellen der Such-URL."
+    },
+    "searchErrorInitFailed": {
+        "message": "Fehler beim Initialisieren der Suchleiste."
+    },
+    "searchErrorInvalidEngine": {
+        "message": "Die URL der Suchmaschine ist ungültig."
+    },
+    "searchErrorInvalidInput": {
+        "message": "Bitte geben Sie eine gültige Suchanfrage ein."
+    },
     "searchErrorNoEngine": {
         "message": "Keine Suchmaschinen verfügbar."
+    },
+    "searchErrorNoInput": {
+        "message": "Suchfeld nicht verfügbar."
+    },
+    "searchErrorQueryTooLong": {
+        "message": "Die Suchanfrage ist zu lang."
+    },
+    "searchErrorUnexpected": {
+        "message": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
     },
     "searchErrorUnsafeUrl": {
         "message": "Zugriff auf diese URL nicht möglich – möglicherweise unsicher."

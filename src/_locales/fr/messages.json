@@ -317,8 +317,29 @@
     "searchErrorNavigationFailed": {
         "message": "Impossible d'ouvrir le lien."
     },
+    "searchErrorBuildUrl": {
+        "message": "Échec de la construction de l'URL de recherche."
+    },
+    "searchErrorInitFailed": {
+        "message": "Échec de l'initialisation de la barre de recherche."
+    },
+    "searchErrorInvalidEngine": {
+        "message": "L'URL du moteur de recherche est invalide."
+    },
+    "searchErrorInvalidInput": {
+        "message": "Veuillez entrer une requête de recherche valide."
+    },
     "searchErrorNoEngine": {
         "message": "Aucun moteur de recherche disponible."
+    },
+    "searchErrorNoInput": {
+        "message": "Le champ de recherche n'est pas disponible."
+    },
+    "searchErrorQueryTooLong": {
+        "message": "La requête de recherche est trop longue."
+    },
+    "searchErrorUnexpected": {
+        "message": "Une erreur inattendue s'est produite. Veuillez réessayer."
     },
     "searchErrorUnsafeUrl": {
         "message": "Cette URL peut être dangereuse."

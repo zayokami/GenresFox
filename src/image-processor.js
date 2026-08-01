@@ -697,6 +697,22 @@ const ImageProcessor = (function() {
         });
     }
 
+    function _validateImageFile(file) {
+        if (!file || typeof file.size !== 'number' || file.size > CONFIG.MAX_FILE_SIZE) {
+            throw new Error(`File too large. Maximum: ${CONFIG.MAX_FILE_SIZE / 1024 / 1024}MB`);
+        }
+    }
+
+    function _validateImageDimensions(img) {
+        const totalPixels = img.width * img.height;
+        if (!Number.isFinite(totalPixels) || totalPixels <= 0 || totalPixels > CONFIG.MAX_PIXELS) {
+            const mp = (totalPixels / 1000000).toFixed(1);
+            const maxMP = (CONFIG.MAX_PIXELS / 1000000).toFixed(0);
+            throw new Error(`Resolution too high (${mp}MP). Max: ${maxMP}MP`);
+        }
+        return totalPixels;
+    }
+
     /**
      * Get ImageData from image (for Worker transfer)
      */
@@ -1102,9 +1118,19 @@ const ImageProcessor = (function() {
      * Generate incremental previews (tiny -> small -> medium)
      * Returns immediately with tiny preview, then upgrades
      */
-    async function generateProgressivePreview(file, onPreviewUpdate) {
-        const img = await _loadImageFromFile(file);
+    async function generateProgressivePreview(file, onPreviewUpdate, sourceImage = null) {
+        _validateImageFile(file);
+        const ownsImage = !sourceImage;
+        const img = sourceImage || await _loadImageFromFile(file);
+        try {
+            _validateImageDimensions(img);
+        } catch (error) {
+            if (ownsImage) _revokeTrackedObjectUrl(img.src);
+            throw error;
+        }
         const cleanups = [];
+        let completed = false;
+        try {
         
         // Stage 1: Tiny preview (instant)
         const tinyDims = _calculateDimensions(img.width, img.height, CONFIG.PREVIEW_TINY, CONFIG.PREVIEW_TINY);
@@ -1152,38 +1178,52 @@ const ImageProcessor = (function() {
             onPreviewUpdate(mediumUrl, 'medium', mediumDims.width, mediumDims.height);
         }
         
-        _revokeTrackedObjectUrl(img.src);
-        
+        completed = true;
         return {
             url: mediumUrl,
             width: img.width,
             height: img.height,
             cleanup: () => cleanups.forEach(fn => fn())
         };
+        } finally {
+            if (!completed) cleanups.forEach(fn => fn());
+            if (ownsImage) _revokeTrackedObjectUrl(img.src);
+        }
     }
 
     /**
      * Simple preview (single stage)
      */
-    async function generatePreview(file) {
-        const img = await _loadImageFromFile(file);
-        const dims = _calculateDimensions(img.width, img.height, CONFIG.PREVIEW_MEDIUM, CONFIG.PREVIEW_MEDIUM);
-        
-        const canvas = _processDirect(img, dims.width, dims.height);
-        const blob = await _canvasToBlob(canvas, CONFIG.QUALITY_PREVIEW);
-        
-        canvas.width = 0;
-        canvas.height = 0;
-        _revokeTrackedObjectUrl(img.src);
-        
-        const url = _createTrackedObjectUrl(blob);
-        
-        return {
-            url,
-            width: img.width,
-            height: img.height,
-            cleanup: () => _revokeTrackedObjectUrl(url)
-        };
+    async function generatePreview(file, sourceImage = null) {
+        _validateImageFile(file);
+        const ownsImage = !sourceImage;
+        const img = sourceImage || await _loadImageFromFile(file);
+        try {
+            _validateImageDimensions(img);
+        } catch (error) {
+            if (ownsImage) _revokeTrackedObjectUrl(img.src);
+            throw error;
+        }
+        let canvas = null;
+        let url = null;
+        try {
+            const dims = _calculateDimensions(img.width, img.height, CONFIG.PREVIEW_MEDIUM, CONFIG.PREVIEW_MEDIUM);
+            canvas = _processDirect(img, dims.width, dims.height);
+            const blob = await _canvasToBlob(canvas, CONFIG.QUALITY_PREVIEW);
+            url = _createTrackedObjectUrl(blob);
+            return {
+                url,
+                width: img.width,
+                height: img.height,
+                cleanup: () => _revokeTrackedObjectUrl(url)
+            };
+        } finally {
+            if (canvas) {
+                canvas.width = 0;
+                canvas.height = 0;
+            }
+            if (ownsImage) _revokeTrackedObjectUrl(img.src);
+        }
     }
 
     // ==================== Main Processing ====================
@@ -1212,11 +1252,11 @@ const ImageProcessor = (function() {
             nearLossless = false   // Prefer near-lossless encoding (PNG or high-quality WebP)
         } = options;
 
+        let preview = null;
+        let img = null;
+
         try {
-            // Validate file size
-            if (file.size > CONFIG.MAX_FILE_SIZE) {
-                throw new Error(`File too large. Maximum: ${CONFIG.MAX_FILE_SIZE / 1024 / 1024}MB`);
-            }
+            _validateImageFile(file);
             
             // Check cache (include processing parameters in key)
             if (useCache) {
@@ -1233,31 +1273,19 @@ const ImageProcessor = (function() {
             }
             
             onProgress(5);
-            
-            // Generate progressive preview
-            let preview;
-            if (onPreviewUpdate) {
-                preview = await generateProgressivePreview(file, onPreviewUpdate);
-            } else {
-                preview = await generatePreview(file);
-                onPreview(preview.url);
-            }
-            
-            onProgress(15);
-            
-            // Load full image
-            const img = await _loadImageFromFile(file, onProgress);
+
+            img = await _loadImageFromFile(file, onProgress);
             const originalWidth = img.width;
             const originalHeight = img.height;
-            const totalPixels = originalWidth * originalHeight;
-            
-            // Check pixel limit
-            if (totalPixels > CONFIG.MAX_PIXELS) {
-                const mp = (totalPixels / 1000000).toFixed(1);
-                const maxMP = (CONFIG.MAX_PIXELS / 1000000).toFixed(0);
-                _revokeTrackedObjectUrl(img.src);
-                preview.cleanup();
-                throw new Error(`Resolution too high (${mp}MP). Max: ${maxMP}MP`);
+            const totalPixels = _validateImageDimensions(img);
+
+            onProgress(15);
+
+            if (onPreviewUpdate) {
+                preview = await generateProgressivePreview(file, onPreviewUpdate, img);
+            } else {
+                preview = await generatePreview(file, img);
+                onPreview(preview.url);
             }
             
             onProgress(35);
@@ -1509,6 +1537,8 @@ const ImageProcessor = (function() {
             return result;
             
         } finally {
+            if (preview && typeof preview.cleanup === 'function') preview.cleanup();
+            if (img && img.src) _revokeTrackedObjectUrl(img.src);
             _state.isProcessing = false;
         }
     }
@@ -1583,7 +1613,7 @@ const ImageProcessor = (function() {
      * @example
      * // Set WASM URL (e.g., from CDN or local file)
      * ImageProcessor.setWasmUrl('https://cdn.example.com/resize.wasm');
-     * // Or local file (must be in extension's web_accessible_resources)
+     * // Or local file in the extension package
      * ImageProcessor.setWasmUrl('resize.wasm');
      */
     function setWasmUrl(wasmUrl) {

@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-0.4.6-blue.svg)
+![Version](https://img.shields.io/badge/version-0.4.7.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Chrome](https://img.shields.io/badge/chrome-manifest%20v3-orange.svg)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/zayokami/GenresFox)
@@ -127,7 +127,7 @@ GenresFox/
 │   ├── accessibility.js    # Accessibility features module
 │   ├── image-processor.js  # High-performance image processing module
 │   ├── image-worker.js     # Web Worker for background image processing
-│   ├── config-manager.js   # Configuration export/import with integrity verification
+│   ├── config-manager.js   # Bounded and validated configuration export/import
 │   ├── debug-console.js    # Debug console for performance and quality metrics
 │   ├── snow-effect.js      # Seasonal snow effect easter egg
 │   ├── load-css-async.js   # Async CSS loading utility

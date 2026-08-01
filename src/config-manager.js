@@ -1,9 +1,9 @@
 /**
  * Configuration Manager Module
- * Handles export/import of user configuration with integrity verification
+ * Handles bounded and validated export/import of user configuration
  * 
  * Features:
- * - HMAC-SHA256 signature for tamper detection
+ * - Optional legacy HMAC-SHA256 compatibility check
  * - Timestamp validation
  * - Version compatibility checking
  * - Lightweight, no external dependencies
@@ -15,12 +15,15 @@ const ConfigManager = (function () {
     // ==================== Configuration Constants ====================
     const CONFIG = {
         VERSION: '0.4.7',
-        MAX_AGE_DAYS: 365, // Maximum age of config file (1 year)
-        MIN_AGE_MS: 1000, // Minimum age to prevent replay attacks (1 second)
-        // NOTE: This hardcoded key is for accidental corruption detection only,
-        // NOT for cryptographic security. The config is signed to catch accidental
-        // file corruption or manual edits, not to prevent malicious tampering.
-        SIGNATURE_KEY: 'genresfox-config-signature-v1', // Secret key for HMAC
+        MAX_AGE_DAYS: 365,
+        MAX_FILE_SIZE: 5 * 1024 * 1024,
+        MAX_SHORTCUTS: 500,
+        MAX_ENGINES: 100,
+        MAX_FOLDER_DEPTH: 3,
+        MAX_FOLDER_ITEMS: 200,
+        MAX_STRING_LENGTH: 2048,
+        LEGACY_SIGNATURE_KEY: 'genresfox-config-signature-v1',
+        SUPPORTED_LANGUAGES: ['zh_CN', 'zh_TW', 'ja', 'en', 'es', 'fr', 'de', 'ru'],
         ALGORITHM: 'HMAC',
         HASH: 'SHA-256',
         // Minimum supported version for migration
@@ -40,7 +43,7 @@ const ConfigManager = (function () {
      */
     async function _importKey() {
         const encoder = new TextEncoder();
-        const keyData = encoder.encode(CONFIG.SIGNATURE_KEY);
+        const keyData = encoder.encode(CONFIG.LEGACY_SIGNATURE_KEY);
         return await crypto.subtle.importKey(
             'raw',
             keyData,
@@ -51,34 +54,6 @@ const ConfigManager = (function () {
             false,
             ['sign', 'verify']
         );
-    }
-
-    /**
-     * Generate HMAC signature for data
-     * @param {string} data - JSON string to sign
-     * @returns {Promise<string>} Base64-encoded signature
-     */
-    async function _generateSignature(data) {
-        try {
-            const key = await _importKey();
-            const encoder = new TextEncoder();
-            const dataBuffer = encoder.encode(data);
-            const signature = await crypto.subtle.sign(
-                CONFIG.ALGORITHM,
-                key,
-                dataBuffer
-            );
-            // Convert ArrayBuffer to base64
-            const bytes = new Uint8Array(signature);
-            let binary = '';
-            for (let i = 0; i < bytes.length; i++) {
-                binary += String.fromCharCode(bytes[i]);
-            }
-            return btoa(binary);
-        } catch (e) {
-            console.error('Failed to generate signature:', e);
-            throw new Error('Signature generation failed');
-        }
     }
 
     /**
@@ -151,10 +126,6 @@ const ConfigManager = (function () {
         }
 
         // Check minimum age (prevent replay attacks with very recent timestamps)
-        if (age < CONFIG.MIN_AGE_MS && age >= 0) {
-            // This is acceptable for newly exported files
-        }
-
         return { valid: true };
     }
 
@@ -193,6 +164,9 @@ const ConfigManager = (function () {
         if (!version || typeof version !== 'string') {
             return false;
         }
+        if (!/^\d+(?:\.\d+){2,3}$/.test(version)) {
+            return false;
+        }
 
         try {
             // Check if version is >= minimum supported
@@ -218,15 +192,107 @@ const ConfigManager = (function () {
      * @param {boolean} allowLegacy - Allow legacy format without version/exportDate
      * @returns {Object} { valid: boolean, reason?: string }
      */
+    function _validateHttpUrl(url, allowTemplate = false) {
+        if (typeof url !== 'string') {
+            return { valid: false, reason: 'invalid_url_type' };
+        }
+
+        const trimmed = url.trim();
+        if (!trimmed || trimmed.length > CONFIG.MAX_STRING_LENGTH) {
+            return { valid: false, reason: 'invalid_url_length' };
+        }
+        if (/[\u0000-\u001F\u007F]/.test(trimmed)) {
+            return { valid: false, reason: 'url_control_characters' };
+        }
+        if (trimmed.startsWith('//')) {
+            return { valid: false, reason: 'url_protocol_relative' };
+        }
+
+        const candidate = allowTemplate ? trimmed.replace(/%s/g, 'test') : trimmed;
+        const scheme = candidate.match(/^([a-z][a-z0-9+.-]*):/i);
+        if (scheme && !/^https?:\/\//i.test(candidate)) {
+            return { valid: false, reason: 'url_protocol' };
+        }
+        const normalized = /^https?:\/\//i.test(candidate)
+            ? candidate
+            : `https://${candidate}`;
+        try {
+            const parsed = new URL(normalized);
+            const protocol = parsed.protocol.toLowerCase();
+            if (protocol !== 'http:' && protocol !== 'https:') {
+                return { valid: false, reason: 'url_protocol' };
+            }
+            if (!parsed.hostname || parsed.hostname.length > 253) {
+                return { valid: false, reason: 'url_hostname' };
+            }
+        } catch (e) {
+            return { valid: false, reason: 'url_parse_error' };
+        }
+
+        return { valid: true };
+    }
+
+    function _validateIconUrl(icon) {
+        if (icon === undefined || icon === null || icon === '') return { valid: true };
+        if (typeof icon !== 'string' || icon.length > CONFIG.MAX_STRING_LENGTH) {
+            return { valid: false, reason: 'invalid_icon' };
+        }
+        if (icon.startsWith('//')) return { valid: false, reason: 'invalid_icon' };
+        if (/^[a-z][a-z0-9+.-]*:/i.test(icon)) {
+            return _validateHttpUrl(icon, false, true);
+        }
+        if (/[\u0000-\u001F\u007F]/.test(icon)) {
+            return { valid: false, reason: 'icon_control_characters' };
+        }
+        return { valid: true };
+    }
+
+    function _validateShortcut(shortcut, index, depth = 0, total = { value: 0 }) {
+        if (!shortcut || typeof shortcut !== 'object' || Array.isArray(shortcut)) {
+            return { valid: false, reason: `Invalid shortcut at index ${index}` };
+        }
+        total.value++;
+        if (total.value > CONFIG.MAX_SHORTCUTS) {
+            return { valid: false, reason: 'Too many shortcuts' };
+        }
+        if (typeof shortcut.name !== 'string' || !shortcut.name.trim() || shortcut.name.length > CONFIG.MAX_STRING_LENGTH) {
+            return { valid: false, reason: `Invalid shortcut name at index ${index}` };
+        }
+        const iconCheck = _validateIconUrl(shortcut.icon);
+        if (!iconCheck.valid) {
+            return { valid: false, reason: `Invalid shortcut icon at index ${index}` };
+        }
+
+        if (shortcut.type === 'folder') {
+            if (depth >= CONFIG.MAX_FOLDER_DEPTH || !Array.isArray(shortcut.items) || shortcut.items.length > CONFIG.MAX_FOLDER_ITEMS) {
+                return { valid: false, reason: `Invalid folder at index ${index}` };
+            }
+            for (let itemIndex = 0; itemIndex < shortcut.items.length; itemIndex++) {
+                const itemCheck = _validateShortcut(shortcut.items[itemIndex], itemIndex, depth + 1, total);
+                if (!itemCheck.valid) return itemCheck;
+            }
+            return { valid: true };
+        }
+
+        if (typeof shortcut.url !== 'string') {
+            return { valid: false, reason: `Invalid shortcut URL at index ${index}` };
+        }
+        const urlCheck = _validateHttpUrl(shortcut.url);
+        if (!urlCheck.valid) {
+            return { valid: false, reason: `Unsafe shortcut URL at index ${index}` };
+        }
+        return { valid: true };
+    }
+
     function _validateConfigStructure(config, allowLegacy = false) {
-        if (!config || typeof config !== 'object') {
+        if (!config || typeof config !== 'object' || Array.isArray(config)) {
             return { valid: false, reason: 'Invalid configuration structure' };
         }
 
         // For legacy formats, settings might be at root level
         const settingsObj = config.settings || config;
         
-        if (!settingsObj || typeof settingsObj !== 'object') {
+        if (!settingsObj || typeof settingsObj !== 'object' || Array.isArray(settingsObj)) {
             return { valid: false, reason: 'Missing or invalid settings field' };
         }
 
@@ -245,8 +311,65 @@ const ConfigManager = (function () {
         const settings = config.settings || config;
         
         // Engines should be an object
-        if (settings.engines !== undefined && typeof settings.engines !== 'object') {
+        if (settings.engines !== undefined && (!settings.engines || typeof settings.engines !== 'object' || Array.isArray(settings.engines))) {
             return { valid: false, reason: 'Invalid engines structure' };
+        }
+
+        if (settings.engines && Object.keys(settings.engines).length > CONFIG.MAX_ENGINES) {
+            return { valid: false, reason: 'Too many search engines' };
+        }
+
+        if (settings.engines) {
+            for (const key of Object.keys(settings.engines)) {
+                if (key.length > CONFIG.MAX_STRING_LENGTH) {
+                    return { valid: false, reason: 'Search engine key is too long' };
+                }
+                const engine = settings.engines[key];
+                if (!engine || typeof engine !== 'object' || Array.isArray(engine) ||
+                    typeof engine.name !== 'string' || !engine.name.trim() ||
+                    engine.name.length > CONFIG.MAX_STRING_LENGTH ||
+                    typeof engine.url !== 'string') {
+                    return { valid: false, reason: `Invalid search engine: ${key}` };
+                }
+                const engineUrlCheck = _validateHttpUrl(engine.url, true);
+                if (!engineUrlCheck.valid || !engine.url.includes('%s')) {
+                    return { valid: false, reason: `Invalid search engine URL: ${key}` };
+                }
+                const iconCheck = _validateIconUrl(engine.icon);
+                if (!iconCheck.valid) {
+                    return { valid: false, reason: `Invalid search engine icon: ${key}` };
+                }
+            }
+        }
+
+        if (settings.preferredEngine !== undefined &&
+            (typeof settings.preferredEngine !== 'string' || settings.preferredEngine.length > CONFIG.MAX_STRING_LENGTH)) {
+            return { valid: false, reason: 'Invalid preferred search engine' };
+        }
+        if (settings.shortcutOpenTarget !== undefined &&
+            settings.shortcutOpenTarget !== 'current' && settings.shortcutOpenTarget !== 'newtab') {
+            return { valid: false, reason: 'Invalid shortcut target' };
+        }
+        if (settings.wallpaperSource !== undefined &&
+            !['default', 'custom', 'bing'].includes(settings.wallpaperSource)) {
+            return { valid: false, reason: 'Invalid wallpaper source' };
+        }
+        if (settings.preferredLanguage !== undefined && settings.preferredLanguage !== null &&
+            !CONFIG.SUPPORTED_LANGUAGES.includes(settings.preferredLanguage)) {
+            return { valid: false, reason: 'Invalid preferred language' };
+        }
+        if (settings.showShortcutNames !== undefined && typeof settings.showShortcutNames !== 'boolean') {
+            return { valid: false, reason: 'Invalid shortcut name setting' };
+        }
+        if (settings.snowEffectEnabled !== undefined && typeof settings.snowEffectEnabled !== 'boolean') {
+            return { valid: false, reason: 'Invalid snow effect setting' };
+        }
+        if (settings.snowEffectTriggered !== undefined && typeof settings.snowEffectTriggered !== 'boolean') {
+            return { valid: false, reason: 'Invalid snow trigger setting' };
+        }
+        if (settings.bingMarket !== undefined &&
+            (typeof settings.bingMarket !== 'string' || !/^[a-z]{2}(?:-[A-Z]{2})?$/.test(settings.bingMarket))) {
+            return { valid: false, reason: 'Invalid Bing market' };
         }
 
         // Shortcuts should be an array
@@ -256,18 +379,13 @@ const ConfigManager = (function () {
 
         // Validate shortcuts array items
         if (Array.isArray(settings.shortcuts)) {
+            if (settings.shortcuts.length > CONFIG.MAX_SHORTCUTS) {
+                return { valid: false, reason: 'Too many shortcuts' };
+            }
+            const total = { value: 0 };
             for (let i = 0; i < settings.shortcuts.length; i++) {
-                const shortcut = settings.shortcuts[i];
-                if (!shortcut || typeof shortcut !== 'object') {
-                    return { valid: false, reason: `Invalid shortcut at index ${i}` };
-                }
-                if (typeof shortcut.name !== 'string' || typeof shortcut.url !== 'string') {
-                    return { valid: false, reason: `Invalid shortcut fields at index ${i}` };
-                }
-                const dangerousProtocols = /^(javascript:|data:|vbscript:)/i;
-                if (dangerousProtocols.test(shortcut.url.trim())) {
-                    return { valid: false, reason: `Unsafe shortcut URL at index ${i}` };
-                }
+                const shortcutCheck = _validateShortcut(settings.shortcuts[i], i, 0, total);
+                if (!shortcutCheck.valid) return shortcutCheck;
             }
         }
 
@@ -277,16 +395,12 @@ const ConfigManager = (function () {
     // ==================== Export ====================
 
     /**
-     * Export configuration with signature
+     * Export configuration
      * @param {Object} configData - Configuration data to export
-     * @returns {Promise<Object>} Signed configuration object
+     * @returns {Promise<Object>} Configuration object
      */
     async function exportConfig(configData) {
         try {
-            if (typeof crypto === 'undefined' || !crypto.subtle) {
-                throw new Error('Web Crypto API not available. Configuration signing requires a secure context.');
-            }
-
             // Validate input
             if (!configData || typeof configData !== 'object') {
                 throw new Error('Invalid configuration data');
@@ -299,15 +413,8 @@ const ConfigManager = (function () {
                 settings: configData.settings || configData
             };
 
-            // Create a copy without signature for signing
-            const configForSigning = JSON.parse(JSON.stringify(config));
-            
-            // Generate signature
-            const dataToSign = JSON.stringify(configForSigning);
-            const signature = await _generateSignature(dataToSign);
-
-            // Add signature to config
-            config.signature = signature;
+            const structureCheck = _validateConfigStructure(config);
+            if (!structureCheck.valid) throw new Error(structureCheck.reason);
 
             return config;
         } catch (e) {
@@ -323,8 +430,11 @@ const ConfigManager = (function () {
      */
     async function exportToFile(configData) {
         try {
-            const signedConfig = await exportConfig(configData);
-            const jsonString = JSON.stringify(signedConfig, null, 2);
+            const exportedConfig = await exportConfig(configData);
+            const jsonString = JSON.stringify(exportedConfig, null, 2);
+            if (new Blob([jsonString]).size > CONFIG.MAX_FILE_SIZE) {
+                throw new Error(`Configuration file is too large (maximum ${CONFIG.MAX_FILE_SIZE / 1024 / 1024}MB)`);
+            }
 
             // Create blob and download
             const blob = new Blob([jsonString], { type: 'application/json' });
@@ -462,7 +572,7 @@ const ConfigManager = (function () {
         migrated.version = CONFIG.VERSION;
         migrated.exportDate = new Date().toISOString();
         
-        // Remove old signature (will be regenerated)
+        // Do not carry legacy signatures into migrated exports.
         delete migrated.signature;
 
         return migrated;
@@ -506,10 +616,6 @@ const ConfigManager = (function () {
      */
     async function verifyConfig(config) {
         try {
-            if (typeof crypto === 'undefined' || !crypto.subtle) {
-                throw new Error('Web Crypto API not available. Configuration signing requires a secure context.');
-            }
-
             // Detect version
             const detectedVersion = _detectVersion(config);
             const configVersion = config.version || detectedVersion;
@@ -562,13 +668,11 @@ const ConfigManager = (function () {
             if (!needsMigration && migratedConfig.exportDate) {
                 const timestampCheck = _validateTimestamp(migratedConfig.exportDate);
                 if (!timestampCheck.valid) {
-                    // For old configs, we're more lenient with timestamp
-                    console.warn('[ConfigManager] Timestamp validation failed, but allowing import due to migration');
+                    return { valid: false, reason: timestampCheck.reason };
                 }
             }
 
-            // Step 6: Verify signature (only if present and not migrated)
-            // For migrated configs, signature will be regenerated on next export
+            // Step 6: Verify signatures from older exports when present.
             if (!needsMigration && config.signature && typeof config.signature === 'string') {
                 const configForVerification = JSON.parse(JSON.stringify(migratedConfig));
                 delete configForVerification.signature;
@@ -576,12 +680,8 @@ const ConfigManager = (function () {
 
                 const signatureValid = await _verifySignature(dataToVerify, config.signature);
                 if (!signatureValid) {
-                    // For old configs, signature might be invalid due to format changes
-                    // Allow import but warn user
-                    console.warn('[ConfigManager] Signature verification failed, but allowing import (may be due to migration)');
+                    return { valid: false, reason: 'Configuration integrity check failed' };
                 }
-            } else if (needsMigration) {
-                console.log('[ConfigManager] Signature skipped for migrated configuration');
             }
 
             return { 
@@ -605,6 +705,13 @@ const ConfigManager = (function () {
         try {
             if (!file || !(file instanceof File)) {
                 return { success: false, error: 'Invalid file' };
+            }
+
+            if (typeof file.size !== 'number' || !Number.isFinite(file.size) || file.size < 0) {
+                return { success: false, error: 'Invalid file size' };
+            }
+            if (file.size > CONFIG.MAX_FILE_SIZE) {
+                return { success: false, error: `Configuration file is too large (maximum ${CONFIG.MAX_FILE_SIZE / 1024 / 1024}MB)` };
             }
 
             // Read file as text

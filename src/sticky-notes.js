@@ -14,6 +14,9 @@ const StickyNotes = (function() {
         MIN_HEIGHT: 100,
         MAX_WIDTH: 360,
         MAX_HEIGHT: 360,
+        MAX_NOTES: 100,
+        MAX_NOTE_ID: 1000000000,
+        MAX_CONTENT_LENGTH: 20000,
         COLORS: [
             { name: 'yellow', bg: '#fef3c7', border: '#f59e0b', text: '#78350f' },
             { name: 'pink',   bg: '#fce7f3', border: '#ec4899', text: '#831843' },
@@ -46,6 +49,8 @@ const StickyNotes = (function() {
     let _dragState = {
         active: false,
         noteId: null,
+        pointerId: null,
+        noteEl: null,
         startX: 0,
         startY: 0,
         initialLeft: 0,
@@ -291,7 +296,17 @@ const StickyNotes = (function() {
             if (rawNotes) {
                 var data = JSON.parse(rawNotes);
                 if (Array.isArray(data.notes)) {
-                    await _dbSet('data', data);
+                    var usedIds = new Set();
+                    var normalizedNotes = [];
+                    data.notes.slice(0, CONFIG.MAX_NOTES).forEach(function(rawNote, index) {
+                        var normalized = _normalizeNote(rawNote, index, usedIds);
+                        if (normalized) normalizedNotes.push(normalized);
+                    });
+                    await _dbSet('data', {
+                        notes: normalizedNotes,
+                        maxId: normalizedNotes.reduce(function(max, note) { return Math.max(max, note.id); }, 0),
+                        nextZIndex: normalizedNotes.reduce(function(max, note) { return Math.max(max, note.zIndex); }, CONFIG.Z_INDEX_BASE),
+                    });
                     console.log('[StickyNotes] Migrated notes from localStorage to IndexedDB');
                 }
             }
@@ -308,6 +323,50 @@ const StickyNotes = (function() {
         } catch (e) {
             console.warn('[StickyNotes] Migration from localStorage failed:', e);
         }
+    }
+
+    function _normalizeNote(rawNote, index, usedIds) {
+        if (!rawNote || typeof rawNote !== 'object' || Array.isArray(rawNote)) return null;
+
+        var idValue = Number(rawNote.id);
+        var id = Number.isFinite(idValue) ? Math.floor(idValue) : 0;
+        if (id > CONFIG.MAX_NOTE_ID) id = 0;
+        if (id <= 0 || usedIds.has(id)) {
+            id = index + 1;
+            while (usedIds.has(id)) id++;
+        }
+        usedIds.add(id);
+
+        var numberInRange = function(value, fallback, min, max) {
+            var number = Number(value);
+            if (!Number.isFinite(number)) return fallback;
+            return Math.min(max, Math.max(min, number));
+        };
+        var rawColor = rawNote.color && typeof rawNote.color === 'object' ? rawNote.color : null;
+        var color = CONFIG.COLORS.find(function(candidate) {
+            return rawColor && candidate.bg === rawColor.bg;
+        }) || CONFIG.COLORS[0];
+        var rawFont = rawNote.font && typeof rawNote.font === 'object' ? rawNote.font : {};
+
+        return {
+            id: id,
+            x: Math.round(numberInRange(rawNote.x, 20, 0, 10000)),
+            y: Math.round(numberInRange(rawNote.y, 20, 0, 10000)),
+            zIndex: Math.round(numberInRange(rawNote.zIndex, CONFIG.Z_INDEX_BASE, CONFIG.Z_INDEX_BASE, 1000000)),
+            content: typeof rawNote.content === 'string' ? rawNote.content.slice(0, CONFIG.MAX_CONTENT_LENGTH) : '',
+            color: color,
+            width: Math.round(numberInRange(rawNote.width, CONFIG.DEFAULT_WIDTH, CONFIG.MIN_WIDTH, CONFIG.MAX_WIDTH)),
+            height: Math.round(numberInRange(rawNote.height, CONFIG.DEFAULT_HEIGHT, CONFIG.MIN_HEIGHT, CONFIG.MAX_HEIGHT)),
+            rotation: numberInRange(rawNote.rotation, 0, -5, 5),
+            createdAt: Number.isFinite(Number(rawNote.createdAt)) ? Number(rawNote.createdAt) : Date.now(),
+            font: {
+                size: Math.round(numberInRange(rawFont.size, CONFIG.DEFAULT_FONT.size, 12, 24)),
+                weight: rawFont.weight === 'bold' ? 'bold' : 'normal',
+                style: rawFont.style === 'italic' ? 'italic' : 'normal',
+                letterSpacing: numberInRange(rawFont.letterSpacing, CONFIG.DEFAULT_FONT.letterSpacing, -1, 3),
+                lineHeight: numberInRange(rawFont.lineHeight, CONFIG.DEFAULT_FONT.lineHeight, 1, 2.5),
+            },
+        };
     }
 
     async function _loadSettings() {
@@ -333,9 +392,30 @@ const StickyNotes = (function() {
         try {
             var data = await _dbGet('data');
             if (data && Array.isArray(data.notes)) {
-                _state.notes = data.notes;
-                _state.maxId = data.maxId || 0;
-                _state.nextZIndex = data.nextZIndex || CONFIG.Z_INDEX_BASE;
+                var usedIds = new Set();
+                var normalizedNotes = [];
+                data.notes.slice(0, CONFIG.MAX_NOTES).forEach(function(rawNote, index) {
+                    var normalized = _normalizeNote(rawNote, index, usedIds);
+                    if (normalized) normalizedNotes.push(normalized);
+                });
+                _state.notes = normalizedNotes;
+                var storedMaxId = Number(data.maxId);
+                if (!Number.isFinite(storedMaxId)) storedMaxId = 0;
+                _state.maxId = Math.min(CONFIG.MAX_NOTE_ID, Math.max(
+                    0,
+                    Math.floor(storedMaxId),
+                    normalizedNotes.reduce(function(max, note) { return Math.max(max, note.id); }, 0)
+                ));
+                _state.nextZIndex = Math.max(
+                    CONFIG.Z_INDEX_BASE,
+                    Number.isFinite(Number(data.nextZIndex)) ? Math.floor(Number(data.nextZIndex)) : CONFIG.Z_INDEX_BASE,
+                    normalizedNotes.reduce(function(max, note) { return Math.max(max, note.zIndex); }, CONFIG.Z_INDEX_BASE)
+                );
+                await _dbSet('data', {
+                    notes: _state.notes,
+                    maxId: _state.maxId,
+                    nextZIndex: _state.nextZIndex,
+                });
             }
         } catch (e) {
             console.warn('[StickyNotes] Failed to load notes from IndexedDB:', e);
@@ -459,16 +539,17 @@ const StickyNotes = (function() {
 
         el.appendChild(content);
 
-        // Drag: mousedown anywhere on the note starts potential drag
-        el.addEventListener('mousedown', function(e) {
+        el.addEventListener('pointerdown', function(e) {
             if (e.button !== 0) return;
-            if (e.target.closest('.sticky-note-header')) return;
-            _startDrag(e, note.id, content);
-        });
-
-        // Bring to front on any click
-        el.addEventListener('mousedown', function() {
+            if (!e.isPrimary) return;
+            if (e.target.closest('button, .sticky-note-color-dot')) return;
             _bringToFront(note.id);
+            _startDrag(
+                e,
+                note.id,
+                e.target.closest('.sticky-note-content') ? content : null,
+                el
+            );
         });
 
         return el;
@@ -493,6 +574,8 @@ const StickyNotes = (function() {
     // ==================== Note Operations ====================
 
     function _createNote() {
+        if (_state.notes.length >= CONFIG.MAX_NOTES) return null;
+
         var id = ++_state.maxId;
         var colorIndex = Math.floor(Math.random() * CONFIG.COLORS.length);
         var color = CONFIG.COLORS[colorIndex];
@@ -507,8 +590,8 @@ const StickyNotes = (function() {
         var y = Math.max(20, (vpH - defH) / 2 + (Math.random() - 0.5) * 80);
 
         // Clamp to viewport
-        x = Math.min(x, vpW - defW - 20);
-        y = Math.min(y, vpH - defH - 20);
+        x = Math.max(0, Math.min(x, Math.max(0, vpW - defW - 20)));
+        y = Math.max(0, Math.min(y, Math.max(0, vpH - defH - 20)));
 
         var note = {
             id: id,
@@ -546,7 +629,7 @@ const StickyNotes = (function() {
     function _updateNoteContent(id, content) {
         var note = _state.notes.find(function(n) { return n.id === id; });
         if (note) {
-            note.content = content;
+            note.content = typeof content === 'string' ? content.slice(0, CONFIG.MAX_CONTENT_LENGTH) : '';
             _saveNotes();
         }
     }
@@ -741,8 +824,9 @@ const StickyNotes = (function() {
 
     // ==================== Drag ====================
 
-    function _startDrag(e, noteId, contentEl) {
+    function _startDrag(e, noteId, contentEl, noteEl) {
         if (e.button !== 0) return;
+        if (_dragState.active) return;
 
         var note = _state.notes.find(function(n) { return n.id === noteId; });
         if (!note) return;
@@ -750,6 +834,8 @@ const StickyNotes = (function() {
         _dragState = {
             active: true,
             noteId: noteId,
+            pointerId: e.pointerId,
+            noteEl: noteEl || null,
             startX: e.clientX,
             startY: e.clientY,
             initialLeft: note.x,
@@ -760,12 +846,18 @@ const StickyNotes = (function() {
             wasContentEditable: contentEl ? contentEl.isContentEditable : false,
         };
 
-        document.addEventListener('mousemove', _onDragMove);
-        document.addEventListener('mouseup', _onDragEnd);
+        if (noteEl && noteEl.setPointerCapture) {
+            noteEl.setPointerCapture(e.pointerId);
+        }
+
+        document.addEventListener('pointermove', _onDragMove, { passive: false });
+        document.addEventListener('pointerup', _onDragEnd);
+        document.addEventListener('pointercancel', _onDragEnd);
     }
 
     function _onDragMove(e) {
         if (!_dragState.active) return;
+        if (e.pointerId !== _dragState.pointerId) return;
 
         var dx = e.clientX - _dragState.startX;
         var dy = e.clientY - _dragState.startY;
@@ -774,6 +866,7 @@ const StickyNotes = (function() {
         // Check if we have moved enough to enter drag mode
         if (!_dragState.hasMoved && distance > _dragState.dragThreshold) {
             _dragState.hasMoved = true;
+            e.preventDefault();
 
             // If drag started from contenteditable, blur and disable editing
             if (_dragState.contentEl && _dragState.wasContentEditable) {
@@ -781,19 +874,25 @@ const StickyNotes = (function() {
                 _dragState.contentEl.contentEditable = 'false';
             }
 
-            var el = _elements.container.querySelector('.sticky-note[data-id="' + _dragState.noteId + '"]');
+            var el = _dragState.noteEl || _elements.container.querySelector('.sticky-note[data-id="' + _dragState.noteId + '"]');
             if (el) el.classList.add('dragging');
         }
 
         if (!_dragState.hasMoved) return;
 
+        e.preventDefault();
+
         var note = _state.notes.find(function(n) { return n.id === _dragState.noteId; });
         if (!note) return;
 
-        note.x = Math.max(0, Math.round(_dragState.initialLeft + dx));
-        note.y = Math.max(0, Math.round(_dragState.initialTop + dy));
+        var el = _dragState.noteEl || _elements.container.querySelector('.sticky-note[data-id="' + _dragState.noteId + '"]');
+        var noteWidth = el ? el.offsetWidth : (note.width || CONFIG.DEFAULT_WIDTH);
+        var noteHeight = el ? el.offsetHeight : (note.height || CONFIG.DEFAULT_HEIGHT);
+        var maxX = Math.max(0, window.innerWidth - noteWidth);
+        var maxY = Math.max(0, window.innerHeight - noteHeight);
+        note.x = Math.min(maxX, Math.max(0, Math.round(_dragState.initialLeft + dx)));
+        note.y = Math.min(maxY, Math.max(0, Math.round(_dragState.initialTop + dy)));
 
-        var el = _elements.container.querySelector('.sticky-note[data-id="' + _dragState.noteId + '"]');
         if (el) {
             el.style.left = note.x + 'px';
             el.style.top = note.y + 'px';
@@ -802,8 +901,9 @@ const StickyNotes = (function() {
 
     function _onDragEnd(e) {
         if (!_dragState.active) return;
+        if (e.pointerId !== _dragState.pointerId) return;
 
-        var el = _elements.container.querySelector('.sticky-note[data-id="' + _dragState.noteId + '"]');
+        var el = _dragState.noteEl || _elements.container.querySelector('.sticky-note[data-id="' + _dragState.noteId + '"]');
         if (el) el.classList.remove('dragging');
 
         // If it was a click (no significant movement), focus content if clicked there
@@ -820,12 +920,19 @@ const StickyNotes = (function() {
             _saveNotes();
         }
 
+        if (el && el.releasePointerCapture && el.hasPointerCapture && el.hasPointerCapture(_dragState.pointerId)) {
+            el.releasePointerCapture(_dragState.pointerId);
+        }
+
         _dragState.active = false;
         _dragState.noteId = null;
+        _dragState.pointerId = null;
+        _dragState.noteEl = null;
         _dragState.contentEl = null;
 
-        document.removeEventListener('mousemove', _onDragMove);
-        document.removeEventListener('mouseup', _onDragEnd);
+        document.removeEventListener('pointermove', _onDragMove);
+        document.removeEventListener('pointerup', _onDragEnd);
+        document.removeEventListener('pointercancel', _onDragEnd);
     }
 
     // ==================== Public API ====================

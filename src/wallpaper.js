@@ -12,6 +12,9 @@ const WallpaperManager = (function () {
         STORE_NAME: 'wallpapers',
         WALLPAPER_KEY: 'currentWallpaper',
         MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB max
+        MAX_BING_INFO_BYTES: 256 * 1024,
+        MAX_BING_IMAGE_BYTES: 15 * 1024 * 1024,
+        MAX_BING_PIXELS: 40 * 1024 * 1024,
         RETRY_COUNT: 3,
         STORAGE_KEYS: {
             WALLPAPER_SETTINGS: 'wallpaperSettings',
@@ -37,9 +40,7 @@ const WallpaperManager = (function () {
         BING_API: {
             // Using a CORS proxy or direct Bing API
             BASE_URL: 'https://www.bing.com',
-            API_PATH: '/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=en-US',
-            // idx=0 is today, idx=1 is tomorrow (for preload)
-            API_PATH_TOMORROW: '/HPImageArchive.aspx?format=js&idx=-1&n=1&mkt=en-US',
+            API_PATH: '/HPImageArchive.aspx',
             PROXY_URL: 'https://bing.biturl.top/',
             // Cache expires at midnight (next day)
             CACHE_STRATEGY: 'daily'
@@ -103,6 +104,48 @@ const WallpaperManager = (function () {
         const n = Number(val);
         if (!Number.isFinite(n)) return fallback;
         return Math.min(max, Math.max(min, n));
+    }
+
+    function _getBingMarket() {
+        const market = String(_state.bingMarket || 'en-US');
+        return /^[a-z]{2}(?:-[A-Z]{2})?$/.test(market) ? market : 'en-US';
+    }
+
+    function _isAllowedBingUrl(url) {
+        try {
+            const parsed = new URL(url);
+            if (parsed.protocol !== 'https:') return false;
+            return parsed.hostname === 'www.bing.com' || parsed.hostname.endsWith('.bing.com') ||
+                parsed.hostname === 'bing.biturl.top';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function _isSafeBingImageBlob(blob) {
+        if (!blob || typeof blob.size !== 'number' || blob.size <= 0 || blob.size > CONFIG.MAX_BING_IMAGE_BYTES) {
+            return false;
+        }
+        const type = String(blob.type || '').split(';', 1)[0].toLowerCase();
+        return /^(image\/(?:jpeg|png|webp|gif|bmp))$/.test(type);
+    }
+
+    function _isSafeWallpaperBlob(blob) {
+        if (!blob || typeof blob.size !== 'number' || blob.size <= 0 || blob.size > CONFIG.MAX_FILE_SIZE) {
+            return false;
+        }
+        const type = String(blob.type || '').split(';', 1)[0].toLowerCase();
+        return /^image\/(?:jpeg|png|webp|gif|bmp|avif)$/.test(type);
+    }
+
+    function _isSafeWallpaperUrl(url) {
+        if (url === 'none') return true;
+        if (typeof url !== 'string' || url.length > 8 * 1024 * 1024) return false;
+        if (/^blob:/i.test(url)) {
+            return /^blob:(?:https?|chrome-extension|moz-extension|safari-web-extension):\/\/[a-z0-9.-]+(?::\d+)?\/[a-z0-9._~:\/?#@!$&*+=,%~-]+$/i.test(url);
+        }
+        if (/^https:\/\//i.test(url)) return _isAllowedBingUrl(url);
+        return /^data:image\/(?:jpeg|jpg|png|webp|gif|bmp|avif);base64,[A-Za-z0-9+/]*={0,2}$/i.test(url);
     }
 
     // ==================== DOM Element References ====================
@@ -376,11 +419,17 @@ const WallpaperManager = (function () {
 
         // Accent color
         const defaultAccent = '#3b82f6';
-        const accent = _state.themeSettings.useWallpaperAccent && _state.themeSettings.accentColor
+        const accent = _state.themeSettings.useWallpaperAccent && _isSafeAccentColor(_state.themeSettings.accentColor)
             ? _state.themeSettings.accentColor
             : defaultAccent;
 
         root.style.setProperty('--accent-color', accent);
+    }
+
+    function _isSafeAccentColor(color) {
+        if (typeof color !== 'string') return false;
+        return /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/i.test(color) ||
+            /^rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)$/i.test(color);
     }
 
     /**
@@ -564,6 +613,10 @@ const WallpaperManager = (function () {
      * @param {boolean} skipPreload - If true, skip preloading (used when image is already preloaded)
      */
     function _setWallpaper(url, skipPreload = false) {
+        if (!_isSafeWallpaperUrl(url)) {
+            console.warn('[WallpaperManager] Rejected unsafe wallpaper URL');
+            return false;
+        }
         const oldUrl = _state.currentWallpaperUrl;
         _state.currentWallpaperUrl = url;
         _setCSSVar(CONFIG.CSS_VARS.WALLPAPER_IMAGE, url === 'none' ? 'none' : `url(${url})`);
@@ -617,6 +670,7 @@ const WallpaperManager = (function () {
             // For non-blob URLs or 'none', revoke immediately
             URL.revokeObjectURL(oldUrl);
         }
+        return true;
     }
 
     /**
@@ -708,7 +762,7 @@ const WallpaperManager = (function () {
      * @param {string} url - Preview image URL
      */
     function _updatePreview(url) {
-        if (!url || !_elements.previewImg) return;
+        if (!url || !_elements.previewImg || !_isSafeWallpaperUrl(url)) return;
 
         _elements.previewImg.src = url;
 
@@ -878,7 +932,7 @@ const WallpaperManager = (function () {
                 
                 request.onsuccess = () => {
                     const result = request.result;
-                    if (result && result.blob) {
+                    if (result && _isSafeBingImageBlob(result.blob)) {
                         // Stale guard: date mismatch or past today's boundary
                         const entryDate = result.date || result.info?.date;
                         const startOfToday = _getStartOfTodayTs();
@@ -895,6 +949,7 @@ const WallpaperManager = (function () {
                         _updateBingLastAccess(db, key, Date.now());
                         resolve(result.blob);
                     } else {
+                        if (result) _removeBingCacheEntry(key);
                         resolve(null);
                     }
                 };
@@ -914,6 +969,7 @@ const WallpaperManager = (function () {
      */
     async function _saveBingImageToCache(dateStr, blob, info) {
         try {
+            if (!_isSafeBingImageBlob(blob)) return;
             const db = await _openDB();
             const key = `bing_${dateStr}`;
             const size = blob?.size || 0;
@@ -1032,6 +1088,7 @@ const WallpaperManager = (function () {
             const mergedOptions = {
                 ...options,
                 signal: controller?.signal,
+                redirect: 'error',
                 headers: {
                     ...defaultHeaders,
                     ...(options.headers || {})
@@ -1070,26 +1127,90 @@ const WallpaperManager = (function () {
         throw lastError || new Error('Fetch failed');
     }
 
+    async function _readResponseBlobWithLimit(response, maxBytes, timeoutMs) {
+        const contentLength = Number(response.headers.get('content-length'));
+        if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+            throw new Error('Response is too large');
+        }
+
+        const reader = response.body && typeof response.body.getReader === 'function'
+            ? response.body.getReader()
+            : null;
+        if (!reader) {
+            const readPromise = response.blob().then(blob => {
+                if (blob.size > maxBytes) throw new Error('Response is too large');
+                return blob;
+            });
+            if (!timeoutMs) return readPromise;
+            let timer = null;
+            try {
+                return await Promise.race([
+                    readPromise,
+                    new Promise((_, reject) => {
+                        timer = setTimeout(() => reject(new Error('Response read timed out')), timeoutMs);
+                    })
+                ]);
+            } finally {
+                if (timer) clearTimeout(timer);
+            }
+        }
+
+        let timer = null;
+        const readPromise = (async () => {
+            const chunks = [];
+            let size = 0;
+            while (true) {
+                const result = await reader.read();
+                if (result.done) break;
+                size += result.value.byteLength;
+                if (size > maxBytes) throw new Error('Response is too large');
+                chunks.push(result.value);
+            }
+            return new Blob(chunks, { type: response.headers.get('content-type') || 'application/octet-stream' });
+        })();
+
+        try {
+            if (timeoutMs) {
+                const timeoutPromise = new Promise((_, reject) => {
+                    timer = setTimeout(() => {
+                        reject(new Error('Response read timed out'));
+                    }, timeoutMs);
+                });
+                return await Promise.race([readPromise, timeoutPromise]);
+            }
+            return await readPromise;
+        } catch (e) {
+            try { await reader.cancel(); } catch (_) { }
+            throw e;
+        } finally {
+            if (timer) clearTimeout(timer);
+            reader.releaseLock();
+        }
+    }
+
     /**
      * Fetch Bing wallpaper info from API
      * @param {number} index - Day index (0 = today, -1 = tomorrow for some APIs)
      * @returns {Promise<Object|null>}
      */
     async function _fetchBingWallpaperInfo(index = 0) {
-        // Method 1: Try direct Bing API
         try {
-            const response = await _fetchWithTimeout(
-                `${CONFIG.BING_API.BASE_URL}${CONFIG.BING_API.API_PATH}`,
-                { mode: 'cors' },
-                CONFIG.TIMEOUTS.INFO
-            );
+            const apiUrl = new URL(CONFIG.BING_API.API_PATH, CONFIG.BING_API.BASE_URL);
+            apiUrl.searchParams.set('format', 'js');
+            apiUrl.searchParams.set('idx', String(index));
+            apiUrl.searchParams.set('n', '1');
+            apiUrl.searchParams.set('mkt', _getBingMarket());
+            const response = await _fetchWithTimeout(apiUrl.href, { mode: 'cors' }, CONFIG.TIMEOUTS.INFO);
             if (response.ok) {
-                const data = await response.json();
+                const dataBlob = await _readResponseBlobWithLimit(response, CONFIG.MAX_BING_INFO_BYTES, CONFIG.TIMEOUTS.INFO);
+                const data = JSON.parse(await dataBlob.text());
                 if (data.images && data.images[0]) {
                     const image = data.images[0];
+                    const imageUrl = new URL(image.url, CONFIG.BING_API.BASE_URL).href;
+                    if (!_isAllowedBingUrl(imageUrl)) throw new Error('Unexpected Bing image origin');
                     return {
-                        url: `${CONFIG.BING_API.BASE_URL}${image.url}`,
-                        urlHD: `${CONFIG.BING_API.BASE_URL}${image.url.replace('1920x1080', 'UHD')}`,
+                        url: imageUrl,
+                        urlHD: imageUrl.replace('1920x1080', 'UHD'),
                         title: image.title || 'Bing Daily Wallpaper',
                         copyright: image.copyright || '',
                         date: image.startdate || _getDateString(0)
@@ -1100,13 +1221,12 @@ const WallpaperManager = (function () {
             // Direct fetch failed
         }
 
-        // Method 2: Use proxy API
         try {
-            const proxyUrl = `${CONFIG.BING_API.PROXY_URL}?resolution=UHD&format=image&index=${index}&mkt=en-US`;
+            const market = encodeURIComponent(_getBingMarket());
+            const proxyUrl = `${CONFIG.BING_API.PROXY_URL}?resolution=UHD&format=image&index=${index}&mkt=${market}`;
 
-            // Skip full-image validation; rely on actual fetch error handling
             return {
-                url: `${CONFIG.BING_API.PROXY_URL}?resolution=1920&format=image&index=${index}&mkt=en-US`,
+                url: `${CONFIG.BING_API.PROXY_URL}?resolution=1920&format=image&index=${index}&mkt=${market}`,
                 urlHD: proxyUrl,
                 title: 'Bing Daily Wallpaper',
                 copyright: '',
@@ -1132,6 +1252,7 @@ const WallpaperManager = (function () {
 
             for (const candidate of candidates) {
                 try {
+                    if (!_isAllowedBingUrl(candidate)) continue;
                     const response = await _fetchWithRetry(
                         candidate,
                         {},
@@ -1139,7 +1260,14 @@ const WallpaperManager = (function () {
                         3,
                         200
                     );
-                    const blob = await response.blob();
+                    const contentType = (response.headers.get('content-type') || '').split(';', 1)[0].trim().toLowerCase();
+                    if (contentType && !/^image\/(?:jpeg|png|webp|gif|bmp)$/.test(contentType)) continue;
+                    const blob = await _readResponseBlobWithLimit(
+                        response,
+                        CONFIG.MAX_BING_IMAGE_BYTES,
+                        CONFIG.TIMEOUTS.IMAGE
+                    );
+                    if (!_isSafeBingImageBlob(blob)) continue;
                     console.log(`Downloaded Bing wallpaper: ${(blob.size / 1024 / 1024).toFixed(2)}MB`);
                     return blob;
                 } catch (err) {
@@ -1401,19 +1529,24 @@ const WallpaperManager = (function () {
             
             // Create object URL from cached blob
             const imageUrl = URL.createObjectURL(blob);
-            
+
             // Preload image to prevent flickering
-            await new Promise((resolve) => {
+            await new Promise((resolve, reject) => {
                 const img = new Image();
                 img.onload = () => {
+                    const pixels = (img.naturalWidth || 0) * (img.naturalHeight || 0);
+                    if (!Number.isFinite(pixels) || pixels <= 0 || pixels > CONFIG.MAX_BING_PIXELS) {
+                        URL.revokeObjectURL(imageUrl);
+                        reject(new Error('Bing wallpaper dimensions are too large'));
+                        return;
+                    }
                     // Image is fully loaded, safe to set wallpaper
                     _setWallpaper(imageUrl, true); // skipPreload = true since we already preloaded
                     resolve();
                 };
                 img.onerror = () => {
-                    // Even if preload fails, set wallpaper anyway
-                    _setWallpaper(imageUrl, true);
-                    resolve();
+                    URL.revokeObjectURL(imageUrl);
+                    reject(new Error('Bing wallpaper could not be decoded'));
                 };
                 img.src = imageUrl;
             });
@@ -1600,7 +1733,7 @@ const WallpaperManager = (function () {
         }
 
         // File type check
-        if (!file.type.startsWith('image/')) {
+        if (!/^image\/(?:jpeg|png|webp|gif|bmp|avif)$/i.test(file.type || '')) {
             const msg = _getLocalizedMessage('pleaseUploadImage', 'Please upload an image file');
             alert(msg);
             return false;
@@ -2115,14 +2248,19 @@ const WallpaperManager = (function () {
      * Load settings from storage
      */
     function _loadSettings() {
+        const savedMarket = localStorage.getItem(CONFIG.STORAGE_KEYS.BING_MARKET);
+        if (savedMarket && /^[a-z]{2}(?:-[A-Z]{2})?$/.test(savedMarket)) {
+            _state.bingMarket = savedMarket;
+        }
+
         // Load wallpaper effect settings
         const savedWallpaperSettings = localStorage.getItem(CONFIG.STORAGE_KEYS.WALLPAPER_SETTINGS);
         if (savedWallpaperSettings) {
             try {
                 const parsed = JSON.parse(savedWallpaperSettings);
                 _state.wallpaperSettings = {
-                    blur: parsed.blur ?? 0,
-                    vignette: parsed.vignette ?? 0
+                    blur: Math.min(100, Math.max(0, Number.isFinite(Number(parsed.blur)) ? Number(parsed.blur) : 0)),
+                    vignette: Math.min(100, Math.max(0, Number.isFinite(Number(parsed.vignette)) ? Number(parsed.vignette) : 0))
                 };
             } catch (e) {
                 console.warn('Failed to parse wallpaper settings:', e);
@@ -2153,7 +2291,7 @@ const WallpaperManager = (function () {
                 const parsed = JSON.parse(savedThemeSettings);
                 _state.themeSettings = {
                     useWallpaperAccent: !!parsed.useWallpaperAccent,
-                    accentColor: typeof parsed.accentColor === 'string' ? parsed.accentColor : null
+                    accentColor: _isSafeAccentColor(parsed.accentColor) ? parsed.accentColor : null
                 };
             } catch (e) {
                 console.warn('Failed to parse theme settings:', e);
@@ -2245,19 +2383,20 @@ const WallpaperManager = (function () {
             const dbData = await _getWallpaperFromDB();
             if (dbData) {
                 let objectUrl;
-                if (dbData instanceof Blob) {
+                if (dbData instanceof Blob && _isSafeWallpaperBlob(dbData)) {
                     objectUrl = URL.createObjectURL(dbData);
                     // Backfill small preview for future cold starts
                     _saveWallpaperPreviewSmall(dbData, CONFIG.WALLPAPER_SOURCES.CUSTOM);
-                } else {
+                } else if (typeof dbData === 'string' && _isSafeWallpaperUrl(dbData)) {
                     // Backward compatibility with old format (base64 string)
                     objectUrl = dbData;
                     _saveWallpaperPreviewSmall(dbData, CONFIG.WALLPAPER_SOURCES.CUSTOM);
                 }
-                _setWallpaper(objectUrl);
-                _updatePreview(objectUrl);
-                _state.wallpaperSource = CONFIG.WALLPAPER_SOURCES.CUSTOM;
-                wallpaperLoaded = true;
+                if (objectUrl && _setWallpaper(objectUrl)) {
+                    _updatePreview(objectUrl);
+                    _state.wallpaperSource = CONFIG.WALLPAPER_SOURCES.CUSTOM;
+                    wallpaperLoaded = true;
+                }
             }
         } catch (e) {
             console.error('Error loading wallpaper from IndexedDB:', e);
@@ -2267,8 +2406,7 @@ const WallpaperManager = (function () {
         // Fallback to localStorage (legacy)
         if (!wallpaperLoaded) {
             const savedWallpaper = localStorage.getItem(CONFIG.STORAGE_KEYS.LEGACY_WALLPAPER);
-            if (savedWallpaper) {
-                _setWallpaper(savedWallpaper);
+            if (savedWallpaper && _setWallpaper(savedWallpaper)) {
                 _updatePreview(savedWallpaper);
                 _state.wallpaperSource = CONFIG.WALLPAPER_SOURCES.CUSTOM;
                 wallpaperLoaded = true;
