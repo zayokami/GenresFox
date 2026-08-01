@@ -21,7 +21,7 @@ This directory contains GitHub Actions workflows for automated testing, building
 ### 2. Release (`release.yml`)
 
 **Triggers:**
-- Push of a tag matching `v*` pattern (e.g., `v0.4.7.0`)
+- Push of a tag matching `v*` pattern (e.g., `v0.4.8.0`)
 
 **Jobs:**
 - Verifies tag version matches `manifest.json` version
@@ -35,8 +35,8 @@ This directory contains GitHub Actions workflows for automated testing, building
 **Usage:**
 ```bash
 # Create and push a version tag
-git tag v0.4.7.0
-git push origin v0.4.7.0
+git tag v0.4.8.0
+git push origin v0.4.8.0
 ```
 
 ### 3. Code Quality (`code-quality.yml`)
@@ -89,7 +89,7 @@ Add these badges to your README.md:
 3. **Commit and push** changes:
    ```bash
    git add src/manifest.json CHANGELOG.md
-   git commit -m "chore: bump version to 0.4.7"
+   git commit -m "chore: bump version to 0.4.8"
    git push origin dev
    ```
 4. **Merge to main** (if using dev branch):
@@ -100,8 +100,8 @@ Add these badges to your README.md:
    ```
 5. **Create and push tag**:
    ```bash
-   git tag v0.4.7
-   git push origin v0.4.7
+   git tag v0.4.8
+   git push origin v0.4.8
    ```
 6. **GitHub Actions** will automatically:
    - Validate the extension
@@ -205,7 +205,7 @@ Edit `code-quality.yml` to add custom validation steps:
 ### 2. Release (`release.yml`)
 
 **触发条件:**
-- 推送匹配 `v*` 模式的标签（例如 `v0.4.7.0`）
+- 推送匹配 `v*` 模式的标签（例如 `v0.4.8.0`）
 
 **任务:**
 - 验证标签版本是否与 `manifest.json` 版本匹配
@@ -219,8 +219,8 @@ Edit `code-quality.yml` to add custom validation steps:
 **使用方法:**
 ```bash
 # 创建并推送版本标签
-git tag v0.4.7.0
-git push origin v0.4.7.0
+git tag v0.4.8.0
+git push origin v0.4.8.0
 ```
 
 ### 3. Code Quality (`code-quality.yml`)
@@ -263,7 +263,7 @@ cp src/wasm-resize/target/wasm32-unknown-unknown/release/wasm_resize.wasm src/re
 3. **提交并推送** 更改：
    ```bash
    git add src/manifest.json CHANGELOG.md
-   git commit -m "chore: bump version to 0.4.7"
+   git commit -m "chore: bump version to 0.4.8"
    git push origin dev
    ```
 4. **合并到 main**（如果使用 dev 分支）：
@@ -274,8 +274,8 @@ cp src/wasm-resize/target/wasm32-unknown-unknown/release/wasm_resize.wasm src/re
    ```
 5. **创建并推送标签**：
    ```bash
-   git tag v0.4.7
-   git push origin v0.4.7
+   git tag v0.4.8
+   git push origin v0.4.8
    ```
 6. **GitHub Actions** 将自动：
    - 验证扩展

@@ -14,7 +14,7 @@ const ConfigManager = (function () {
 
     // ==================== Configuration Constants ====================
     const CONFIG = {
-        VERSION: '0.4.7',
+        VERSION: '0.4.8',
         MAX_AGE_DAYS: 365,
         MAX_FILE_SIZE: 5 * 1024 * 1024,
         MAX_SHORTCUTS: 500,

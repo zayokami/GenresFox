@@ -6,6 +6,16 @@ The dates recorded in this document are based on CST (UTC+8).
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.8] - 2026-08-01
+
+### Fixed
+- **Sticky Note Dragging**: Reworked note dragging with pointer events and pointer capture for reliable mouse and touch movement.
+- **Sticky Note Persistence**: Fixed initialization races, invalid note data, default positioning, and persistence edge cases.
+- **Security Boundaries**: Hardened URL validation, private-address blocking, blob/CSS handling, image limits, and configuration input validation.
+
+### Changed
+- **Release Tooling**: Hardened packaging scripts and CI validation for safer, consistent releases.
+
 ## [0.4.7] - 2026-05-26
 
 ### Added
