@@ -21,7 +21,7 @@ const ShortcutManager = (function() {
     const ICON_CACHE_DB_NAME = 'genresfox-icon-cache';
     const ICON_CACHE_STORE = 'icons';
     const ICON_CACHE_DB_VERSION = 1;
-    const ICON_CACHE_VERSION = 1;
+    const ICON_CACHE_VERSION = 2;
     const ICON_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
     const MAX_ICON_BYTES = 512 * 1024;
     const MAX_ICON_DATA_URL_LENGTH = Math.ceil(MAX_ICON_BYTES * 4 / 3) + 128;
@@ -135,6 +135,20 @@ const ShortcutManager = (function() {
         }
     }
 
+    function _resolveIconUrl(rawIconUrl, pageUrl) {
+        if (!_validateHttpUrl(rawIconUrl, true, true)) return null;
+        if (/^[a-z][a-z0-9+.-]*:/i.test(rawIconUrl)) return rawIconUrl;
+        if (!pageUrl || !_validateHttpUrl(pageUrl, false, true)) return rawIconUrl;
+        try {
+            const resolved = new URL(rawIconUrl, pageUrl);
+            if ((resolved.protocol !== 'http:' && resolved.protocol !== 'https:') ||
+                _isPrivateHostname(resolved.hostname)) return null;
+            return resolved.href;
+        } catch (e) {
+            return null;
+        }
+    }
+
     function _isPrivateHostname(hostname) {
         const value = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
         if (!value || value === 'localhost' || value.endsWith('.localhost') ||
@@ -200,7 +214,7 @@ const ShortcutManager = (function() {
 
     function _isSafeIconDataUrl(value) {
         return typeof value === 'string' && value.length <= MAX_ICON_DATA_URL_LENGTH &&
-            /^data:image\/(?:png|jpeg|gif|webp|x-icon);base64,[A-Za-z0-9+/]*={0,2}$/i.test(value);
+            /^data:image\/(?:png|jpeg|gif|webp|apng|x-icon|vnd\.microsoft\.icon|ico);base64,[A-Za-z0-9+/]*={0,2}$/i.test(value);
     }
 
     function _sanitizeShortcutList(list) {
@@ -306,7 +320,9 @@ const ShortcutManager = (function() {
             seen.add(u);
         };
 
-        const basisUrl = pageUrl || rawIconUrl;
+        const resolvedIconUrl = _resolveIconUrl(rawIconUrl, pageUrl);
+        if (resolvedIconUrl) add(resolvedIconUrl);
+        const basisUrl = pageUrl || resolvedIconUrl;
         if (basisUrl) {
             try {
                 const urlObj = new URL(basisUrl);
@@ -314,16 +330,18 @@ const ShortcutManager = (function() {
                 const domain = urlObj.hostname;
                 if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') return ['icon.png'];
                 if (_isPrivateHostname(domain)) return ['icon.png'];
-                
+
                 add(`${origin}/favicon.ico`);
                 add(`${origin}/apple-touch-icon.png`);
                 add(`${origin}/apple-touch-icon-precomposed.png`);
+
+                const encodedDomain = encodeURIComponent(domain);
+                add(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
+                add(`https://www.google.com/s2/favicons?domain=${encodedDomain}&sz=128`);
             } catch (e) {
                 // Ignore parse errors
             }
         }
-
-        if (rawIconUrl && _validateHttpUrl(rawIconUrl, true, true)) add(rawIconUrl);
 
         if (candidates.length === 0) add("icon.png");
         return candidates;
@@ -443,40 +461,51 @@ const ShortcutManager = (function() {
      * @returns {Promise<string>} Data URL or original URL
      */
     async function _loadIconViaImage(url) {
-        return new Promise((resolve, reject) => {
+        const loadImage = (useCors) => new Promise((resolve, reject) => {
             const img = new Image();
             img.referrerPolicy = 'no-referrer';
-            
-            if (!_isNonCorsService(url)) {
-                img.crossOrigin = 'anonymous';
-            }
-            
+            if (useCors) img.crossOrigin = 'anonymous';
+
+            let settled = false;
             const timeout = setTimeout(() => {
+                if (settled) return;
+                settled = true;
                 img.onload = null;
                 img.onerror = null;
                 img.src = '';
                 reject(new Error('Image load timeout'));
             }, 5000);
-            
-            let resolved = false;
-            
-            img.onload = () => {
-                if (resolved) return;
-                resolved = true;
-                clearTimeout(timeout);
-                try {
-                    if (_isNonCorsService(url)) {
-                        resolve(url);
-                        return;
-                    }
 
-                    const width = img.naturalWidth || img.width || 0;
-                    const height = img.naturalHeight || img.height || 0;
-                    if (!width || !height || width * height > MAX_ICON_PIXELS) {
-                        reject(new Error('Icon dimensions are too large'));
-                        return;
-                    }
-                    
+            const rejectLoad = (message) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeout);
+                img.onload = null;
+                img.onerror = null;
+                img.src = '';
+                reject(new Error(message));
+            };
+
+            img.onload = () => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeout);
+                img.onload = null;
+                img.onerror = null;
+
+                const width = img.naturalWidth || img.width || 0;
+                const height = img.naturalHeight || img.height || 0;
+                if (!width || !height || width * height > MAX_ICON_PIXELS) {
+                    reject(new Error('Icon dimensions are too large'));
+                    return;
+                }
+
+                if (!useCors || _isNonCorsService(url)) {
+                    resolve(url);
+                    return;
+                }
+
+                try {
                     const canvas = document.createElement('canvas');
                     canvas.width = width;
                     canvas.height = height;
@@ -491,17 +520,18 @@ const ShortcutManager = (function() {
                     }
                 }
             };
-            
-            img.onerror = () => {
-                if (resolved) return;
-                resolved = true;
-                clearTimeout(timeout);
-                img.src = '';
-                reject(new Error('Image load failed'));
-            };
-            
+
+            img.onerror = () => rejectLoad('Image load failed');
             img.src = url;
         });
+
+        if (_isNonCorsService(url)) return loadImage(false);
+        try {
+            return await loadImage(true);
+        } catch (err) {
+            if (err.message === 'Icon dimensions are too large') throw err;
+            return loadImage(false);
+        }
     }
 
     /**
@@ -618,6 +648,41 @@ const ShortcutManager = (function() {
         });
     }
 
+    function _showIconFallback(img, text, className, title) {
+        if (!img) return;
+        img.style.display = 'none';
+        const container = img.parentElement;
+        if (!container) return;
+
+        container.dataset.iconFallbackContainer = 'true';
+        if (className) container.classList.add(className);
+        if (title) container.title = title;
+
+        let fallback = container.querySelector('[data-icon-fallback]');
+        if (!fallback) {
+            fallback = document.createElement('span');
+            fallback.dataset.iconFallback = 'true';
+            container.appendChild(fallback);
+        }
+        fallback.textContent = text;
+        if (!className) fallback.style.fontWeight = '600';
+    }
+
+    function _restoreIconImage(img, dataUrl) {
+        const container = img.parentElement;
+        if (container && container.dataset.iconFallbackContainer === 'true') {
+            const fallback = container.querySelector('[data-icon-fallback]');
+            if (fallback) fallback.remove();
+            delete container.dataset.iconFallbackContainer;
+            container.classList.remove('shortcut-icon-fallback', 'folder-paper-fallback');
+            container.removeAttribute('title');
+            container.style.removeProperty('font-size');
+            container.style.removeProperty('font-weight');
+        }
+        img.style.removeProperty('display');
+        img.src = dataUrl;
+    }
+
     /**
      * Update all images with matching cache key
      * @param {string} key - Cache key
@@ -628,7 +693,7 @@ const ShortcutManager = (function() {
             ? CSS.escape(key)
             : String(key).replace(/(["\\])/g, '\\$1');
         document.querySelectorAll(`img[data-cache-key="${escapedKey}"]`).forEach(img => {
-            img.src = dataUrl;
+            _restoreIconImage(img, dataUrl);
         });
     }
 
@@ -709,7 +774,7 @@ const ShortcutManager = (function() {
      * @returns {string} Icon URL or data URL
      */
     function getIconSrc(key, url, pageUrl) {
-        const preferredUrl = _validateHttpUrl(url, true, true) ||
+        const preferredUrl = _resolveIconUrl(url, pageUrl) ||
             (pageUrl && _validateHttpUrl(pageUrl, false, true) ? getFavicon(pageUrl) : null) || "icon.png";
 
         // 1) In-memory cache
@@ -889,18 +954,14 @@ const ShortcutManager = (function() {
                 const img = document.createElement('img');
                 _decorateImg(img);
                 const cacheKey = `shortcut_${shortcut.url}`;
-                img.src = getIconSrc(cacheKey, shortcut.icon, shortcut.url);
                 img.dataset.cacheKey = cacheKey;
                 img.width = 20;
                 img.height = 20;
                 img.onerror = () => {
-                    img.style.display = 'none';
-                    const fallback = document.createElement('span');
-                    fallback.textContent = shortcut.name.charAt(0).toUpperCase();
-                    fallback.style.fontWeight = '600';
-                    spanInfo.appendChild(fallback);
+                    _showIconFallback(img, shortcut.name.charAt(0).toUpperCase());
                 };
                 spanInfo.appendChild(img);
+                img.src = getIconSrc(cacheKey, shortcut.icon, shortcut.url);
                 spanInfo.appendChild(document.createTextNode(' ' + shortcut.name));
             }
             div.appendChild(spanInfo);
@@ -1000,13 +1061,12 @@ const ShortcutManager = (function() {
                     img.alt = item.name;
                     img.draggable = false;
                     const cacheKey = `shortcut_${item.url || item.id}`;
-                    img.src = getIconSrc(cacheKey, item.icon || '', item.url);
+                    img.dataset.cacheKey = cacheKey;
                     img.onerror = () => {
-                        img.style.display = 'none';
-                        paper.textContent = (item.name || '?').charAt(0).toUpperCase();
-                        paper.classList.add('folder-paper-fallback');
+                        _showIconFallback(img, (item.name || '?').charAt(0).toUpperCase(), 'folder-paper-fallback');
                     };
                     paper.appendChild(img);
+                    img.src = getIconSrc(cacheKey, item.icon || '', item.url);
                     paperStack.appendChild(paper);
                 });
                 folderBody.appendChild(paperStack);
@@ -1046,7 +1106,6 @@ const ShortcutManager = (function() {
                 const cacheKey = `shortcut_${shortcut.url}`;
                 img.dataset.cacheKey = cacheKey;
                 const iconSrc = getIconSrc(cacheKey, shortcut.icon, shortcut.url);
-                img.src = iconSrc;
 
                 // Apply icon color background if enabled (will be applied after image loads)
                 // Note: We wait for image to load to ensure accurate color extraction
@@ -1055,18 +1114,21 @@ const ShortcutManager = (function() {
                     iconDiv.classList.remove("loading");
                 };
                 img.onerror = () => {
+                    _showIconFallback(
+                        img,
+                        shortcut.name.charAt(0).toUpperCase(),
+                        'shortcut-icon-fallback',
+                        (window.I18n && I18n.getMessage)
+                            ? (I18n.getMessage('shortcutIconError') || 'Icon failed to load, using initial instead.')
+                            : 'Icon failed to load, using initial instead.'
+                    );
                     iconDiv.classList.remove("loading");
-                    img.style.display = 'none';
-                    iconDiv.textContent = shortcut.name.charAt(0).toUpperCase();
                     iconDiv.style.fontSize = '18px';
                     iconDiv.style.fontWeight = '600';
-                    iconDiv.classList.add('shortcut-icon-fallback');
-                    iconDiv.title = (window.I18n && I18n.getMessage)
-                        ? (I18n.getMessage('shortcutIconError') || 'Icon failed to load, using initial instead.')
-                        : 'Icon failed to load, using initial instead.';
                 };
 
                 iconDiv.appendChild(img);
+                img.src = iconSrc;
 
                 const nameDiv = document.createElement("div");
                 nameDiv.className = "shortcut-name";

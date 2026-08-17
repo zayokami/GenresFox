@@ -1831,17 +1831,24 @@ function openFolderOverlay(index) {
         left.className = 'folder-item-info';
         const img = document.createElement('img');
         const cacheKey = `shortcut_${item.url || item.id}`;
-        img.src = getIconSrc(cacheKey, item.icon || '', item.url);
+        img.dataset.cacheKey = cacheKey;
+        _decorateImg(img);
         img.onerror = () => {
             img.style.display = 'none';
-            const fallback = document.createElement('span');
+            left.dataset.iconFallbackContainer = 'true';
+            let fallback = left.querySelector('[data-icon-fallback]');
+            if (!fallback) {
+                fallback = document.createElement('span');
+                fallback.dataset.iconFallback = 'true';
+                fallback.className = 'folder-item-fallback';
+                left.appendChild(fallback);
+            }
             fallback.textContent = (item.name || '?').charAt(0).toUpperCase();
-            fallback.className = 'folder-item-fallback';
-            left.appendChild(fallback);
         };
         img.width = 20;
         img.height = 20;
         left.appendChild(img);
+        img.src = getIconSrc(cacheKey, item.icon || '', item.url);
         const text = document.createElement('span');
         text.textContent = item.name;
         left.appendChild(text);

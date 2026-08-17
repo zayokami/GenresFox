@@ -21,6 +21,8 @@
     // Constants
     var STORAGE_KEYS = {
         PREVIEW: 'wallpaperPreviewSmall',
+        CUSTOM_BACKUP: 'wallpaperCustomBackup',
+        SOURCE: 'wallpaperSource',
         SETTINGS: 'wallpaperSettings'
     };
     
@@ -54,11 +56,9 @@
         if (!data || typeof data !== 'object') return false;
         if (!isValidDataUrl(data.dataUrl)) return false;
         
-        // Check expiration (if timestamp exists)
         if (data.ts && typeof data.ts === 'number') {
             var age = Date.now() - data.ts;
-            if (age < 0 || age > PREVIEW_CACHE_EXPIRY) {
-                // Expired or invalid timestamp
+            if (age < 0 || (data.kind !== 'custom' && age > PREVIEW_CACHE_EXPIRY)) {
                 return false;
             }
         }
@@ -153,21 +153,31 @@
                 return;
             }
 
-            // Load wallpaper preview
-            var previewRaw = localStorage.getItem(STORAGE_KEYS.PREVIEW);
-            if (previewRaw) {
+            var wallpaperSource = localStorage.getItem(STORAGE_KEYS.SOURCE);
+            var previewKeys = wallpaperSource === 'custom'
+                ? [STORAGE_KEYS.CUSTOM_BACKUP, STORAGE_KEYS.PREVIEW]
+                : [STORAGE_KEYS.PREVIEW];
+
+            for (var i = 0; i < previewKeys.length; i++) {
+                var previewRaw = localStorage.getItem(previewKeys[i]);
+                if (!previewRaw) continue;
                 try {
                     var previewData = JSON.parse(previewRaw);
-                    if (validatePreviewData(previewData)) {
+                    var matchesSource = !previewData.kind ||
+                        (wallpaperSource === 'custom' && previewData.kind === 'custom') ||
+                        (wallpaperSource === 'bing' && previewData.kind === 'bing') ||
+                        (wallpaperSource !== 'custom' && wallpaperSource !== 'bing');
+                    if (matchesSource && validatePreviewData(previewData)) {
                         applyWallpaperImage(previewData.dataUrl);
                         
                         // Apply accent color if available
                         if (previewData.accentColor) {
                             applyAccentColor(previewData.accentColor);
                         }
+                        break;
                     }
                 } catch (e) {
-                    // Invalid JSON or data structure, skip preview
+                    continue;
                 }
             }
             

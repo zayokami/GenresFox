@@ -24,6 +24,7 @@ const WallpaperManager = (function () {
             WALLPAPER_SOURCE: 'wallpaperSource',
             BING_MARKET: 'bingMarket',
             WALLPAPER_PREVIEW_SMALL: 'wallpaperPreviewSmall',
+            CUSTOM_WALLPAPER_BACKUP: 'wallpaperCustomBackup',
             THEME_SETTINGS: 'themeSettings'
         },
         CSS_VARS: {
@@ -338,6 +339,15 @@ const WallpaperManager = (function () {
         }
     }
 
+    function _safeLocalStorageGet(key) {
+        try {
+            return localStorage.getItem(key);
+        } catch (e) {
+            console.warn(`[WallpaperManager] Failed to read localStorage key "${key}":`, e);
+            return null;
+        }
+    }
+
     /**
      * Safely remove a localStorage key.
      * @param {string} key
@@ -522,22 +532,15 @@ const WallpaperManager = (function () {
      * Runs in idle time to avoid blocking UI.
      * @param {Blob|string} source - Blob or dataURL/string from legacy storage
      * @param {string} kind - 'bing' | 'custom'
+     * @param {boolean} immediate - Whether to skip idle scheduling
      */
-    function _saveWallpaperPreviewSmall(source, kind) {
-        _runWhenIdle(async () => {
+    function _saveWallpaperPreviewSmall(source, kind, immediate = false) {
+        const save = async () => {
             let img = null;
             try {
                 if (source instanceof Blob) {
-                    const url = URL.createObjectURL(source);
-                    try {
-                        img = await createImageBitmap(source);
-                        URL.revokeObjectURL(url);
-                    } catch (e) {
-                        URL.revokeObjectURL(url);
-                        return;
-                    }
+                    img = await createImageBitmap(source);
                 } else if (typeof source === 'string' && source) {
-                    // Legacy dataURL / URL string
                     img = new Image();
                     await new Promise((resolve, reject) => {
                         img.onload = () => resolve();
@@ -577,15 +580,61 @@ const WallpaperManager = (function () {
                     ts: Date.now(),
                     accentColor: accentColor || null
                 };
-                _safeLocalStorageSet(CONFIG.STORAGE_KEYS.WALLPAPER_PREVIEW_SMALL, JSON.stringify(payload));
+                const serialized = JSON.stringify(payload);
+                const currentSaved = _safeLocalStorageSet(
+                    CONFIG.STORAGE_KEYS.WALLPAPER_PREVIEW_SMALL,
+                    serialized
+                );
+                const backupSaved = kind === CONFIG.WALLPAPER_SOURCES.CUSTOM
+                    ? _safeLocalStorageSet(CONFIG.STORAGE_KEYS.CUSTOM_WALLPAPER_BACKUP, serialized)
+                    : true;
+                return currentSaved && backupSaved;
             } catch (_) {
-                // Silent failure. Preview is purely best-effort.
+                return false;
             } finally {
                 if (img && typeof img.close === 'function') {
                     img.close();
                 }
             }
-        }, 2000);
+        };
+
+        if (immediate) return save();
+        return new Promise((resolve) => {
+            _runWhenIdle(() => {
+                save().then(resolve, () => resolve(false));
+            }, 2000);
+        });
+    }
+
+    function _readWallpaperPreviewSmall(kind) {
+        const keys = kind === CONFIG.WALLPAPER_SOURCES.CUSTOM
+            ? [
+                CONFIG.STORAGE_KEYS.CUSTOM_WALLPAPER_BACKUP,
+                CONFIG.STORAGE_KEYS.WALLPAPER_PREVIEW_SMALL
+            ]
+            : [CONFIG.STORAGE_KEYS.WALLPAPER_PREVIEW_SMALL];
+
+        for (const key of keys) {
+            const raw = _safeLocalStorageGet(key);
+            if (!raw) continue;
+            try {
+                const payload = JSON.parse(raw);
+                if (!payload || payload.kind !== kind ||
+                    typeof payload.dataUrl !== 'string' ||
+                    payload.dataUrl.length > 2 * 1024 * 1024 ||
+                    !/^data:image\/(?:jpeg|jpg|png|webp|gif);base64,[A-Za-z0-9+/]*={0,2}$/i.test(payload.dataUrl)) {
+                    continue;
+                }
+
+                if (kind === CONFIG.WALLPAPER_SOURCES.CUSTOM && key === CONFIG.STORAGE_KEYS.WALLPAPER_PREVIEW_SMALL) {
+                    _safeLocalStorageSet(CONFIG.STORAGE_KEYS.CUSTOM_WALLPAPER_BACKUP, raw);
+                }
+                return payload.dataUrl;
+            } catch (e) {
+                continue;
+            }
+        }
+        return null;
     }
 
     // Track pending Object URL revoke timers to prevent leaks on rapid changes
@@ -1783,15 +1832,12 @@ const WallpaperManager = (function () {
                 // Save optimized blob to IndexedDB
                 await _saveWallpaperToDB(result.blob);
                 
-                // Clear legacy localStorage wallpaper
-                _safeLocalStorageRemove(CONFIG.STORAGE_KEYS.LEGACY_WALLPAPER);
-
                 // Create URL from optimized blob
                 const objectUrl = URL.createObjectURL(result.blob);
                 _setWallpaper(objectUrl);
                 _updatePreview(objectUrl);
                 _applyWallpaperEffects();
-                _saveWallpaperPreviewSmall(result.blob, CONFIG.WALLPAPER_SOURCES.CUSTOM);
+                await _saveWallpaperPreviewSmall(result.blob, CONFIG.WALLPAPER_SOURCES.CUSTOM, true);
                 
                 _hideProcessingProgress();
                 
@@ -1800,14 +1846,11 @@ const WallpaperManager = (function () {
                 console.warn('ImageProcessor not available, using direct save');
                 await _saveWallpaperToDB(file);
 
-                // Clear legacy localStorage wallpaper
-                _safeLocalStorageRemove(CONFIG.STORAGE_KEYS.LEGACY_WALLPAPER);
-
                 const objectUrl = URL.createObjectURL(file);
                 _setWallpaper(objectUrl);
                 _updatePreview(objectUrl);
                 _applyWallpaperEffects();
-                _saveWallpaperPreviewSmall(file, CONFIG.WALLPAPER_SOURCES.CUSTOM);
+                await _saveWallpaperPreviewSmall(file, CONFIG.WALLPAPER_SOURCES.CUSTOM, true);
             }
 
             // Mark as custom wallpaper
@@ -1847,6 +1890,8 @@ const WallpaperManager = (function () {
 
         // Clear all storage
         _safeLocalStorageRemove(CONFIG.STORAGE_KEYS.LEGACY_WALLPAPER);
+        _safeLocalStorageRemove(CONFIG.STORAGE_KEYS.WALLPAPER_PREVIEW_SMALL);
+        _safeLocalStorageRemove(CONFIG.STORAGE_KEYS.CUSTOM_WALLPAPER_BACKUP);
         _safeLocalStorageRemove(CONFIG.STORAGE_KEYS.WALLPAPER_SETTINGS);
         _safeLocalStorageRemove(CONFIG.STORAGE_KEYS.WALLPAPER_SOURCE);
 
@@ -2371,56 +2416,78 @@ const WallpaperManager = (function () {
      */
     async function _loadWallpaper() {
         let wallpaperLoaded = false;
-        // Check saved wallpaper source preference (clean up legacy values)
-        let savedSource = localStorage.getItem(CONFIG.STORAGE_KEYS.WALLPAPER_SOURCE);
+        let savedSource = _safeLocalStorageGet(CONFIG.STORAGE_KEYS.WALLPAPER_SOURCE);
         if (savedSource && savedSource !== CONFIG.WALLPAPER_SOURCES.BING && savedSource !== CONFIG.WALLPAPER_SOURCES.CUSTOM) {
             savedSource = CONFIG.WALLPAPER_SOURCES.BING;
             _safeLocalStorageSet(CONFIG.STORAGE_KEYS.WALLPAPER_SOURCE, savedSource);
         }
 
-        // Try loading custom wallpaper from IndexedDB first
-        try {
-            const dbData = await _getWallpaperFromDB();
-            if (dbData) {
-                let objectUrl;
-                if (dbData instanceof Blob && _isSafeWallpaperBlob(dbData)) {
-                    objectUrl = URL.createObjectURL(dbData);
-                    // Backfill small preview for future cold starts
-                    _saveWallpaperPreviewSmall(dbData, CONFIG.WALLPAPER_SOURCES.CUSTOM);
-                } else if (typeof dbData === 'string' && _isSafeWallpaperUrl(dbData)) {
-                    // Backward compatibility with old format (base64 string)
-                    objectUrl = dbData;
-                    _saveWallpaperPreviewSmall(dbData, CONFIG.WALLPAPER_SOURCES.CUSTOM);
+        const shouldRestoreCustom = savedSource !== CONFIG.WALLPAPER_SOURCES.BING;
+
+        if (shouldRestoreCustom) {
+            try {
+                const dbData = await _getWallpaperFromDB();
+                if (dbData) {
+                    let objectUrl;
+                    if (dbData instanceof Blob && _isSafeWallpaperBlob(dbData)) {
+                        objectUrl = URL.createObjectURL(dbData);
+                        _saveWallpaperPreviewSmall(dbData, CONFIG.WALLPAPER_SOURCES.CUSTOM, true);
+                    } else if (typeof dbData === 'string' && _isSafeWallpaperUrl(dbData)) {
+                        objectUrl = dbData;
+                        _saveWallpaperPreviewSmall(dbData, CONFIG.WALLPAPER_SOURCES.CUSTOM, true);
+                    }
+                    if (objectUrl && _setWallpaper(objectUrl)) {
+                        _updatePreview(objectUrl);
+                        _state.wallpaperSource = CONFIG.WALLPAPER_SOURCES.CUSTOM;
+                        wallpaperLoaded = true;
+                    } else if (objectUrl && objectUrl.startsWith('blob:')) {
+                        URL.revokeObjectURL(objectUrl);
+                    }
                 }
-                if (objectUrl && _setWallpaper(objectUrl)) {
-                    _updatePreview(objectUrl);
-                    _state.wallpaperSource = CONFIG.WALLPAPER_SOURCES.CUSTOM;
-                    wallpaperLoaded = true;
-                }
+            } catch (e) {
+                console.error('Error loading wallpaper from IndexedDB:', e);
             }
-        } catch (e) {
-            console.error('Error loading wallpaper from IndexedDB:', e);
-            _showStatusMessage('Storage unavailable. Check browser privacy settings.', 5000);
         }
 
-        // Fallback to localStorage (legacy)
         if (!wallpaperLoaded) {
-            const savedWallpaper = localStorage.getItem(CONFIG.STORAGE_KEYS.LEGACY_WALLPAPER);
+            const previewUrl = shouldRestoreCustom
+                ? _readWallpaperPreviewSmall(CONFIG.WALLPAPER_SOURCES.CUSTOM)
+                : null;
+            if (previewUrl && _setWallpaper(previewUrl)) {
+                _updatePreview(previewUrl);
+                _state.wallpaperSource = CONFIG.WALLPAPER_SOURCES.CUSTOM;
+                wallpaperLoaded = true;
+                _showStatusMessage('Restored a low-resolution custom wallpaper backup. Free up disk space to restore the full image.', 6000);
+            }
+        }
+
+        if (!wallpaperLoaded) {
+            const savedWallpaper = shouldRestoreCustom
+                ? _safeLocalStorageGet(CONFIG.STORAGE_KEYS.LEGACY_WALLPAPER)
+                : null;
             if (savedWallpaper && _setWallpaper(savedWallpaper)) {
                 _updatePreview(savedWallpaper);
                 _state.wallpaperSource = CONFIG.WALLPAPER_SOURCES.CUSTOM;
+                _saveWallpaperPreviewSmall(savedWallpaper, CONFIG.WALLPAPER_SOURCES.CUSTOM, true);
                 wallpaperLoaded = true;
             }
         }
 
-        // If nothing loaded yet, respect saved source preference
         if (!wallpaperLoaded) {
+            if (savedSource === CONFIG.WALLPAPER_SOURCES.CUSTOM) {
+                _state.wallpaperSource = CONFIG.WALLPAPER_SOURCES.CUSTOM;
+                _showStatusMessage('Custom wallpaper storage is unavailable. Free up disk space and reload to restore it.', 6000);
+                _updateResetButtonState();
+                return false;
+            }
+
             try {
-                // Don't block UI on network; kick off Bing fetch in background when idle
+                _state.wallpaperSource = CONFIG.WALLPAPER_SOURCES.BING;
                 _runWhenIdle(() => {
+                    if (_state.wallpaperSource === CONFIG.WALLPAPER_SOURCES.CUSTOM) return;
                     _applyBingWallpaper().catch((e) => console.warn('Failed to load Bing wallpaper (async):', e));
                 }, 1500);
-                wallpaperLoaded = true; // allow UI to continue with transparent/previous state
+                wallpaperLoaded = true;
             } catch (e) {
                 console.warn('Failed to load preferred wallpaper source:', e);
             }
@@ -2476,9 +2543,12 @@ const WallpaperManager = (function () {
         }
 
         // 5.1 Warm today's Bing cache in background so switching is instant later
-        _runWhenIdle(() => {
-            _warmBingCache().catch((e) => console.warn('Bing cache warm failed:', e));
-        }, 2000);
+        if (_safeLocalStorageGet(CONFIG.STORAGE_KEYS.WALLPAPER_SOURCE) !== CONFIG.WALLPAPER_SOURCES.CUSTOM) {
+            _runWhenIdle(() => {
+                if (_state.wallpaperSource === CONFIG.WALLPAPER_SOURCES.CUSTOM) return;
+                _warmBingCache().catch((e) => console.warn('Bing cache warm failed:', e));
+            }, 2000);
+        }
 
         // 6. Apply effects
         _applyWallpaperEffects();
