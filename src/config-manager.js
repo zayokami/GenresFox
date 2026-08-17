@@ -468,24 +468,25 @@ const ConfigManager = (function () {
 
         let migrated = JSON.parse(JSON.stringify(config)); // Deep clone
         
-        // Ensure settings object exists
+        // Normalize root-level legacy settings before adding migration defaults.
         if (!migrated.settings) {
-            migrated.settings = {};
+            const legacySettings = { ...migrated };
+            const { version, exportDate, signature } = legacySettings;
+            delete legacySettings.version;
+            delete legacySettings.exportDate;
+            delete legacySettings.signature;
+            delete legacySettings.settings;
+            migrated = {
+                ...(version !== undefined ? { version } : {}),
+                ...(exportDate !== undefined ? { exportDate } : {}),
+                ...(signature !== undefined ? { signature } : {}),
+                settings: legacySettings
+            };
         }
 
         // Migration from version < 0.2.0 (no version field or very old format)
         if (!fromVersion || _compareVersions(fromVersion, '0.2.0') < 0) {
             console.log('[ConfigManager] Migrating from pre-0.2.0 format');
-            
-            // Old format might have settings directly at root
-            if (!migrated.settings.engines && migrated.engines) {
-                migrated.settings.engines = migrated.engines;
-                delete migrated.engines;
-            }
-            if (!migrated.settings.shortcuts && migrated.shortcuts) {
-                migrated.settings.shortcuts = migrated.shortcuts;
-                delete migrated.shortcuts;
-            }
             
             // Ensure all required fields exist
             if (!migrated.settings.engines) {

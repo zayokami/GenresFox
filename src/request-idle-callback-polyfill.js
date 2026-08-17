@@ -6,7 +6,7 @@
  * - Respects timeout option
  * - Accurate timeRemaining calculation
  * - Proper cleanup with cancelIdleCallback
- * - Performance optimized (uses MessageChannel when available)
+ * - Reliable cancellation across timeout and frame scheduling
  * 
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/requestIdleCallback
  */
@@ -23,23 +23,44 @@
         return; // Native support available, no polyfill needed
     }
     
-    // Use MessageChannel for better performance if available
-    var hasMessageChannel = typeof MessageChannel !== 'undefined';
     var hasRAF = typeof window.requestAnimationFrame === 'function';
     var hasCancelRAF = typeof window.cancelAnimationFrame === 'function';
     var hasPerformanceNow = typeof performance !== 'undefined' && performance && typeof performance.now === 'function';
+    var nextIdleCallbackId = 1;
+    var pendingCallbacks = new Map();
 
-    var channel = null;
-    if (hasMessageChannel) {
-        try {
-            channel = new MessageChannel();
-            channel.port1.onmessage = function() {
-                // Port message received, browser is idle
-            };
-        } catch (e) {
-            channel = null;
-            hasMessageChannel = false;
+    function _clearScheduledCallback(state) {
+        if (state.timeoutId !== null) {
+            clearTimeout(state.timeoutId);
+            state.timeoutId = null;
         }
+        if (state.frameId !== null && hasCancelRAF) {
+            window.cancelAnimationFrame(state.frameId);
+            state.frameId = null;
+        }
+        if (state.fallbackId !== null) {
+            clearTimeout(state.fallbackId);
+            state.fallbackId = null;
+        }
+    }
+
+    function _completeCallback(id, didTimeout) {
+        var state = pendingCallbacks.get(id);
+        if (!state || !state.active) return;
+
+        state.active = false;
+        pendingCallbacks.delete(id);
+        _clearScheduledCallback(state);
+
+        var callbackStart = hasPerformanceNow ? performance.now() : Date.now();
+        state.callback({
+            didTimeout: didTimeout,
+            timeRemaining: function() {
+                if (didTimeout) return 0;
+                var now = hasPerformanceNow ? performance.now() : Date.now();
+                return Math.max(0, 5 - (now - callbackStart));
+            }
+        });
     }
     
     /**
@@ -57,85 +78,38 @@
         var timeout = (options && typeof options.timeout === 'number')
             ? Math.max(0, options.timeout)
             : 0;
-        var start = hasPerformanceNow ? performance.now() : Date.now();
-        var timeoutId = null;
-        var frameId = null;
+        var id = nextIdleCallbackId++;
+        var state = {
+            active: true,
+            callback: cb,
+            timeoutId: null,
+            frameId: null,
+            fallbackId: null
+        };
+        pendingCallbacks.set(id, state);
         
-        // If timeout is specified, set a fallback timeout
         if (timeout > 0) {
-            timeoutId = setTimeout(function() {
-                if (frameId !== null && hasCancelRAF) {
-                    window.cancelAnimationFrame(frameId);
-                    frameId = null;
-                }
-                var now = hasPerformanceNow ? performance.now() : Date.now();
-                cb({
-                    didTimeout: true,
-                    timeRemaining: function() {
-                        return Math.max(0, timeout - (now - start));
-                    }
-                });
+            state.timeoutId = setTimeout(function() {
+                _completeCallback(id, true);
             }, timeout);
         }
         
-        // If requestAnimationFrame is not available, fall back to simple timeout
         if (!hasRAF) {
-            var fallbackId = setTimeout(function() {
-                if (timeoutId !== null) {
-                    clearTimeout(timeoutId);
-                }
-                cb({
-                    didTimeout: false,
-                    timeRemaining: function() {
-                        return 1;
-                    }
-                });
+            state.fallbackId = setTimeout(function() {
+                _completeCallback(id, false);
             }, 1);
-            return fallbackId;
+            return id;
         }
 
-        // Use requestAnimationFrame to wait for next frame
-        // This ensures we're not blocking the main thread
-        frameId = window.requestAnimationFrame(function() {
-            // Use MessageChannel to detect idle time if available
-            if (hasMessageChannel && channel) {
-                try {
-                    channel.port2.postMessage(0);
-                } catch (e) {
-                    // If postMessage fails, fall back to normal path
-                }
-                // Schedule callback for next idle period
-                frameId = window.requestAnimationFrame(function() {
-                    if (timeoutId !== null) {
-                        clearTimeout(timeoutId);
-                    }
-                    cb({
-                        didTimeout: false,
-                        timeRemaining: function() {
-                            // Estimate remaining time (conservative: 5ms)
-                            return Math.max(0, 5);
-                        }
-                    });
-                });
-            } else {
-                // Fallback: use setTimeout with minimal delay
-                if (timeoutId !== null) {
-                    clearTimeout(timeoutId);
-                }
-                setTimeout(function() {
-                    cb({
-                        didTimeout: false,
-                        timeRemaining: function() {
-                            // Conservative estimate: 1ms remaining
-                            return 1;
-                        }
-                    });
-                }, 1);
-            }
+        state.frameId = window.requestAnimationFrame(function() {
+            state.frameId = null;
+            if (!state.active) return;
+            state.fallbackId = setTimeout(function() {
+                _completeCallback(id, false);
+            }, 0);
         });
         
-        // Return a unique ID for cancellation
-        return frameId || timeoutId || Date.now();
+        return id;
     };
     
     /**
@@ -143,14 +117,11 @@
      * @param {number} id - Request ID from requestIdleCallback
      */
     window.cancelIdleCallback = function(id) {
-        if (typeof id === 'number') {
-            // Cancel animation frame if it's a frame ID
-            if (hasCancelRAF && id < 1000000) { // Frame IDs are typically small
-                window.cancelAnimationFrame(id);
-            }
-            // Cancel timeout
-            clearTimeout(id);
-        }
+        var state = pendingCallbacks.get(id);
+        if (!state) return;
+        state.active = false;
+        pendingCallbacks.delete(id);
+        _clearScheduledCallback(state);
     };
 })();
 

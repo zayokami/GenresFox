@@ -1148,9 +1148,48 @@ function _applyImportedConfiguration(config) {
  */
 let _importInProgress = false;
 
+function _pickConfigurationFile(fileInput) {
+    return new Promise((resolve, reject) => {
+        let settled = false;
+        let focusTimer = null;
+
+        const cleanup = () => {
+            fileInput.removeEventListener('change', onChange);
+            fileInput.removeEventListener('cancel', onCancel);
+            window.removeEventListener('focus', onWindowFocus);
+            if (focusTimer) clearTimeout(focusTimer);
+        };
+        const finish = (file) => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            resolve(file || null);
+        };
+        const onChange = (event) => finish(event.target.files?.[0]);
+        const onCancel = () => finish(null);
+        const onWindowFocus = () => {
+            focusTimer = setTimeout(() => {
+                if (!fileInput.files?.length) finish(null);
+            }, 0);
+        };
+
+        fileInput.value = '';
+        fileInput.addEventListener('change', onChange);
+        fileInput.addEventListener('cancel', onCancel);
+        window.addEventListener('focus', onWindowFocus, { once: true });
+        try {
+            fileInput.click();
+        } catch (error) {
+            cleanup();
+            reject(error);
+        }
+    });
+}
+
 async function importConfiguration() {
     if (_importInProgress) return;
     _importInProgress = true;
+    let backupKey = null;
 
     try {
         if (typeof ConfigManager === 'undefined' || !ConfigManager.importFromFile) {
@@ -1162,138 +1201,76 @@ async function importConfiguration() {
             throw new Error('File input not found');
         }
 
-        // Trigger file picker
-        fileInput.click();
+        const file = await _pickConfigurationFile(fileInput);
+        if (!file) return;
 
-        // Wait for file selection
-        await new Promise((resolve, reject) => {
-            fileInput.addEventListener('change', async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) {
-                    resolve(null);
-                    return;
-                }
+        const confirmMessage = I18n && I18n.t ?
+            I18n.t('importConfigConfirm', 'This will replace all your current settings. Continue?') :
+            'This will replace all your current settings. Continue?';
+        if (!confirm(confirmMessage)) return;
 
-                try {
-                    // Show confirmation dialog
-                    const confirmMessage = I18n && I18n.t ? 
-                        I18n.t('importConfigConfirm', 'This will replace all your current settings. Continue?') : 
-                        'This will replace all your current settings. Continue?';
-                    
-                    if (!confirm(confirmMessage)) {
-                        fileInput.value = '';
-                        resolve(null);
-                        return;
-                    }
+        const result = await ConfigManager.importFromFile(file);
+        if (!result.success) {
+            const errorMessage = I18n && I18n.t ?
+                I18n.t('importConfigError', 'Failed to import configuration: ') + result.error :
+                'Failed to import configuration: ' + result.error;
+            alert(errorMessage);
+            return;
+        }
 
-                    // Backup current configuration before applying imported one
-                    try {
-                        const currentConfig = {
-                            version: ConfigManager.getVersion(),
-                            exportDate: new Date().toISOString(),
-                            settings: {
-                                wallpaperSettings: JSON.parse(localStorage.getItem('wallpaperSettings') || '{}'),
-                                searchBoxSettings: JSON.parse(localStorage.getItem('searchBoxSettings') || '{}'),
-                                themeSettings: JSON.parse(localStorage.getItem('themeSettings') || '{}'),
-                                accessibilitySettings: JSON.parse(localStorage.getItem('accessibilitySettings') || '{}'),
-                                engines: JSON.parse(localStorage.getItem('engines') || '{}'),
-                                shortcuts: JSON.parse(localStorage.getItem('shortcuts') || '[]'),
-                                showShortcutNames: localStorage.getItem('showShortcutNames') === 'true',
-                                shortcutOpenTarget: localStorage.getItem('shortcutOpenTarget') || 'current',
-                                snowEffectEnabled: localStorage.getItem('snowEffectEnabled') === 'true',
-                                snowEffectTriggered: localStorage.getItem('snowEffectTriggered') === 'true',
-                                preferredLanguage: localStorage.getItem('preferredLanguage') || null
-                            }
-                        };
-                        const timestamp = Date.now();
-                        localStorage.setItem(`genresfox_config_backup_${timestamp}`, JSON.stringify(currentConfig));
-                        // Keep only the 5 most recent backups
-                        const backupKeys = Object.keys(localStorage)
-                            .filter(k => k.startsWith('genresfox_config_backup_'))
-                            .sort();
-                        while (backupKeys.length > 5) {
-                            localStorage.removeItem(backupKeys.shift());
-                        }
-                    } catch (backupErr) {
-                        console.warn('[Import] Failed to create backup:', backupErr);
-                    }
+        try {
+            const timestamp = Date.now();
+            const candidateBackupKey = `genresfox_config_backup_${timestamp}`;
+            localStorage.setItem(candidateBackupKey, JSON.stringify(_collectConfigurationData()));
+            backupKey = candidateBackupKey;
+            const backupKeys = Object.keys(localStorage)
+                .filter(k => k.startsWith('genresfox_config_backup_'))
+                .sort();
+            while (backupKeys.length > 5) {
+                localStorage.removeItem(backupKeys.shift());
+            }
+        } catch (backupErr) {
+            console.warn('[Import] Failed to create backup:', backupErr);
+            throw new Error('Unable to create a backup. Existing configuration was not changed.');
+        }
 
-                    // Import and verify configuration
-                    const result = await ConfigManager.importFromFile(file);
+        if (result.config && result.migrated) {
+            const migrationMessage = `Configuration was automatically upgraded from version ${result.fromVersion || 'legacy'} to ${ConfigManager.getVersion()}.`;
+            console.log('[Import] ' + migrationMessage);
+            if (window.requestIdleCallback) {
+                requestIdleCallback(() => {
+                    console.info(migrationMessage);
+                });
+            }
+        }
 
-                    if (!result.success) {
-                        const errorMessage = I18n && I18n.t ?
-                            I18n.t('importConfigError', 'Failed to import configuration: ') + result.error :
-                            'Failed to import configuration: ' + result.error;
-
-                        // Check for backup and offer restore
-                        const backupKey = Object.keys(localStorage).find(k => k.startsWith('genresfox_config_backup_'));
-                        if (backupKey) {
-                            const restoreConfirm = I18n && I18n.t ?
-                                I18n.t('importConfigRestorePrompt', 'Import failed. Would you like to restore your previous configuration from backup?') :
-                                'Import failed. Would you like to restore your previous configuration from backup?';
-                            if (confirm(restoreConfirm)) {
-                                try {
-                                    const backupData = JSON.parse(localStorage.getItem(backupKey));
-                                    _applyImportedConfiguration(backupData);
-                                    const restoreSuccess = I18n && I18n.t ?
-                                        I18n.t('importConfigRestoreSuccess', 'Backup restored successfully!') :
-                                        'Backup restored successfully!';
-                                    alert(restoreSuccess);
-                                    window.location.reload();
-                                } catch (restoreErr) {
-                                    console.error('Failed to restore backup:', restoreErr);
-                                    alert(errorMessage);
-                                }
-                            }
-                        } else {
-                            alert(errorMessage);
-                        }
-                        fileInput.value = '';
-                        resolve(null);
-                        return;
-                    }
-
-                    // Show migration notice if configuration was migrated
-                    if (result.config && result.migrated) {
-                        const migrationMessage = I18n && I18n.getMessage ?
-                            `Configuration was automatically upgraded from version ${result.fromVersion || 'legacy'} to ${ConfigManager.getVersion()}.` :
-                            `Configuration was automatically upgraded from version ${result.fromVersion || 'legacy'} to ${ConfigManager.getVersion()}.`;
-                        console.log('[Import] ' + migrationMessage);
-                        // Optionally show a brief notice (non-blocking)
-                        if (window.requestIdleCallback) {
-                            requestIdleCallback(() => {
-                                console.info(migrationMessage);
-                            });
-                        }
-                    }
-
-                    // Apply configuration
-                    _applyImportedConfiguration(result.config);
-
-                    // Show success message
-                    const successMessage = I18n && I18n.t ? 
-                        I18n.t('importConfigSuccess', 'Configuration imported successfully!') : 
-                        'Configuration imported successfully!';
-                    alert(successMessage);
-
-                    // Reload page to ensure all settings are applied
-                    window.location.reload();
-                } catch (error) {
-                    console.error('Failed to import configuration:', error);
-                    const errorMessage = I18n && I18n.t ? 
-                        I18n.t('importConfigError', 'Failed to import configuration: ') + error.message : 
-                        'Failed to import configuration: ' + error.message;
-                    alert(errorMessage);
-                    reject(error);
-                } finally {
-                    fileInput.value = '';
-                    resolve(null);
-                }
-            }, { once: true });
-        });
+        _applyImportedConfiguration(result.config);
+        const successMessage = I18n && I18n.t ?
+            I18n.t('importConfigSuccess', 'Configuration imported successfully!') :
+            'Configuration imported successfully!';
+        alert(successMessage);
+        window.location.reload();
     } catch (e) {
         console.error('Failed to import configuration:', e);
+        if (backupKey) {
+            const restoreConfirm = I18n && I18n.t ?
+                I18n.t('importConfigRestorePrompt', 'Import failed. Would you like to restore your previous configuration from backup?') :
+                'Import failed. Would you like to restore your previous configuration from backup?';
+            if (confirm(restoreConfirm)) {
+                try {
+                    const backupData = JSON.parse(localStorage.getItem(backupKey));
+                    _applyImportedConfiguration(backupData);
+                    const restoreSuccess = I18n && I18n.t ?
+                        I18n.t('importConfigRestoreSuccess', 'Backup restored successfully!') :
+                        'Backup restored successfully!';
+                    alert(restoreSuccess);
+                    window.location.reload();
+                    return;
+                } catch (restoreErr) {
+                    console.error('Failed to restore backup:', restoreErr);
+                }
+            }
+        }
         const errorMessage = I18n && I18n.t ?
             I18n.t('importConfigError', 'Failed to import configuration: ') + e.message :
             'Failed to import configuration: ' + e.message;

@@ -255,73 +255,89 @@ const StickyNotes = (function() {
         });
     }
 
-    function _dbGet(key) {
+    function _runDBRequest(mode, createRequest) {
         return new Promise(function(resolve, reject) {
-            if (!_db) { resolve(null); return; }
-            var tx = _db.transaction([STORE_NAME], 'readonly');
-            var store = tx.objectStore(STORE_NAME);
-            var req = store.get(key);
-            req.onsuccess = function() { resolve(req.result); };
-            req.onerror = function() { reject(req.error); };
+            if (!_db) {
+                reject(new Error('Sticky notes database is unavailable'));
+                return;
+            }
+
+            var settled = false;
+            var result;
+            var finish = function(callback, value) {
+                if (settled) return;
+                settled = true;
+                callback(value);
+            };
+
+            try {
+                var tx = _db.transaction([STORE_NAME], mode);
+                var req = createRequest(tx.objectStore(STORE_NAME));
+                req.onsuccess = function() { result = req.result; };
+                req.onerror = function() {
+                    finish(reject, req.error || tx.error || new Error('Sticky notes request failed'));
+                };
+                tx.oncomplete = function() { finish(resolve, result); };
+                tx.onerror = function() {
+                    finish(reject, tx.error || new Error('Sticky notes transaction failed'));
+                };
+                tx.onabort = function() {
+                    finish(reject, tx.error || new Error('Sticky notes transaction aborted'));
+                };
+            } catch (e) {
+                finish(reject, e);
+            }
         });
+    }
+
+    function _dbGet(key) {
+        return _runDBRequest('readonly', function(store) { return store.get(key); });
     }
 
     function _dbSet(key, value) {
-        return new Promise(function(resolve, reject) {
-            if (!_db) { resolve(); return; }
-            var tx = _db.transaction([STORE_NAME], 'readwrite');
-            var store = tx.objectStore(STORE_NAME);
-            var req = store.put(value, key);
-            req.onsuccess = function() { resolve(); };
-            req.onerror = function() { reject(req.error); };
-        });
+        return _runDBRequest('readwrite', function(store) { return store.put(value, key); });
     }
 
     function _dbDelete(key) {
-        return new Promise(function(resolve, reject) {
-            if (!_db) { resolve(); return; }
-            var tx = _db.transaction([STORE_NAME], 'readwrite');
-            var store = tx.objectStore(STORE_NAME);
-            var req = store.delete(key);
-            req.onsuccess = function() { resolve(); };
-            req.onerror = function() { reject(req.error); };
-        });
+        return _runDBRequest('readwrite', function(store) { return store.delete(key); });
     }
 
     // Migrate legacy localStorage data to IndexedDB
     async function _migrateFromLocalStorage() {
-        try {
-            var rawNotes = localStorage.getItem(CONFIG.STORAGE_KEY);
-            var rawSettings = localStorage.getItem(CONFIG.SETTINGS_KEY);
-            if (rawNotes) {
+        var rawNotes = localStorage.getItem(CONFIG.STORAGE_KEY);
+        if (rawNotes) {
+            try {
                 var data = JSON.parse(rawNotes);
-                if (Array.isArray(data.notes)) {
-                    var usedIds = new Set();
-                    var normalizedNotes = [];
-                    data.notes.slice(0, CONFIG.MAX_NOTES).forEach(function(rawNote, index) {
-                        var normalized = _normalizeNote(rawNote, index, usedIds);
-                        if (normalized) normalizedNotes.push(normalized);
-                    });
-                    await _dbSet('data', {
-                        notes: normalizedNotes,
-                        maxId: normalizedNotes.reduce(function(max, note) { return Math.max(max, note.id); }, 0),
-                        nextZIndex: normalizedNotes.reduce(function(max, note) { return Math.max(max, note.zIndex); }, CONFIG.Z_INDEX_BASE),
-                    });
-                    console.log('[StickyNotes] Migrated notes from localStorage to IndexedDB');
-                }
+                if (!Array.isArray(data.notes)) throw new Error('Invalid legacy note data');
+                var usedIds = new Set();
+                var normalizedNotes = [];
+                data.notes.slice(0, CONFIG.MAX_NOTES).forEach(function(rawNote, index) {
+                    var normalized = _normalizeNote(rawNote, index, usedIds);
+                    if (normalized) normalizedNotes.push(normalized);
+                });
+                await _dbSet('data', {
+                    notes: normalizedNotes,
+                    maxId: normalizedNotes.reduce(function(max, note) { return Math.max(max, note.id); }, 0),
+                    nextZIndex: normalizedNotes.reduce(function(max, note) { return Math.max(max, note.zIndex); }, CONFIG.Z_INDEX_BASE),
+                });
+                localStorage.removeItem(CONFIG.STORAGE_KEY);
+                console.log('[StickyNotes] Migrated notes from localStorage to IndexedDB');
+            } catch (e) {
+                console.warn('[StickyNotes] Note migration from localStorage failed:', e);
             }
-            if (rawSettings) {
+        }
+
+        var rawSettings = localStorage.getItem(CONFIG.SETTINGS_KEY);
+        if (rawSettings) {
+            try {
                 var settings = JSON.parse(rawSettings);
-                if (settings && typeof settings.enabled === 'boolean') {
-                    await _dbSet('settings', settings);
-                    console.log('[StickyNotes] Migrated settings from localStorage to IndexedDB');
-                }
+                if (!settings || typeof settings.enabled !== 'boolean') throw new Error('Invalid legacy note settings');
+                await _dbSet('settings', { enabled: settings.enabled });
+                localStorage.removeItem(CONFIG.SETTINGS_KEY);
+                console.log('[StickyNotes] Migrated settings from localStorage to IndexedDB');
+            } catch (e) {
+                console.warn('[StickyNotes] Settings migration from localStorage failed:', e);
             }
-            // Clear legacy localStorage keys after successful migration
-            localStorage.removeItem(CONFIG.STORAGE_KEY);
-            localStorage.removeItem(CONFIG.SETTINGS_KEY);
-        } catch (e) {
-            console.warn('[StickyNotes] Migration from localStorage failed:', e);
         }
     }
 
